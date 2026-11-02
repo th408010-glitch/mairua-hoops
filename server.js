@@ -77,6 +77,8 @@ function tinhHangThanhVien(totalSpent) {
 // ====================================================================
 const cloudCarts = {};
 const fallbackOrders = [];
+let fallbackProducts = [];
+try { fallbackProducts = require('./products_seed.json'); } catch(e) { fallbackProducts = []; }
 
 app.get('/api/cart/:phone', (req, res) => {
     const phone = req.params.phone;
@@ -121,7 +123,6 @@ app.get('/api/products', async (req, res) => {
 
             const [prods] = await pool.query(sql, params);
 
-            // Gắn danh sách variants cho từng sản phẩm
             for (const p of prods) {
                 const [vars] = await pool.query(
                     'SELECT id, color_name AS colorName, base_color AS baseColor, cut_style AS cutStyle, hex, stock, sold, img_url AS img FROM product_variants WHERE product_id = ? ORDER BY id ASC',
@@ -142,11 +143,26 @@ app.get('/api/products', async (req, res) => {
             return res.json({ success: true, count: prods.length, data: prods });
         }
 
-        let list = fallbackOrders;
-        if (phone) {
-            list = fallbackOrders.filter(o => o.phone === phone || o.accountPhone === phone || o.customer_phone === phone || o.account_phone === phone);
+        // FALLBACK ĐỒNG BỘ CLOUD: Phục vụ trực tiếp danh sách 37 sản phẩm với tồn kho thống nhất
+        let prods = JSON.parse(JSON.stringify(fallbackProducts));
+        if (cat && cat !== 'all') prods = prods.filter(p => p.cat === cat);
+        if (min_price) prods = prods.filter(p => p.price >= Number(min_price));
+        if (max_price) prods = prods.filter(p => p.price <= Number(max_price));
+        if (search) {
+            let sLower = search.toLowerCase();
+            prods = prods.filter(p => p.name.toLowerCase().includes(sLower));
         }
-        res.json({ success: true, source: 'fallback', count: list.length, data: list });
+        if (sort === 'price_asc') prods.sort((a, b) => a.price - b.price);
+        else if (sort === 'price_desc') prods.sort((a, b) => b.price - a.price);
+
+        prods.forEach(p => {
+            if (Array.isArray(p.variants)) {
+                p.stock = p.variants.reduce((s, v) => s + (v.stock || 0), 0);
+                p.sold = p.variants.reduce((s, v) => s + (v.sold || 0), 0);
+            }
+        });
+
+        res.json({ success: true, source: 'fallback', count: prods.length, data: prods });
     } catch (err) {
         console.error('Lỗi GET /api/products:', err);
         res.status(500).json({ success: false, message: 'Lỗi máy chủ khi lấy danh sách sản phẩm', error: err.message });
@@ -155,7 +171,7 @@ app.get('/api/products', async (req, res) => {
 
 /**
  * POST /api/admin/restock
- * Tính năng "AI Nhập Hàng Tự Động": Cộng tồn kho trực tiếp trong SQL và tự xóa cảnh báo tồn kho <= 5
+ * Tính năng "AI Nhập Hàng Tự Động"
  */
 app.post('/api/admin/restock', async (req, res) => {
     try {
@@ -610,7 +626,12 @@ app.get('/api/orders', async (req, res) => {
             return res.json({ success: true, count: orders.length, data: orders });
         }
 
-        res.json({ success: true, source: 'fallback', data: [] });
+        // FALLBACK ĐỒNG BỘ ĐƠN HÀNG: Trả về đơn hàng đã lưu trên máy chủ
+        let list = fallbackOrders;
+        if (phone) {
+            list = fallbackOrders.filter(o => o.phone === phone || o.accountPhone === phone || o.customer_phone === phone || o.account_phone === phone);
+        }
+        res.json({ success: true, source: 'fallback', count: list.length, data: list });
     } catch (err) {
         console.error('Lỗi GET /api/orders:', err);
         res.status(500).json({ success: false, message: 'Lỗi lấy danh sách đơn', error: err.message });
@@ -619,7 +640,6 @@ app.get('/api/orders', async (req, res) => {
 
 /**
  * PUT /api/orders/:orderCode/status
- * Cập nhật công đoạn sản xuất (0 -> 1 -> 2 -> 3 -> 4) & Admin duyệt đơn
  */
 app.put('/api/orders/:orderCode/status', async (req, res) => {
     try {

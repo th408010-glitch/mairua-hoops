@@ -1,0 +1,1018 @@
+[
+  {
+    "id": 1,
+    "cat": "balo",
+    "name": "Nike Elite V1 Basketball Backpack",
+    "price": 520000,
+    "hasSize": false,
+    "variants": [
+      {
+        "colorName": "Trắng Đen",
+        "hex": "#ffffff",
+        "stock": 8,
+        "sold": 28,
+        "img": "https://tse3.mm.bing.net/th/id/OIP.KAJ_f9qd6ZGbo6KwGWC8lQHaGg?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      },
+      {
+        "colorName": "Đen Vàng Gold",
+        "hex": "#222222",
+        "stock": 5,
+        "sold": 19,
+        "img": "https://images.prodirectsport.com/ProductImages/Gallery_1/232760_Gallery_1_0845199.jpg"
+      },
+      {
+        "colorName": "Đỏ Đen",
+        "hex": "#e74c3c",
+        "stock": 6,
+        "sold": 14,
+        "img": "https://tse3.mm.bing.net/th/id/OIP.J2Geh4Li-tMVLDVOr8JJOwHaJS?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "cat": "balo",
+    "name": "Nike Elite V2 Pro Backpack",
+    "price": 650000,
+    "hasSize": false,
+    "variants": [
+      {
+        "colorName": "Xanh Đen",
+        "hex": "#2c3e50",
+        "stock": 6,
+        "sold": 15,
+        "img": "https://m.media-amazon.com/images/I/81tqai0YQeL._AC_UY1000_.jpg"
+      },
+      {
+        "colorName": "Xám Bạc",
+        "hex": "#bdc3c7",
+        "stock": 4,
+        "sold": 9,
+        "img": "https://tse3.mm.bing.net/th/id/OIP.mkdGKLhnOyIMfwa3Z3RKvwHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      },
+      {
+        "colorName": "Đen Tuyền",
+        "hex": "#111111",
+        "stock": 5,
+        "sold": 17,
+        "img": "https://tse4.mm.bing.net/th/id/OIP.W4l3i7seO1sz3dJdQTikogHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "cat": "balo",
+    "name": "Nike Elite V3 Ultimate Edition",
+    "price": 850000,
+    "hasSize": false,
+    "variants": [
+      {
+        "colorName": "Đen Phối Cam",
+        "hex": "#e67e22",
+        "stock": 4,
+        "sold": 11,
+        "img": "https://classic.cdn.media.amplience.net/i/hibbett/00B9Z_8025_main/Nike%20Varsity%20Elite%20Backpack-Orange/Black-8025?$large$"
+      },
+      {
+        "colorName": "Trắng Tinh Khôi",
+        "hex": "#f8f9fa",
+        "stock": 3,
+        "sold": 7,
+        "img": "https://classic.cdn.media.amplience.net/i/hibbett/004PQ_9124_main/Nike%20Varsity%20Elite%20Backpack%20-%20White-9124"
+      },
+      {
+        "colorName": "Xanh Dương",
+        "hex": "#2980b9",
+        "stock": 4,
+        "sold": 6,
+        "img": "https://m.media-amazon.com/images/I/81tqai0YQeL._AC_UY1000_.jpg"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "cat": "balo",
+    "name": "Nike Utility Speed Training Backpack",
+    "price": 890000,
+    "hasSize": false,
+    "variants": [
+      {
+        "colorName": "Đen Nhám",
+        "hex": "#34495e",
+        "stock": 5,
+        "sold": 12,
+        "img": "https://tse4.mm.bing.net/th/id/OIP.7F5Q5lppNKQD5JcJgCtpNAHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      },
+      {
+        "colorName": "Xanh Rêu",
+        "hex": "#7f8c8d",
+        "stock": 4,
+        "sold": 8,
+        "img": "https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/46dc627a-1b91-4ec9-a0a1-f007feba4a46/NK+UTILITY+ELITE+BKPK+-+2.0.png"
+      },
+      {
+        "colorName": "Xám Khói",
+        "hex": "#95a5a6",
+        "stock": 3,
+        "sold": 4,
+        "img": "https://www.nike.sa/dw/image/v2/BDVB_PRD/on/demandware.static/-/Sites-akeneo-master-catalog/default/dwf8e2b749/nk/b33/3/5/0/0/a/b333500a_7fdf_43e3_bbf6_782173cd8c43.jpg"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "cat": "bong",
+    "name": "Bóng Rổ Molten GG7X Sân Indoor",
+    "price": 680000,
+    "hasSize": true,
+    "sizes": [
+      "Size 5",
+      "Size 6",
+      "Size 7"
+    ],
+    "variants": [
+      {
+        "colorName": "Cam Chuẩn",
+        "hex": "#d35400",
+        "stock": 12,
+        "sold": 52,
+        "img": "https://img4.dhresource.com/webp/m/0x0/f3/albu/km/j/21/f572bfe1-f3a3-4028-b179-1130b821623f.jpg"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "cat": "bong",
+    "name": "Bóng Rổ Molten B7G4500 Da Tổng Hợp",
+    "price": 620000,
+    "hasSize": true,
+    "sizes": [
+      "Size 5",
+      "Size 6",
+      "Size 7"
+    ],
+    "variants": [
+      {
+        "colorName": "Cam Vàng",
+        "hex": "#d35400",
+        "stock": 10,
+        "sold": 23,
+        "img": "https://pocasport.vn/uploads/602/4500.png"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "cat": "bong",
+    "name": "Bóng Rổ AK Pro Cao Su Thi Đấu",
+    "price": 520000,
+    "hasSize": true,
+    "sizes": [
+      "Size 5",
+      "Size 6",
+      "Size 7"
+    ],
+    "variants": [
+      {
+        "colorName": "Cam Đen",
+        "hex": "#d35400",
+        "stock": 11,
+        "sold": 18,
+        "img": "https://tse1.mm.bing.net/th/id/OIP.7IZB2NvXIK8BXRUXi-AhkAHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "cat": "bong",
+    "name": "Bóng Rổ AK Pro Outdoor Chống Mài Mòn",
+    "price": 450000,
+    "hasSize": true,
+    "sizes": [
+      "Size 5",
+      "Size 6",
+      "Size 7"
+    ],
+    "variants": [
+      {
+        "colorName": "Cam Sáng",
+        "hex": "#d35400",
+        "stock": 12,
+        "sold": 14,
+        "img": "https://vscsport.com/uploads/details/2025/04/images/qua-bong-ro-AKpro-AB8006-1.jpg"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "cat": "bong",
+    "name": "Bóng Rổ Stepback Pro Series Size 7",
+    "price": 580000,
+    "hasSize": true,
+    "sizes": [
+      "Size 5",
+      "Size 6",
+      "Size 7"
+    ],
+    "variants": [
+      {
+        "colorName": "Cam Đậm",
+        "hex": "#d35400",
+        "stock": 9,
+        "sold": 9,
+        "img": "https://th.bing.com/th/id/OIP.imJfbnVU9X3BvLxp5TH8fQHaHa?r=0&o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "cat": "bong",
+    "name": "Bóng Rổ Stepback Street Outdoor",
+    "price": 490000,
+    "hasSize": true,
+    "sizes": [
+      "Size 5",
+      "Size 6",
+      "Size 7"
+    ],
+    "variants": [
+      {
+        "colorName": "Cam Tiêu Chuẩn",
+        "hex": "#d35400",
+        "stock": 8,
+        "sold": 5,
+        "img": "https://tse4.mm.bing.net/th/id/OIP.fxETWIhCMDpe_PTCUaOpywHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "cat": "vo",
+    "name": "Vớ Chống Trượt Nike Elite Crew Trắng",
+    "price": 150000,
+    "hasSize": true,
+    "sizes": [
+      "S (38-40)",
+      "M (41-42)",
+      "L (43-45)"
+    ],
+    "variants": [
+      {
+        "colorName": "Trắng",
+        "hex": "#ffffff",
+        "stock": 18,
+        "sold": 64,
+        "img": "https://ycb.vn/wp-content/uploads/2018/05/vo-nike-elite-cushioned-crew-sx5460-101-001.jpg"
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "cat": "vo",
+    "name": "Vớ Chống Trượt Nike Elite Crew Đen",
+    "price": 150000,
+    "hasSize": true,
+    "sizes": [
+      "S (38-40)",
+      "M (41-42)",
+      "L (43-45)"
+    ],
+    "variants": [
+      {
+        "colorName": "Đen",
+        "hex": "#111111",
+        "stock": 15,
+        "sold": 31,
+        "img": "https://static.nike.com/a/images/t_web_pw_592_v2/f_auto/53ef7bd6-ca0e-4f5d-a1e2-16a7533a78b2/U+NK+ELITE+CUSH+CREW+1PR.png"
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "cat": "vo",
+    "name": "Vớ Trutechsocks Đệm Dày Cao Cấp",
+    "price": 220000,
+    "hasSize": true,
+    "sizes": [
+      "M (39-41)",
+      "L (42-44)"
+    ],
+    "variants": [
+      {
+        "colorName": "Đen",
+        "hex": "#111111",
+        "stock": 12,
+        "sold": 16,
+        "img": "https://down-vn.img.susercontent.com/file/4622270d1b754207b028ca0492f351a4"
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "cat": "ao",
+    "name": "Áo Jersey Los Angeles Lakers Edition",
+    "price": 225000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Vàng Gold",
+        "hex": "#f1c40f",
+        "stock": 10,
+        "sold": 27,
+        "img": "https://interdeportivo.com/cdn/shop/files/JerseyNikeLosAngelesLakersIconEdition_1_-PaginaWEB.png?v=1779056525&width=1024"
+      },
+      {
+        "colorName": "Tím Purple",
+        "hex": "#6c3483",
+        "stock": 8,
+        "sold": 21,
+        "img": "https://th.bing.com/th/id/OIP.Icza2F_i6SXb36ViKc4EjQAAAA?w=118&h=150&c=6&r=0&o=7&dpr=1.3&pid=1.7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "cat": "ao",
+    "name": "Áo Jersey Chicago Bulls Retro Red",
+    "price": 225000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Đỏ Đen",
+        "hex": "#c0392b",
+        "stock": 10,
+        "sold": 22,
+        "img": "https://tse4.mm.bing.net/th/id/OIP.6-RiWcKD1bUfc75viJksuQHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "cat": "ao",
+    "name": "Áo Jersey Bóng Rổ Golden State Warriors",
+    "price": 240000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Xanh Dương",
+        "hex": "#1d428a",
+        "stock": 9,
+        "sold": 29,
+        "img": "https://i.pinimg.com/736x/de/27/55/de2755cbf2e5392870db49b07efa5011.jpg"
+      },
+      {
+        "colorName": "Vàng",
+        "hex": "#ffc72c",
+        "stock": 7,
+        "sold": 16,
+        "img": "https://i.pinimg.com/736x/d1/ab/74/d1ab74c7fe563d0ac1a19254ce811215.jpg"
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "cat": "ao",
+    "name": "Áo Jersey Bóng Rổ New York (NYC) City Edition",
+    "price": 250000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Trắng NYC",
+        "hex": "#ffffff",
+        "stock": 8,
+        "sold": 11,
+        "img": "https://basketballjerseyarchive.com/static/news/2024/11/14/kHBQKiKDMtNpys2/all-2024-2025-nba-city-edition-jerseys-released.jpg"
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "cat": "ao",
+    "name": "Áo Jersey Bóng Rổ Đội Tuyển Việt Nam",
+    "price": 230000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Đỏ Sao Vàng",
+        "hex": "#da251d",
+        "stock": 12,
+        "sold": 26,
+        "img": "https://tse4.mm.bing.net/th/id/OIP.YzrHuPXz_QEltXT6kkcYGwAAAA?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "cat": "combat",
+    "name": "Áo Combat Bóng Rổ Ngắn Tay Giữ Nhiệt",
+    "price": 180000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Đen",
+        "hex": "#111111",
+        "stock": 10,
+        "sold": 13,
+        "img": "https://tse1.mm.bing.net/th/id/OIP.MLJg0yWWOg4V9xOk6QKNCQHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "cat": "combat",
+    "name": "Áo Combat Bóng Rổ Ba Lỗ Chuyên Dụng",
+    "price": 165000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Đen",
+        "hex": "#111111",
+        "stock": 10,
+        "sold": 8,
+        "img": "https://tse1.mm.bing.net/th/id/OIP.rKAsReQCPMnmtPg6uDtfswHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "cat": "combat",
+    "isCombatPants": true,
+    "name": "Quần Combat Bóng Rổ Pro (Ngắn / Dài / Lệch)",
+    "price": 195000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Ngắn - Đen",
+        "baseColor": "Đen",
+        "cutStyle": "Ngắn",
+        "hex": "#111111",
+        "stock": 9,
+        "sold": 20,
+        "img": "https://th.bing.com/th/id/R.62be73600b91a8cc066976e09e8fc624?rik=KnFnJqc%2bEf0Cww&pid=ImgRaw&r=0"
+      },
+      {
+        "colorName": "Ngắn - Trắng",
+        "baseColor": "Trắng",
+        "cutStyle": "Ngắn",
+        "hex": "#ffffff",
+        "stock": 7,
+        "sold": 12,
+        "img": "https://product.hstatic.net/1000372304/product/quan-combat-bong-ro-giu-nhiet-mau-trang_465465e884ef4d6b8f9217f9f46403cb_master.jpg"
+      },
+      {
+        "colorName": "Dài - Đen",
+        "baseColor": "Đen",
+        "cutStyle": "Dài",
+        "hex": "#111111",
+        "stock": 10,
+        "sold": 15,
+        "img": "https://tse2.mm.bing.net/th/id/OIP.RmBeTa9BzSHs_A9NbY1H_AHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      },
+      {
+        "colorName": "Dài - Trắng",
+        "baseColor": "Trắng",
+        "cutStyle": "Dài",
+        "hex": "#ffffff",
+        "stock": 6,
+        "sold": 7,
+        "img": "https://down-vn.img.susercontent.com/file/vn-11134207-7r98o-lpm0heeee7cf76"
+      },
+      {
+        "colorName": "Lệch Phải - Đen",
+        "baseColor": "Đen",
+        "cutStyle": "Lệch Phải",
+        "hex": "#111111",
+        "stock": 5,
+        "sold": 18,
+        "img": "https://dothethao.net.vn/wp-content/uploads/2024/01/quan-den-lung-trai-ngan-phai.jpg"
+      },
+      {
+        "colorName": "Lệch Trái - Đen",
+        "baseColor": "Đen",
+        "cutStyle": "Lệch Trái",
+        "hex": "#111111",
+        "stock": 6,
+        "sold": 10,
+        "img": "https://dothethao.net.vn/wp-content/uploads/2024/01/quan-den-lung-trai-ngan-phai.jpg"
+      },
+      {
+        "colorName": "Lệch Phải - Trắng",
+        "baseColor": "Trắng",
+        "cutStyle": "Lệch Phải",
+        "hex": "#ffffff",
+        "stock": 5,
+        "sold": 14,
+        "img": "https://dothethao.net.vn/wp-content/uploads/2024/01/quan-trang-dai-phai-ngan-phai.jpg"
+      },
+      {
+        "colorName": "Lệch Trái - Trắng",
+        "baseColor": "Trắng",
+        "cutStyle": "Lệch Trái",
+        "hex": "#ffffff",
+        "stock": 4,
+        "sold": 3,
+        "img": "https://dothethao.net.vn/wp-content/uploads/2024/01/quan-trang-dai-phai-ngan-phai.jpg"
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "cat": "ao",
+    "isJerseyBlank": true,
+    "name": "Phôi Áo Jersey Custom Teamwear (Đủ Màu Phôi)",
+    "price": 200000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Tím",
+        "hex": "#6d28d9",
+        "stock": 12,
+        "sold": 24,
+        "img": "https://thumbs.dreamstime.com/b/blue-basketball-jersey-template-isolated-white-background-sport-team-club-uniform-features-front-back-views-sleeveless-tank-top-420728673.jpg"
+      },
+      {
+        "colorName": "Trắng",
+        "hex": "#f8fafc",
+        "stock": 10,
+        "sold": 15,
+        "img": "https://thumbs.dreamstime.com/b/blue-basketball-jersey-template-isolated-white-background-sport-team-club-uniform-features-front-back-views-sleeveless-tank-top-420728673.jpg"
+      },
+      {
+        "colorName": "Đen",
+        "hex": "#18181b",
+        "stock": 5,
+        "sold": 30,
+        "img": "https://i.pinimg.com/736x/f9/eb/df/f9ebdf7f2a1a8c348bc88006dd73ce2a.jpg"
+      },
+      {
+        "colorName": "Đỏ",
+        "hex": "#b91c1c",
+        "stock": 4,
+        "sold": 19,
+        "img": "https://m.media-amazon.com/images/I/41BzY7QxcTL._SL500_.jpg"
+      },
+      {
+        "colorName": "Xanh Navy",
+        "hex": "#1e3a8a",
+        "stock": 8,
+        "sold": 17,
+        "img": "https://thumbs.dreamstime.com/b/blue-basketball-jersey-template-isolated-white-background-sport-team-club-uniform-features-front-back-views-sleeveless-tank-top-420728673.jpg"
+      },
+      {
+        "colorName": "Xanh lá",
+        "hex": "#15803d",
+        "stock": 5,
+        "sold": 11,
+        "img": "https://tse3.mm.bing.net/th/id/OIP.Q-q0VD7TOh-DbTymk-3nIwHaFj?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "cat": "ao",
+    "isShorts": true,
+    "name": "Quần Bóng Rổ Swingman USA Olympic 2024",
+    "price": 210000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Xanh Navy USA",
+        "hex": "#1e3a8a",
+        "stock": 12,
+        "sold": 32,
+        "img": "https://cdn.choibongro.vn/wp-content/uploads/2024/09/quan-ao-bong-ro-swingman-usa-olympic-2024-choibongro-vn-19.webp"
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "cat": "ao",
+    "isShorts": true,
+    "name": "Quần Bóng Rổ Los Angeles Lakers Swingman",
+    "price": 205000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Vàng Tím Lakers",
+        "hex": "#f59e0b",
+        "stock": 11,
+        "sold": 26,
+        "img": "https://tse2.mm.bing.net/th/id/OIP.E_BaHrQQn_TCbK9XfEal-AHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 25,
+    "cat": "ao",
+    "isShorts": true,
+    "name": "Quần Bóng Rổ Chicago Bulls Classic Red",
+    "price": 205000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Đỏ Đen Bulls",
+        "hex": "#dc2626",
+        "stock": 10,
+        "sold": 24,
+        "img": "https://tse4.mm.bing.net/th/id/OIP.Qf19WNzoWfQ2kp5QPmLbUQHaHa?r=0&pid=ImgDet&w=474&h=474&rs=1&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 26,
+    "cat": "ao",
+    "isShorts": true,
+    "name": "Quần Bóng Rổ Golden State Warriors City Edition",
+    "price": 210000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Đen Vàng Warriors",
+        "hex": "#1e293b",
+        "stock": 10,
+        "sold": 19,
+        "img": "https://tse2.mm.bing.net/th/id/OIP.CHaoaeyVburywexsbUydygHaHa?r=0&pid=ImgDet&w=60&h=60&c=7&dpr=1.3&rs=1&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 27,
+    "cat": "ao",
+    "isShorts": true,
+    "name": "Quần Bóng Rổ Miami Heat Vice Edition",
+    "price": 215000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Đen Phối Hồng Xanh",
+        "hex": "#db2777",
+        "stock": 9,
+        "sold": 21,
+        "img": "https://tse1.mm.bing.net/th/id/OIP.f_Elxm8k5mZRVoD93cK1MgHaHa?r=0&pid=ImgDet&w=474&h=474&rs=1&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 28,
+    "cat": "ao",
+    "isShorts": true,
+    "name": "Quần Bóng Rổ Boston Celtics Pro Mesh",
+    "price": 205000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Xanh Lá Celtics",
+        "hex": "#15803d",
+        "stock": 12,
+        "sold": 18,
+        "img": "https://tse2.mm.bing.net/th/id/OIP.oM4Awk3dlIqpjm99Wik9iQHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 29,
+    "cat": "combat",
+    "isShorts": true,
+    "name": "Sói hoang hư hỏng",
+    "price": 185000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Sói Hoang",
+        "hex": "#334155",
+        "stock": 12,
+        "sold": 24,
+        "img": "https://tse3.mm.bing.net/th/id/OIP.xwP_vb4hXpBL_shkfWKFewHaJh?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 30,
+    "cat": "combat",
+    "isShorts": true,
+    "name": "Chúa sơn lâm",
+    "price": 190000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Đỏ",
+        "hex": "#dc2626",
+        "stock": 10,
+        "sold": 28,
+        "img": "https://tse3.mm.bing.net/th/id/OIP.U77A4KlmR6YVMPZ2QpU0ggHaIz?r=0&w=530&h=630&rs=1&pid=ImgDetMain&o=7&rm=3"
+      },
+      {
+        "colorName": "Xanh",
+        "hex": "#2563eb",
+        "stock": 10,
+        "sold": 19,
+        "img": "https://tse2.mm.bing.net/th/id/OIP.9ppPJ8S6-SsF-_q_QiPT6AHaJh?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 31,
+    "cat": "combat",
+    "isShorts": true,
+    "name": "Hoa hồng nở rộ bốn mùa",
+    "price": 190000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Đỏ",
+        "hex": "#e11d48",
+        "stock": 11,
+        "sold": 22,
+        "img": "https://down-vn.img.susercontent.com/file/sg-11134202-23020-4xr7zx2x8vnv00"
+      },
+      {
+        "colorName": "Xanh",
+        "hex": "#0284c7",
+        "stock": 9,
+        "sold": 15,
+        "img": "https://tse2.mm.bing.net/th/id/OIP.BKwWQkeljO5SXTDkwNTR1gHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 32,
+    "cat": "combat",
+    "isShorts": true,
+    "name": "Tôi thích trái dưa của bạn",
+    "price": 185000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Họa Tiết Trái Dưa",
+        "hex": "#16a34a",
+        "stock": 12,
+        "sold": 31,
+        "img": "https://th.bing.com/th/id/OIP.ykO7sShz4FL71ssJiUVtvQHaHa?w=206&h=206&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3"
+      }
+    ]
+  },
+  {
+    "id": 33,
+    "cat": "combat",
+    "isShorts": true,
+    "name": "Ché ri che rì che ri",
+    "price": 185000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Cherry Drip",
+        "hex": "#be123c",
+        "stock": 10,
+        "sold": 27,
+        "img": "https://www.fuikaomar.es/66176-large_default/boxer-psd-underwear-cherry-drip.jpg"
+      }
+    ]
+  },
+  {
+    "id": 34,
+    "cat": "combat",
+    "isShorts": true,
+    "name": "Xiềng xích đồng tiền",
+    "price": 195000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+    ],
+    "variants": [
+      {
+        "colorName": "Blue",
+        "hex": "#2563eb",
+        "stock": 10,
+        "sold": 25,
+        "img": "https://th.bing.com/th/id/OIP.Ibdj1-1eN34xwqV5lAXmAwHaJZ?r=0&o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3"
+      },
+      {
+        "colorName": "Green",
+        "hex": "#16a34a",
+        "stock": 9,
+        "sold": 18,
+        "img": "https://th.bing.com/th/id/R.6d13fe91fbe9ed28eb1f88ddf5bfa673?rik=KOEFsdQLk%2fh6cA&riu=http%3a%2f%2fwww.dtlr.com%2fcdn%2fshop%2ffiles%2fpsd-324180059-icy-time-2_1200x1200.jpg%3fv%3d1726261705&ehk=beyswpmOOXcJ3zd%2b7AEkyZLfGjWEDLdmi6jN7cdS3mw%3d&risl=&pid=ImgRaw&r=0"
+      }
+    ]
+  },
+  {
+    "id": 35,
+    "cat": "combat",
+    "isProtectiveGear": true,
+    "gearType": "knee",
+    "name": "Bó gối giảm chấn công thái học",
+    "price": 240000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "variants": [
+      {
+        "colorName": "Đen",
+        "hex": "#111111",
+        "stock": 15,
+        "sold": 36,
+        "img": "https://cf.shopee.vn/file/vn-11134208-7r98o-lp1owbtyslseec"
+      }
+    ]
+  },
+  {
+    "id": 36,
+    "cat": "combat",
+    "isProtectiveGear": true,
+    "gearType": "knee",
+    "name": "Bó gối thể thao có đệm",
+    "price": 220000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "variants": [
+      {
+        "colorName": "Đen",
+        "hex": "#111111",
+        "stock": 14,
+        "sold": 42,
+        "img": "https://cdn.chiaki.vn/unsafe/0x640/left/top/smart/filters:quality(70)/https://chiaki.vn/upload/news/content/2022/12/bo-goi-the-thao-chuyen-dung-redikick-co-dem-bao-ve-chiaki-png-1671761329-23122022090849.png"
+      },
+      {
+        "colorName": "Trắng",
+        "hex": "#ffffff",
+        "stock": 12,
+        "sold": 29,
+        "img": "https://cdn.chiaki.vn/unsafe/0x640/left/top/smart/filters:quality(70)/https://chiaki.vn/upload/news/content/2022/12/bo-goi-the-thao-chuyen-dung-redikick-co-dem-bao-ve-chiaki-png-1671761329-23122022090849.png"
+      }
+    ]
+  },
+  {
+    "id": 37,
+    "cat": "combat",
+    "isProtectiveGear": true,
+    "gearType": "ankle",
+    "name": "Băng quấn cổ chân",
+    "price": 175000,
+    "hasSize": true,
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "variants": [
+      {
+        "colorName": "Đen",
+        "hex": "#111111",
+        "stock": 18,
+        "sold": 33,
+        "img": "https://down-vn.img.susercontent.com/file/vn-11134207-7ra0g-m6xhuyxi5jl30b"
+      }
+    ]
+  }
+]
