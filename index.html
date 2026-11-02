@@ -1004,6 +1004,26 @@
         </div>
     </div>
 
+    <!-- MODAL ĐẶT HÀNG THÀNH CÔNG (POPUP TRÊN MÀN HÌNH) -->
+    <div class="modal" id="orderSuccessModal">
+        <div class="modal-content" style="max-width: 480px; text-align: center; padding: 32px 24px; border-radius: 18px; box-shadow: 0 10px 40px rgba(0,0,0,0.18);">
+            <div style="width: 68px; height: 68px; background: #dcfce7; color: #16a34a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 36px; margin: 0 auto 16px auto; font-weight: 800;">✓</div>
+            <h3 style="font-size: 22px; font-weight: 800; color: #111; margin-bottom: 6px;">ĐẶT HÀNG THÀNH CÔNG!</h3>
+            <p style="color: #64748b; font-size: 13.5px; margin-bottom: 20px;">Cảm ơn bạn đã tin tưởng Mairua Hoops.<br>Đơn hàng đã được lưu & truyền trực tiếp vào xưởng!</p>
+            <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; text-align: left; margin-bottom: 22px; font-size: 13.5px; line-height: 1.9;">
+                <div>📦 Mã đơn hàng: <b id="succModalOrderCode" style="color: #ff5500;">---</b></div>
+                <div>👤 Khách hàng: <b id="succModalCustName">---</b></div>
+                <div>📞 Số điện thoại: <b id="succModalCustPhone">---</b></div>
+                <div>💰 Tổng thanh toán: <b id="succModalTotal" style="color: #16a34a; font-size: 15px;">---</b></div>
+                <div>🛒 Giỏ hàng: <span style="color: #15803d; font-weight: 700;">Đã dọn sạch trống 100%</span></div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button type="button" onclick="dongModal('orderSuccessModal'); chuyenTab('home');" style="flex: 1; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; font-size: 13px;">Tiếp tục mua sắm</button>
+                <button type="button" onclick="dongModal('orderSuccessModal'); chuyenTab('account'); moTabTaiKhoan('orders');" style="flex: 1; background: #ff5500; color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; font-size: 13px;">Xem đơn của tôi</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL ĐĂNG NHẬP -->
     <div class="modal" id="loginModal">
         <div class="modal-content">
@@ -1199,6 +1219,6 @@
         </div>
     </footer>
 
-    <script src="app.js?v=3.0"></script>
+    <script src="app.js?v=5.0"></script>
 </body>
 </html>

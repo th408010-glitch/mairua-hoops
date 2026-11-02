@@ -509,10 +509,23 @@
                 let data = await res.json();
                 if (data && data.success && Array.isArray(data.cart)) {
                     cart = data.cart;
+                    let cKey = layKeyGioHangHienTai();
                     cartsByPhone[phone] = cart;
+                    if (cKey) cartsByPhone[cKey] = cart;
                     localStorage.setItem('mairua_cartsByPhone', JSON.stringify(cartsByPhone));
                     localStorage.setItem('mairua_cart', JSON.stringify(cart));
-                    capNhatGioHang();
+                    // Cập nhật DOM giỏ hàng trực tiếp
+                    let totalCount = cart.reduce((s, i) => s + (i.qty || 1), 0);
+                    let cEl = document.getElementById('cartCount');
+                    if (cEl) cEl.innerText = totalCount;
+                    let bEl = document.getElementById('cartDrawerCountBadge');
+                    if (bEl) bEl.innerText = totalCount;
+                    let tEl = document.getElementById('cartPageHeaderTitle');
+                    if (tEl) tEl.innerText = `GIỎ HÀNG (${cart.length})`;
+                    let container = document.getElementById('cartPageItemsContainer');
+                    if (container && cart.length === 0) {
+                        container.innerHTML = `<div style="text-align:center; padding: 45px 20px;"><div style="font-size: 46px; margin-bottom: 10px;">🛒</div><h3 style="margin-bottom: 8px; color:#333;">Giỏ hàng của bạn đang trống</h3><button type="button" class="btn-orange-primary" style="width:auto; padding:10px 24px; margin-top:10px;" onclick="chuyenTab('home')">Tiếp tục mua sắm</button></div>`;
+                    }
                 }
             } catch(e) {
                 console.warn('Lỗi đồng bộ giỏ hàng:', e);
@@ -1044,14 +1057,7 @@
                 if (dvList.length === 0) return;
 
                 if (!ord.isCancelled && !stockLedger[ordKey]) {
-                    dvList.forEach(dv => {
-                        let prod = products.find(p => p.id === Number(dv.prodId));
-                        if (prod && prod.variants[dv.vIdx]) {
-                            let q = parseInt(dv.qty) || 1;
-                            prod.variants[dv.vIdx].stock = Math.max(0, prod.variants[dv.vIdx].stock - q);
-                            prod.variants[dv.vIdx].sold = (prod.variants[dv.vIdx].sold || 0) + q;
-                        }
-                    });
+                    // Đánh dấu đơn đã được ghi nhận trong sổ cái kho (Không trừ trùng lặp tồn kho từ backend)
                     stockLedger[ordKey] = 'deducted';
                     ledgerChanged = true;
                 } else if (ord.isCancelled && stockLedger[ordKey] === 'deducted' && !ord.stockRestored) {
@@ -1331,6 +1337,11 @@
             });
             renderTrangTaiKhoan();
             if (subTab === 'orders') {
+                selectedAccountOrderIndex = null;
+                let lv = document.getElementById('accOrdersListView');
+                let dv = document.getElementById('accOrderDetailView');
+                if (lv) lv.style.display = 'block';
+                if (dv) dv.style.display = 'none';
                 if (currentCustomer && currentCustomer.phone) {
                     dongBoDonHangTuBackend(currentCustomer.phone);
                 }
@@ -1467,7 +1478,10 @@
             if (!listContainer) return;
             let myOrdersWithIdx = [];
             remoteOrdersList.forEach((o, realIdx) => {
-                if (o && (o.phone === currentCustomer.phone || o.accountPhone === currentCustomer.phone)) {
+                let samePhone = o.phone && currentCustomer.phone && String(o.phone).trim() === String(currentCustomer.phone).trim();
+                let sameAccPhone = o.accountPhone && currentCustomer.phone && String(o.accountPhone).trim() === String(currentCustomer.phone).trim();
+                let sameName = o.name && currentCustomer.name && o.name.trim().toLowerCase() === currentCustomer.name.trim().toLowerCase();
+                if (o && (samePhone || sameAccPhone || sameName)) {
                     myOrdersWithIdx.push({ ord: o, realIdx });
                 }
             });
@@ -2763,7 +2777,10 @@
             if (!wrapper) return;
             let myOrdersWithIdx = [];
             remoteOrdersList.forEach((o, realIdx) => {
-                if (o && (o.phone === currentCustomer.phone || o.accountPhone === currentCustomer.phone)) {
+                let samePhone = o.phone && currentCustomer.phone && String(o.phone).trim() === String(currentCustomer.phone).trim();
+                let sameAccPhone = o.accountPhone && currentCustomer.phone && String(o.accountPhone).trim() === String(currentCustomer.phone).trim();
+                let sameName = o.name && currentCustomer.name && o.name.trim().toLowerCase() === currentCustomer.name.trim().toLowerCase();
+                if (o && (samePhone || sameAccPhone || sameName)) {
                     myOrdersWithIdx.push({ ord: o, realIdx });
                 }
             });
@@ -3061,6 +3078,9 @@
             localStorage.setItem('mairua_stockLedgerV2', JSON.stringify(stockLedger));
             dongBoBackupDonKhachThat(newOrder);
             dongBoTaiKhoanHienTaiVaoDB();
+            let roundedFinalTotal = Math.round((newOrder.finalTotal || 0) / 1000) * 1000;
+            let formattedSheetTotal = roundedFinalTotal.toLocaleString('vi-VN') + ' đ';
+
             guiDuLieuGoogleSheets('createOrder', {
                 order: {
                     orderCode: newOrder.orderCode,
@@ -3068,7 +3088,7 @@
                     name: newOrder.name,
                     addr: newOrder.addr,
                     itemsList: newOrder.itemsList,
-                    finalTotal: newOrder.finalTotal,
+                    finalTotal: formattedSheetTotal,
                     status: 'Chờ xác nhận',
                     hasCustomJersey: newOrder.hasCustomJersey
                 }
@@ -3089,7 +3109,7 @@
                             subtotal: newOrder.subtotal,
                             discountAmount: newOrder.discountAmt,
                             shippingFee: newOrder.shippingFee,
-                            finalAmount: newOrder.finalTotal,
+                            finalAmount: roundedFinalTotal,
                             items: newOrder.cartSnapshot
                         })
                     });
@@ -3099,7 +3119,7 @@
                 }
             })();
 
-            // 1. Dọn sạch giỏ hàng lập tức trên mọi bộ nhớ
+            // 1. Dọn sạch giỏ hàng lập tức trên mọi bộ nhớ & đám mây
             cart = [];
             let cKey = layKeyGioHangHienTai();
             cartsByPhone[cKey] = [];
@@ -3118,8 +3138,16 @@
             }
             capNhatGioHang();
 
-            // 2. Hiện POPUP thông báo đặt hàng thành công cực rõ ràng
-            alert(`🎉 ĐẶT HÀNG THÀNH CÔNG!\n\n📦 Mã đơn hàng: ${newOrder.orderCode}\n👤 Khách hàng: ${newOrder.name}\n💰 Tổng thanh toán: ${newOrder.finalTotal.toLocaleString('vi-VN')}đ\n\n✅ Đơn hàng đã được lưu và gửi đến xưởng Mairua Hoops!\nGiỏ hàng của bạn đã được dọn trống.`);
+            // 2. Hiện POPUP thông báo đặt hàng thành công cực đẹp trực tiếp trên màn hình
+            let modalCode = document.getElementById('succModalOrderCode');
+            let modalName = document.getElementById('succModalCustName');
+            let modalPhone = document.getElementById('succModalCustPhone');
+            let modalTotal = document.getElementById('succModalTotal');
+            if (modalCode) modalCode.innerText = newOrder.orderCode;
+            if (modalName) modalName.innerText = newOrder.name;
+            if (modalPhone) modalPhone.innerText = newOrder.phone;
+            if (modalTotal) modalTotal.innerText = formattedSheetTotal;
+            moModal('orderSuccessModal');
 
             if (firstCartItem) hienPopupDonAoFomo(name, phone, addr, firstCartItem.name, "Đơn mới", firstCartItem.img || "", firstCartItem.qty);
             if (appliedCoupon) {
@@ -5883,29 +5911,51 @@ Câu hỏi của khách: "${rawQ}"`;
 // MAIRUA HOOPS - RESTful API BACKEND CONNECTIVITY
 // ====================================================================
 
-// 1. Tự động đồng bộ sản phẩm từ MySQL REST API
+// 1. Tự động đồng bộ sản phẩm từ REST API Backend (Đồng bộ tồn kho chuẩn tuyệt đối đa thiết bị)
 async function taiSanPhamTuBackendAPI() {
     try {
-        const res = await fetch('/api/products');
+        const res = await fetch('/api/products?t=' + Date.now());
         if (res.ok) {
             const json = await res.json();
             if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-                console.log(`🏀 [REST API] Đã nạp thành công ${json.data.length} sản phẩm từ MySQL Backend!`);
+                console.log(`🏀 [REST API] Đã nạp thành công ${json.data.length} sản phẩm từ Backend!`);
                 json.data.forEach(dbItem => {
                     let localItem = products.find(p => p.id === dbItem.id);
                     if (localItem) {
                         if (typeof dbItem.price === 'number') localItem.price = dbItem.price;
                         if (Array.isArray(dbItem.variants)) {
-                            localItem.variants = dbItem.variants;
+                            localItem.variants = JSON.parse(JSON.stringify(dbItem.variants));
                         }
+                        if (typeof dbItem.stock === 'number') localItem.stock = dbItem.stock;
+                        if (typeof dbItem.sold === 'number') localItem.sold = dbItem.sold;
                     }
                 });
                 capNhatTongStockVaSoldSanPham();
+                // GHI ĐÈ LOCALSTORAGE ĐỂ ĐỒNG BỘ TOÀN BỘ LAPTOP & ĐIỆN THOẠI
+                localStorage.setItem('mairua_products', JSON.stringify(products));
+
+                // Đánh dấu tất cả đơn hàng đã được trừ để client không trừ trùng lặp
+                let stockLedger = JSON.parse(localStorage.getItem('mairua_stockLedgerV2')) || {};
+                let allOrders = [...remoteOrdersList, ...(JSON.parse(localStorage.getItem('mairua_customerRealOrdersBackup')) || [])];
+                allOrders.forEach(ord => {
+                    if (ord && ord.orderCode) {
+                        stockLedger[`${ord.orderCode}_${ord.startTime || 0}`] = 'deducted';
+                    }
+                });
+                localStorage.setItem('mairua_stockLedgerV2', JSON.stringify(stockLedger));
+
                 renderHomeProducts();
+                if (document.getElementById('view-detail') && document.getElementById('view-detail').classList.contains('active') && currentOpenedProductId) {
+                    let p = products.find(x => x.id === currentOpenedProductId);
+                    if (p) {
+                        veBangSizeVaDanhGiaChiTiet(p);
+                        renderBangMauChiTiet(p);
+                    }
+                }
             }
         }
     } catch (e) {
-        console.log('ℹ️ Máy chủ MySQL chưa kích hoạt. Hệ thống tự động kích hoạt bộ nhớ LocalStorage.');
+        console.log('ℹ️ Kết nối Local fallback.');
     }
 }
 

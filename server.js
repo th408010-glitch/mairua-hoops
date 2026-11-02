@@ -229,9 +229,23 @@ app.post('/api/admin/restock', async (req, res) => {
             }
         }
 
+        // Cập nhật tồn kho vào bộ nhớ Fallback Server
+        if (Array.isArray(restockList)) {
+            restockList.forEach(item => {
+                const prod = fallbackProducts.find(p => p.id === Number(item.productId));
+                if (prod && Array.isArray(prod.variants)) {
+                    const v = prod.variants[item.variantIndex || 0] || prod.variants[0];
+                    if (v) {
+                        v.stock = (v.stock || 0) + Number(item.addStock || 0);
+                    }
+                    prod.stock = prod.variants.reduce((s, vr) => s + (vr.stock || 0), 0);
+                }
+            });
+        }
+
         res.json({
             success: true,
-            message: 'Đã nhận lệnh nhập hàng (Chế độ Fallback Local)',
+            message: 'Đã nhận lệnh nhập hàng và đồng bộ tồn kho toàn hệ thống!',
             commandText
         });
     } catch (err) {
@@ -577,10 +591,29 @@ app.post('/api/orders', async (req, res) => {
             hasCustomJersey: !!hasCustomJersey,
             itemsList: Array.isArray(items) ? items.map(i => `${i.name} (x${i.qty || 1})`) : [],
             itemsCount: Array.isArray(items) ? items.reduce((s, i) => s + (i.qty || 1), 0) : 1,
+            cartSnapshot: Array.isArray(items) ? items : [],
             start_time: startTime,
             startTime: startTime
         };
         fallbackOrders.unshift(fbOrder);
+
+        // Trừ tồn kho đồng bộ trong fallbackProducts trên Server Cloud
+        if (Array.isArray(items)) {
+            items.forEach(item => {
+                if (item.productId) {
+                    const prod = fallbackProducts.find(p => p.id === Number(item.productId));
+                    if (prod && Array.isArray(prod.variants)) {
+                        const v = prod.variants[item.variantIndex || 0] || prod.variants[0];
+                        if (v) {
+                            v.stock = Math.max(0, (v.stock || 0) - Number(item.qty || 1));
+                            v.sold = (v.sold || 0) + Number(item.qty || 1);
+                        }
+                        prod.stock = prod.variants.reduce((s, vr) => s + (vr.stock || 0), 0);
+                        prod.sold = prod.variants.reduce((s, vr) => s + (vr.sold || 0), 0);
+                    }
+                }
+            });
+        }
 
         // Dọn sạch giỏ hàng đám mây trên máy chủ ngay lập tức
         if (customerPhone) cloudCarts[customerPhone] = [];
@@ -719,7 +752,29 @@ app.post('/api/orders/:orderCode/cancel', async (req, res) => {
             }
         }
 
-        res.json({ success: true, message: 'Đã hủy đơn (Fallback)' });
+        // Hoàn lại tồn kho trong fallbackProducts trên Server Cloud
+        const ordToCancel = fallbackOrders.find(o => o.orderCode === orderCode || o.order_code === orderCode);
+        if (ordToCancel) {
+            ordToCancel.status = 'Đã hủy';
+            if (Array.isArray(ordToCancel.cartSnapshot)) {
+                ordToCancel.cartSnapshot.forEach(item => {
+                    if (item.productId) {
+                        const prod = fallbackProducts.find(p => p.id === Number(item.productId));
+                        if (prod && Array.isArray(prod.variants)) {
+                            const v = prod.variants[item.variantIndex || 0] || prod.variants[0];
+                            if (v) {
+                                v.stock = (v.stock || 0) + Number(item.qty || 1);
+                                v.sold = Math.max(0, (v.sold || 0) - Number(item.qty || 1));
+                            }
+                            prod.stock = prod.variants.reduce((s, vr) => s + (vr.stock || 0), 0);
+                            prod.sold = prod.variants.reduce((s, vr) => s + (vr.sold || 0), 0);
+                        }
+                    }
+                });
+            }
+        }
+
+        res.json({ success: true, message: 'Đã hủy đơn và hoàn trả tồn kho trên Server Cloud' });
     } catch (err) {
         console.error('Lỗi POST /api/orders/:orderCode/cancel:', err);
         res.status(500).json({ success: false, message: 'Lỗi hủy đơn hoàn kho', error: err.message });
