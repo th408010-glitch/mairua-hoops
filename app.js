@@ -227,7 +227,7 @@
         // HÀM GỬI DỮ LIỆU ĐẾN GOOGLE SHEETS QUA PROXY BACKEND (ẨN TOÀN BỘ URL NHẠY CẢM)
         async function guiDuLieuGoogleSheets(action, payload) {
             try {
-                let bodyData = { action: action, payload };
+                let bodyData = { action: action, ...(payload || {}) };
                 await fetch('/api/sync/sheets', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -508,16 +508,11 @@
                 let res = await fetch('/api/cart/' + encodeURIComponent(phone));
                 let data = await res.json();
                 if (data && data.success && Array.isArray(data.cart)) {
-                    if (data.cart.length > 0) {
-                        cart = data.cart;
-                        cartsByPhone[phone] = cart;
-                        localStorage.setItem('mairua_cartsByPhone', JSON.stringify(cartsByPhone));
-                        localStorage.setItem('mairua_cart', JSON.stringify(cart));
-                        capNhatGioHang();
-                    } else if (cart.length > 0) {
-                        // Nếu server chưa có nhưng máy này có thì đẩy lên
-                        luuGioHangLocal();
-                    }
+                    cart = data.cart;
+                    cartsByPhone[phone] = cart;
+                    localStorage.setItem('mairua_cartsByPhone', JSON.stringify(cartsByPhone));
+                    localStorage.setItem('mairua_cart', JSON.stringify(cart));
+                    capNhatGioHang();
                 }
             } catch(e) {
                 console.warn('Lỗi đồng bộ giỏ hàng:', e);
@@ -1290,6 +1285,9 @@
                 if (panel) panel.style.display = (t === subTab) ? 'block' : 'none';
             });
             renderTrangTaiKhoan();
+            if (subTab === 'orders') {
+                dongBoTuGoogleSheets().then(() => renderTrangTaiKhoan());
+            }
         }
 
         function moTabChuongAdmin(subTab) {
@@ -3057,7 +3055,18 @@
             if (firstCartItem) hienPopupDonAoFomo(name, phone, addr, firstCartItem.name, "Đơn mới", firstCartItem.img || "", firstCartItem.qty);
 
             cart = [];
-            luuGioHangLocal();
+            let cKey = layKeyGioHangHienTai();
+            cartsByPhone[cKey] = [];
+            localStorage.setItem('mairua_cartsByPhone', JSON.stringify(cartsByPhone));
+            localStorage.setItem('mairua_cart', JSON.stringify([]));
+            if (currentCustomer && currentCustomer.phone && !currentCustomer.isAdmin) {
+                fetch('/api/cart/' + encodeURIComponent(currentCustomer.phone), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cart: [] })
+                }).catch(() => {});
+            }
+            capNhatGioHang();
             if (appliedCoupon) {
                 guiDuLieuGoogleSheets('useCoupon', {
                     code: appliedCoupon.code,
@@ -5725,6 +5734,7 @@ Câu hỏi của khách: "${rawQ}"`;
                 // Tải giỏ hàng riêng biệt được lưu theo số điện thoại của tài khoản này
                 cart = layGioHangTheoKey(phone);
                 dongBoGioHangTuServer(phone);
+                dongBoTuGoogleSheets().then(() => renderTrangTaiKhoan());
                 localStorage.setItem('mairua_cart', JSON.stringify(cart));
                 appliedCoupon = null;
                 capNhatHeaderTaiKhoan(); dongModal('loginModal'); resetSessionTimeout();
