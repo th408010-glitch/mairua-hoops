@@ -76,6 +76,7 @@ function tinhHangThanhVien(totalSpent) {
 // CLOUD CART SYNC (ĐỒNG BỘ GIỎ HÀNG ĐA THIẾT BỊ: ĐIỆN THOẠI & LAPTOP)
 // ====================================================================
 const cloudCarts = {};
+const fallbackOrders = [];
 
 app.get('/api/cart/:phone', (req, res) => {
     const phone = req.params.phone;
@@ -141,7 +142,11 @@ app.get('/api/products', async (req, res) => {
             return res.json({ success: true, count: prods.length, data: prods });
         }
 
-        res.json({ success: true, source: 'fallback', data: [] });
+        let list = fallbackOrders;
+        if (phone) {
+            list = fallbackOrders.filter(o => o.phone === phone || o.accountPhone === phone || o.customer_phone === phone || o.account_phone === phone);
+        }
+        res.json({ success: true, source: 'fallback', count: list.length, data: list });
     } catch (err) {
         console.error('Lỗi GET /api/products:', err);
         res.status(500).json({ success: false, message: 'Lỗi máy chủ khi lấy danh sách sản phẩm', error: err.message });
@@ -533,10 +538,43 @@ app.post('/api/orders', async (req, res) => {
             }
         }
 
+        // Lưu ngay vào danh sách đơn hàng máy chủ (Fallback cho Cloud Render)
+        const fbOrder = {
+            order_code: genCode,
+            orderCode: genCode,
+            account_phone: accountPhone || customerPhone,
+            accountPhone: accountPhone || customerPhone,
+            customer_phone: customerPhone,
+            phone: customerPhone,
+            customer_name: customerName,
+            name: customerName,
+            customer_address: customerAddr || req.body.customerAddress,
+            addr: customerAddr || req.body.customerAddress,
+            subtotal: subtotal || req.body.finalAmount || 0,
+            discount_amount: discountAmt || req.body.discountAmount || 0,
+            shipping_fee: shippingFee || req.body.shippingFee || 30000,
+            final_amount: finalTotal || req.body.finalAmount || 0,
+            finalTotal: finalTotal || req.body.finalAmount || 0,
+            status: 'Chờ xác nhận',
+            status_step_idx: 0,
+            has_custom_jersey: hasCustomJersey ? 1 : 0,
+            hasCustomJersey: !!hasCustomJersey,
+            itemsList: Array.isArray(items) ? items.map(i => `${i.name} (x${i.qty || 1})`) : [],
+            itemsCount: Array.isArray(items) ? items.reduce((s, i) => s + (i.qty || 1), 0) : 1,
+            start_time: startTime,
+            startTime: startTime
+        };
+        fallbackOrders.unshift(fbOrder);
+
+        // Dọn sạch giỏ hàng đám mây trên máy chủ ngay lập tức
+        if (customerPhone) cloudCarts[customerPhone] = [];
+        if (accountPhone) cloudCarts[accountPhone] = [];
+
         res.status(201).json({
             success: true,
-            message: 'Tạo đơn hàng thành công (Fallback)',
-            orderCode: genCode
+            message: 'Tạo đơn hàng thành công (Lưu trên Server Cloud)',
+            orderCode: genCode,
+            order: fbOrder
         });
     } catch (err) {
         console.error('Lỗi POST /api/orders:', err);

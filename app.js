@@ -1271,6 +1271,51 @@
             chuyenTab('account');
         }
 
+        
+        // HÀM ĐỒNG BỘ ĐƠN HÀNG TRỰC TIẾP TỪ SERVER NODE.JS (CHẠY 50MS, SIÊU TỐC ĐA THIẾT BỊ)
+        async function dongBoDonHangTuBackend(phone) {
+            if (!phone || phone === "0909501753") return;
+            try {
+                let res = await fetch('/api/orders?phone=' + encodeURIComponent(phone));
+                let data = await res.json();
+                if (data && data.success && Array.isArray(data.data)) {
+                    let hasNew = false;
+                    data.data.forEach(srvOrd => {
+                        let code = srvOrd.orderCode || srvOrd.order_code;
+                        if (!code) return;
+                        let exists = remoteOrdersList.find(o => o && (o.orderCode === code || o.originalOrderCode === code));
+                        if (!exists) {
+                            let ordObj = {
+                                orderCode: code,
+                                originalOrderCode: code,
+                                name: srvOrd.name || srvOrd.customer_name || 'Khách hàng',
+                                phone: srvOrd.phone || srvOrd.customer_phone || phone,
+                                accountPhone: srvOrd.accountPhone || srvOrd.account_phone || phone,
+                                addr: srvOrd.addr || srvOrd.customer_address || '',
+                                finalTotal: Number(srvOrd.finalTotal || srvOrd.final_amount) || 0,
+                                subtotal: Number(srvOrd.subtotal) || 0,
+                                status: srvOrd.status || 'Chờ xác nhận',
+                                itemsList: Array.isArray(srvOrd.itemsList) ? srvOrd.itemsList : ['Sản phẩm Mairua Hoops'],
+                                itemsCount: srvOrd.itemsCount || 1,
+                                startTime: srvOrd.startTime || srvOrd.start_time || Date.now(),
+                                isRealCustomerOrder: true,
+                                adminConfirmed: false
+                            };
+                            remoteOrdersList.unshift(ordObj);
+                            hasNew = true;
+                        }
+                    });
+                    if (hasNew) {
+                        localStorage.setItem('mairua_remoteOrdersList', JSON.stringify(remoteOrdersList));
+                        renderDanhSachDonTaiKhoan();
+                        renderCustomerOrderHistory();
+                    }
+                }
+            } catch(e) {
+                console.warn('Lỗi đồng bộ đơn từ server backend:', e);
+            }
+        }
+
         function moTabTaiKhoan(subTab) {
             if (!currentCustomer.loggedIn) { moModal('loginModal'); return; }
             if (!document.getElementById('view-account').classList.contains('active')) {
@@ -1286,6 +1331,9 @@
             });
             renderTrangTaiKhoan();
             if (subTab === 'orders') {
+                if (currentCustomer && currentCustomer.phone) {
+                    dongBoDonHangTuBackend(currentCustomer.phone);
+                }
                 dongBoTuGoogleSheets().then(() => renderTrangTaiKhoan());
             }
         }
@@ -3034,6 +3082,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             orderCode: newOrder.orderCode,
+                            accountPhone: currentCustomer.phone,
                             customerName: newOrder.name,
                             customerPhone: newOrder.phone,
                             customerAddress: newOrder.addr,
@@ -5741,6 +5790,7 @@ Câu hỏi của khách: "${rawQ}"`;
                 // Tải giỏ hàng riêng biệt được lưu theo số điện thoại của tài khoản này
                 cart = layGioHangTheoKey(phone);
                 dongBoGioHangTuServer(phone);
+                dongBoDonHangTuBackend(phone);
                 dongBoTuGoogleSheets().then(() => renderTrangTaiKhoan());
                 localStorage.setItem('mairua_cart', JSON.stringify(cart));
                 appliedCoupon = null;
@@ -5902,7 +5952,10 @@ function khoiTaoTimKiemRealtime() {
 try {
     khoiTaoTimKiemRealtime();
     taiSanPhamTuBackendAPI();
-    if (currentCustomer && currentCustomer.loggedIn && currentCustomer.phone) dongBoGioHangTuServer(currentCustomer.phone);
+    if (currentCustomer && currentCustomer.loggedIn && currentCustomer.phone) {
+        dongBoGioHangTuServer(currentCustomer.phone);
+        dongBoDonHangTuBackend(currentCustomer.phone);
+    }
 } catch(e) {
     console.error('Lỗi khởi động kết nối backend:', e);
 }
