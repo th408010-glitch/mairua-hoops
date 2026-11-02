@@ -491,6 +491,37 @@
             cartsByPhone[key] = Array.isArray(cart) ? cart : [];
             localStorage.setItem('mairua_cartsByPhone', JSON.stringify(cartsByPhone));
             localStorage.setItem('mairua_cart', JSON.stringify(cart));
+
+            // Đồng bộ ngay lên Server Cloud để mở điện thoại/laptop đều thấy
+            if (currentCustomer && currentCustomer.loggedIn && currentCustomer.phone && !currentCustomer.isAdmin) {
+                fetch('/api/cart/' + encodeURIComponent(currentCustomer.phone), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cart })
+                }).catch(() => {});
+            }
+        }
+
+        async function dongBoGioHangTuServer(phone) {
+            if (!phone || phone === "0909501753") return;
+            try {
+                let res = await fetch('/api/cart/' + encodeURIComponent(phone));
+                let data = await res.json();
+                if (data && data.success && Array.isArray(data.cart)) {
+                    if (data.cart.length > 0) {
+                        cart = data.cart;
+                        cartsByPhone[phone] = cart;
+                        localStorage.setItem('mairua_cartsByPhone', JSON.stringify(cartsByPhone));
+                        localStorage.setItem('mairua_cart', JSON.stringify(cart));
+                        capNhatGioHang();
+                    } else if (cart.length > 0) {
+                        // Nếu server chưa có nhưng máy này có thì đẩy lên
+                        luuGioHangLocal();
+                    }
+                }
+            } catch(e) {
+                console.warn('Lỗi đồng bộ giỏ hàng:', e);
+            }
         }
 
         function chuyenDoiGioHangSangTaiKhoan(newPhone) {
@@ -2581,11 +2612,22 @@
         }
 
         function moGioHang() {
-            if (currentCustomer.isAdmin) {
+            if (currentCustomer && currentCustomer.isAdmin) {
                 alert("🛡️ Tài khoản Quản Trị Viên (Admin) không có chức năng mua hàng!");
                 return;
             }
-            moCartDrawer();
+            chuyenTab('cart');
+        }
+
+        function moCartDrawer() {
+            chuyenTab('cart');
+        }
+
+        function dongCartDrawer() {
+            let overlay = document.getElementById('cartDrawerOverlay');
+            let drawer = document.getElementById('cartDrawer');
+            if (overlay) overlay.classList.remove('active');
+            if (drawer) drawer.classList.remove('open');
         }
 
         function timVariantIndexPhoiJerseyTheoTenMau(colorName) {
@@ -5682,6 +5724,7 @@ Câu hỏi của khách: "${rawQ}"`;
                 }
                 // Tải giỏ hàng riêng biệt được lưu theo số điện thoại của tài khoản này
                 cart = layGioHangTheoKey(phone);
+                dongBoGioHangTuServer(phone);
                 localStorage.setItem('mairua_cart', JSON.stringify(cart));
                 appliedCoupon = null;
                 capNhatHeaderTaiKhoan(); dongModal('loginModal'); resetSessionTimeout();
@@ -5842,6 +5885,7 @@ function khoiTaoTimKiemRealtime() {
 try {
     khoiTaoTimKiemRealtime();
     taiSanPhamTuBackendAPI();
+    if (currentCustomer && currentCustomer.loggedIn && currentCustomer.phone) dongBoGioHangTuServer(currentCustomer.phone);
 } catch(e) {
     console.error('Lỗi khởi động kết nối backend:', e);
 }

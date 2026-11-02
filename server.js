@@ -71,6 +71,24 @@ function tinhHangThanhVien(totalSpent) {
  * GET /api/products
  * Lấy toàn bộ 37 sản phẩm kèm các biến thể màu sắc, hình ảnh và tồn kho
  */
+
+// ====================================================================
+// CLOUD CART SYNC (ĐỒNG BỘ GIỎ HÀNG ĐA THIẾT BỊ: ĐIỆN THOẠI & LAPTOP)
+// ====================================================================
+const cloudCarts = {};
+
+app.get('/api/cart/:phone', (req, res) => {
+    const phone = req.params.phone;
+    res.json({ success: true, cart: cloudCarts[phone] || [] });
+});
+
+app.post('/api/cart/:phone', (req, res) => {
+    const phone = req.params.phone;
+    const { cart } = req.body;
+    cloudCarts[phone] = Array.isArray(cart) ? cart : [];
+    res.json({ success: true, message: 'Đã đồng bộ giỏ hàng lên server', cart: cloudCarts[phone] });
+});
+
 app.get('/api/products', async (req, res) => {
     try {
         const { cat, min_price, max_price, search, sort } = req.query;
