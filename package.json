@@ -1,0 +1,27 @@
+{
+  "name": "mairua-hoops-backend",
+  "version": "1.0.0",
+  "description": "Backend API và Web Server cho mairua.com bóng rổ",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "basketball",
+    "mairua",
+    "ecommerce",
+    "mysql",
+    "express"
+  ],
+  "author": "Mairua Hoops Team",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.9.7"
+  }
+}

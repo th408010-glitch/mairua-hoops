@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mairua.com - Sàn TMĐT Bóng Rổ & Custom Studio</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Oswald:wght@600;700&family=Poppins:wght@300;400;500;600;700;800;900&family=Teko:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <a class="logo" onclick="chuyenTab('home')">
+            <img src="logo.png" alt="Mairua Logo" class="header-logo-img">
+            <span>MAI<span class="logo-white">RUA</span>.COM</span>
+        </a>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Tìm kiếm sản phẩm..." onkeypress="if(event.key==='Enter') timKiemSanPham()">
+            <button onclick="timKiemSanPham()">Tìm</button>
+        </div>
+        <div class="user-actions">
+            <div id="roleBadgeContainer"></div>
+            <div class="token-badge">✨ Token AI: <span id="tokenHeaderCount">3</span></div>
+
+            <div class="bell-wrapper">
+                <button class="bell-btn" id="bellHeaderBtn" onclick="batTatChuongThongBao(event)" title="Thông báo">
+                    🔔
+                    <span class="bell-count" id="bellBadgeCount">0</span>
+                </button>
+                <!-- Dropdown thông báo cho khách hàng (Với Admin khi bấm chuông sẽ mở thẳng trang toàn màn hình view-adminNotif) -->
+                <div class="notif-dropdown" id="notifDropdown" onclick="event.stopPropagation()">
+                    <div id="customerBellSection">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <h4 style="color: #ff5500; font-size: 14px;">🎁 Voucher Khuyến Mãi Của Bạn</h4>
+                            <span onclick=" document.getElementById('notifDropdown').classList.remove('active'); moTabTaiKhoan('vouchers');" style="font-size:11.5px; color:#2563eb; font-weight:600; cursor:pointer;">Xem tất cả →</span>
+                        </div>
+                        <div id="customerNotifList" style="max-height: 260px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-header" onclick="nhanNutTaiKhoanHeader()">👤 <span id="userLabel">Đăng nhập</span></button>
+            <button class="btn-header" style="background:#e67e22;" id="btnRegisterHeader" onclick="moModal('registerModal')">📝 Đăng ký</button>
+            <div class="cart-btn" id="headerCartBtn" onclick="moGioHang()">🛒 Giỏ hàng (<span id="cartCount">0</span>)</div>
+        </div>
+    </header>
+
+    <nav class="sub-nav">
+        <a onclick="chuyenTab('home')" class="active" id="nav-home">🏠 Trang chủ</a>
+        <a onclick="chuyenTab('balo')" id="nav-balo">🎒 Balo Nike Elite & Utility</a>
+        <a onclick="chuyenTab('bong')" id="nav-bong">🏀 Bóng Rổ Chính Hãng</a>
+        <a onclick="chuyenTab('vo')" id="nav-vo">🧦 Vớ tất chuyên dụng</a>
+        <a onclick="chuyenTab('ao')" id="nav-ao">🎽 Áo Jersey & Quần Bóng Rổ</a>
+        <a onclick="chuyenTab('combat')" id="nav-combat">🛡️ Đồ Combat & Phụ Kiện</a>
+        <a onclick="chuyenTab('customBalo')" id="nav-customBalo">✨ In tên lên Balo</a>
+        <a onclick="chuyenTab('customJersey')" id="nav-customJersey">🔥 Thiết kế Jersey Teamwear</a>
+        <a onclick="chuyenTab('roster')" id="nav-roster">👥 Đặt cho cả đội (Roster)</a>
+        <a onclick="chuyenTab('remoteOrder')" id="nav-remoteOrder" style="color: #ffcc00;">📦 Quản Lý & Theo Dõi Đơn</a>
+        <a onclick="chuyenTab('aiTryOn')" id="nav-aiTryOn">🤖 AI Gộp Ảnh & Tư Vấn</a>
+    </nav>
+
+    <div class="fomo-order-popup" id="fomoOrderPopup">
+        <span class="fomo-order-close" onclick="dongPopupDonAo()">&times;</span>
+        <img id="fomoPopupImg" src="" alt="Product">
+        <div class="fomo-order-content" id="fomoPopupText"></div>
+    </div>
+
+    <div class="promo-gift-popup" id="promoGiftPopup">
+        <span class="modal-close" style="top:10px; right:14px; font-size:18px;" onclick="dongPopupKhuyenMai()">&times;</span>
+        <div class="promo-gift-header">
+            <div class="promo-gift-icon">🎁</div>
+            <div>
+                <div id="promoPopupBadgeType" style="font-size: 11px; font-weight: 700; color: #8e44ad; text-transform: uppercase;">🎉 Thông báo khuyến mãi mới</div>
+                <h4 style="color: #d35400; font-size: 15px; font-weight: 800;">Tặng Mã Giảm Giá Đặc Biệt!</h4>
+            </div>
+        </div>
+        <p id="promoPopupDesc" style="font-size: 12.5px; color: #444; line-height: 1.5;"></p>
+        <div class="promo-code-box" id="promoPopupCodeText">KHUYENMAI20</div>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn-submit" style="padding: 8px; font-size: 12.5px; background: #ff5500;" onclick="saoChepMaKhuyenMaiPopup()">📋 Sao chép & Dùng ngay</button>
+            <button class="btn-submit" style="padding: 8px; font-size: 12.5px; background: #333; width: auto; min-width: 85px;" onclick="dongPopupKhuyenMai()">Đóng</button>
+        </div>
+    </div>
+
+    <!-- TRANG CHỦ -->
+    <div id="view-home" class="view-section active">
+        <section class="hero-banner">
+            <div class="hero-content">
+                <h1>Balo Elite & Phụ Kiện Bóng Rổ Đỉnh Cao</h1>
+                <p>Khẳng định chất riêng trên sân đấu với công nghệ cá nhân hóa tên số trực quan, thiết kế áo đấu chuẩn teamwear và AI gộp ảnh trực tuyến.</p>
+                <div class="hero-btns">
+                    <button class="btn-action-1" onclick="chuyenTab('customBalo')">✨ Tùy chỉnh tên trên Balo</button>
+                    <button class="btn-action-2" onclick="chuyenTab('customJersey')">🔥 Thiết kế Jersey Teamwear</button>
+                    <button class="btn-action-1" style="background:#ffcc00; color:#111;" onclick="nhanNutTaiKhoanHeader()">📦 Xem tiến trình đơn hàng</button>
+                </div>
+            </div>
+            <div style="font-size: 100px; padding-right: 20px;">🎒🏀</div>
+        </section>
+
+        <div class="main-container">
+            <h2 class="section-title">🔥 Top 3 Sản Phẩm Bán Chạy Nhất</h2>
+            <div class="product-grid" id="topSellingProductGrid"></div>
+
+            <h2 class="section-title">🛍️ Tất Cả Sản Phẩm & Lọc Tầm Giá</h2>
+            <div class="price-filter-bar">
+                <div style="font-weight: 700; font-size: 14px; color: #2c3e50;">💰 Lọc theo tầm giá (0đ - 1.000.000đ):</div>
+                <div class="price-slider-wrap">
+                    <span style="font-size: 12px; color: #666; font-weight: 600;">0đ</span>
+                    <input type="range" id="homePriceSlider" min="0" max="1000000" step="10000" value="1000000" oninput="capNhatNhanGiaLoc(this.value)">
+                    <span style="font-size: 12px; color: #666; font-weight: 600;">1.000.000đ</span>
+                </div>
+                <div class="price-badge-val" id="homePriceValueLabel">Tối đa: 1.000.000đ</div>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button class="btn-submit" style="width: auto; padding: 8px 22px; background: #ff5500;" onclick="locSanPhamTheoGia()">🔍 Lọc</button>
+                    <button class="btn-submit" style="width: auto; padding: 8px 16px; background: #333;" onclick="datLaiLocGia()">Đặt lại</button>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-left: 8px;">
+                        <span style="font-size: 13px; font-weight: 700; color: #334155;">⚡ Sắp xếp:</span>
+                        <select id="homeSortSelect" onchange="sapXepSanPhamHome(this.value)" style="padding: 7px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 13px; font-weight: 600; font-family: 'Poppins', sans-serif; outline: none; cursor: pointer; background: #fff;">
+                            <option value="default">Mặc định</option>
+                            <option value="price_asc">Giá: Thấp đến Cao ⬆️</option>
+                            <option value="price_desc">Giá: Cao đến Thấp ⬇️</option>
+                            <option value="popular">Bán chạy nhất 🔥</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-grid" id="homeProductGrid"></div>
+        </div>
+    </div>
+
+    <!-- DANH MỤC SẢN PHẨM -->
+    <div id="view-products" class="view-section">
+        <div class="main-container">
+            <h2 class="section-title" id="productSectionTitle">Danh mục sản phẩm</h2>
+            <div class="product-grid" id="productGrid"></div>
+        </div>
+    </div>
+
+    <!-- CHI TIẾT SẢN PHẨM -->
+    <div id="view-detail" class="view-section">
+        <div class="main-container">
+            <button onclick="quayLaiTrangTruocDoChiTiet()" style="background:none; border:none; color:#ff5500; font-weight:600; cursor:pointer; margin-bottom:15px; font-size:14px; font-family:'Poppins',sans-serif; display:inline-flex; align-items:center; gap:6px;">← Quay lại</button>
+            <div class="product-detail-container" id="detailContent"></div>
+            <div class="pdp-sections" id="detailSubSections"></div>
+        </div>
+    </div>
+
+    <!-- STUDIO IN TÊN BALO -->
+    <div id="view-customBalo" class="view-section">
+        <div class="main-container">
+            <h2 class="section-title">✨ Studio Tùy Chỉnh Tên Lên Balo</h2>
+            <div class="custom-studio">
+                <div>
+                    <div class="form-group">
+                        <label>1. Chọn dòng Balo muốn custom:</label>
+                        <select id="baloModel" onchange="changeBaloStudioModel()">
+                            <option value="1">Nike Elite V1 Basketball Backpack</option>
+                            <option value="2">Nike Elite V2 Pro Backpack</option>
+                            <option value="3">Nike Elite V3 Ultimate Edition</option>
+                            <option value="4">Nike Utility Speed Training Backpack</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>2. Chọn màu sắc Balo: <span id="baloStudioColorLabel" style="color:#ff5500;"></span></label>
+                        <div class="color-swatches" id="baloStudioSwatches" style="margin: 8px 0;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>3. Nhập nội dung chữ in (Tối đa 15 ký tự - Kéo thả tự do trên Balo):</label>
+                        <input type="text" id="baloText" maxlength="15" value="HOANG THANG" oninput="updateBaloPreviewText()">
+                    </div>
+                    <div class="form-group">
+                        <label>4. Chọn màu chữ (Bảng màu đầy đủ):</label>
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <input type="color" id="baloTextColorPicker" value="#ff5500" oninput="doiMauChuBalo(this.value)" style="width: 48px; height: 36px; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; padding: 2px; background: white;">
+                            <span style="font-size: 12px; color: #666;">Hoặc chọn nhanh:</span>
+                            <div style="display: flex; gap: 6px;">
+                                <span class="card-swatch-dot" style="background:#ffffff;" onclick="doiMauChuBalo('#ffffff')"></span>
+                                <span class="card-swatch-dot" style="background:#ff5500;" onclick="doiMauChuBalo('#ff5500')"></span>
+                                <span class="card-swatch-dot" style="background:#f1c40f;" onclick="doiMauChuBalo('#f1c40f')"></span>
+                                <span class="card-swatch-dot" style="background:#e74c3c;" onclick="doiMauChuBalo('#e74c3c')"></span>
+                                <span class="card-swatch-dot" style="background:#00ffcc;" onclick="doiMauChuBalo('#00ffcc')"></span>
+                                <span class="card-swatch-dot" style="background:#3498db;" onclick="doiMauChuBalo('#3498db')"></span>
+                                <span class="card-swatch-dot" style="background:#9b59b6;" onclick="doiMauChuBalo('#9b59b6')"></span>
+                                <span class="card-swatch-dot" style="background:#111111;" onclick="doiMauChuBalo('#111111')"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>5. Phóng to / Thu nhỏ cỡ chữ (Scale): <span id="baloFontSizeLabel" style="color:#ff5500;">20px</span></label>
+                        <input type="range" id="baloFontSizeSlider" min="10" max="42" value="20" oninput="capNhatStyleChuBalo()" style="width: 100%; accent-color: #ff5500; cursor: pointer;">
+                    </div>
+                    <div class="form-group">
+                        <label>6. Xoay chữ Ngang / Dọc (<span id="baloRotateLabel" style="color:#ff5500;">0°</span>):</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" id="baloRotateSlider" min="-180" max="180" value="0" oninput="capNhatStyleChuBalo()" style="flex: 1; accent-color: #ff5500; cursor: pointer;">
+                            <button type="button" class="size-btn" style="padding: 5px 10px; font-size: 12px;" onclick="datGocXoayBalo(0)">Ngang (0°)</button>
+                            <button type="button" class="size-btn" style="padding: 5px 10px; font-size: 12px;" onclick="datGocXoayBalo(-90)">Dọc (-90°)</button>
+                        </div>
+                    </div>
+                    <p id="baloCustomStockNotice" style="font-size: 13px; font-weight: 600; color: #27ae60; margin-bottom: 10px;"></p>
+                    <button class="btn-submit" id="btnAddCustomBalo" onclick="themBaloCustomVaoGio()">🛒 Thêm balo custom vào giỏ (850,000đ)</button>
+                </div>
+                <div class="balo-preview-screen" id="baloScreen">
+                    <img id="baloImgMockup" src="" alt="Balo Preview">
+                    <div id="customBadge" class="custom-text-badge">HOANG THANG</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STUDIO THIẾT KẾ JERSEY -->
+    <div id="view-customJersey" class="view-section">
+        <div class="main-container">
+            <h2 class="section-title">
+                <span>🔥 Custom Jersey Studio (4 Font Chữ · Màu Trong & Viền · Kéo Thả Độc Lập Từng Số & Chữ)</span>
+            </h2>
+            <div class="jersey-studio-v2">
+                <div class="studio-left-panel">
+
+                    <div class="studio-label-title" style="margin-top:0;">THIẾT KẾ</div>
+                    <div style="display:flex; gap:6px; margin-bottom:6px;" id="studioModePills">
+                        <button type="button" class="studio-font-card active" data-mode="jersey" onclick="chuyenCheDoJerseyStudio('jersey')">👕 Áo</button>
+                        <button type="button" class="studio-font-card" data-mode="set" onclick="chuyenCheDoJerseyStudio('set')">👕+🩳 Nguyên bộ (Áo + Quần)</button>
+                    </div>
+                    <div id="studioModeHint" style="font-size:11.5px; color:#777; margin-bottom:6px;">Áo ba lỗ custom: phôi 200.000đ + phí in.</div>
+
+                    <div class="studio-label-title">MÀU PHÔI ÁO JERSEY (ÁO BA LỖ)</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;" id="studioBaseColorSwatches"></div>
+
+                    <div class="studio-label-title">MÀU VIỀN ÁO (CỔ, 2 TAY & 2 SƯỜN)</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;" id="studioTrimColorSwatches"></div>
+
+                    <div id="shortsColorWrap" style="display:none;">
+                        <div class="studio-label-title">🩳 MÀU PHÔI QUẦN (CHỈNH RIÊNG)</div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;" id="studioShortsColorSwatches"></div>
+                        <div class="studio-label-title">🩳 MÀU LINE 2 BÊN QUẦN (CHỈNH RIÊNG)</div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;" id="studioShortsTrimSwatches"></div>
+                    </div>
+
+                    <div class="studio-label-title">FONT</div>
+                    <div class="studio-font-grid-4" id="studioFontCardsBox">
+                        <button type="button" class="studio-font-card active" data-font="'Bebas Neue', sans-serif" style="font-family:'Bebas Neue', sans-serif; letter-spacing:0.8px;" onclick="thayDoiFontJerseyStudio(`'Bebas Neue', sans-serif`)">BEBAS NEUE</button>
+                        <button type="button" class="studio-font-card" data-font="'Anton', sans-serif" style="font-family:'Anton', sans-serif; letter-spacing:0.5px;" onclick="thayDoiFontJerseyStudio(`'Anton', sans-serif`)">Anton</button>
+                        <button type="button" class="studio-font-card" data-font="'Oswald', sans-serif" style="font-family:'Oswald', sans-serif; font-weight:700;" onclick="thayDoiFontJerseyStudio(`'Oswald', sans-serif`)">Oswald</button>
+                        <button type="button" class="studio-font-card" data-font="'Teko', sans-serif" style="font-family:'Teko', sans-serif; font-size:19px; font-weight:700;" onclick="thayDoiFontJerseyStudio(`'Teko', sans-serif`)">Teko</button>
+                    </div>
+
+                    <div class="studio-label-title">SCALE (CHỈNH KÍCH THƯỚC CHỮ & SỐ)</div>
+                    <div class="studio-scale-box">
+                        <div class="studio-scale-row">
+                            <div class="studio-scale-head"><span>Number Front Size</span><span id="valScaleFrontNum">96px</span></div>
+                            <input type="range" id="sliderScaleFrontNum" min="48" max="150" value="96" oninput="capNhatScaleJerseyStudio()">
+                        </div>
+                        <div class="studio-scale-row">
+                            <div class="studio-scale-head"><span>Number Back Size</span><span id="valScaleBackNum">108px</span></div>
+                            <input type="range" id="sliderScaleBackNum" min="54" max="165" value="108" oninput="capNhatScaleJerseyStudio()">
+                        </div>
+                        <div class="studio-scale-row">
+                            <div class="studio-scale-head"><span>Name Size</span><span id="valScaleBackName">32px</span></div>
+                            <input type="range" id="sliderScaleBackName" min="18" max="60" value="32" oninput="capNhatScaleJerseyStudio()">
+                        </div>
+                        <div class="studio-scale-row">
+                            <div class="studio-scale-head"><span>Team's Name Size</span><span id="valScaleTeamName">26px</span></div>
+                            <input type="range" id="sliderScaleTeamName" min="14" max="54" value="26" oninput="capNhatScaleJerseyStudio()">
+                        </div>
+                        <div class="studio-scale-row" id="shortsScaleRow" style="display:none;">
+                            <div class="studio-scale-head"><span>🩳 Number Shorts Size</span><span id="valScaleShortsNum">46px</span></div>
+                            <input type="range" id="sliderScaleShortsNum" min="20" max="90" value="46" oninput="capNhatScaleSoQuan()">
+                        </div>
+                    </div>
+
+                    <div class="studio-label-title">MÀU TRONG CHỮ / SỐ</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;" id="studioFillColorSwatches"></div>
+
+                    <div class="studio-label-title">MÀU VIỀN CHỮ / SỐ</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;" id="studioStrokeColorSwatches"></div>
+
+                    <div id="jerseyZonesWrap">
+                    <div class="studio-label-title">VÙNG IN (CỐ ĐỊNH & TÙY CHỌN)</div>
+                    <div class="print-zone-list">
+                        <label class="print-zone-row"><span><input type="checkbox" id="chkZoneBackName" checked onchange="capNhatVungInJerseyStudio()"> Tên sau lưng</span><span class="print-zone-fee">+30.000đ</span></label>
+                        <label class="print-zone-row"><span><input type="checkbox" id="chkZoneBackNum" checked onchange="capNhatVungInJerseyStudio()"> Số sau lưng</span><span class="print-zone-fee">+30.000đ</span></label>
+                        <label class="print-zone-row"><span><input type="checkbox" id="chkZoneFrontNum" checked onchange="capNhatVungInJerseyStudio()"> Số trước ngực</span><span class="print-zone-fee">+30.000đ</span></label>
+                        <label class="print-zone-row"><span><input type="checkbox" id="chkZoneFrontLogo" onchange="capNhatVungInJerseyStudio()"> Logo ngực / Tên Đội</span><span class="print-zone-fee">+50.000đ</span></label>
+                    </div>
+                    <div style="font-size:11.5px; color:#777; margin-bottom:10px;">Bật vùng "Logo ngực / Tên Đội" để hiện chữ ngực hoặc tải logo lên.</div>
+                    </div>
+
+                    <div style="background:#f9fafb; padding:10px 12px; border-radius:8px; border:1px solid #eee; margin-bottom:12px;">
+                        <div style="display:grid; grid-template-columns: 1fr 85px; gap:8px; margin-bottom:8px;">
+                            <div id="jerseyNameCol">
+                                <label style="font-size:11px; font-weight:700; color:#555;">Tên sau lưng:</label>
+                                <input type="text" id="jerseyName" maxlength="14" value="LAM" oninput="updateJerseyPreview()" class="form-control" style="margin:2px 0 0 0; padding:7px 9px;">
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#555;">Số áo:</label>
+                                <input type="text" id="jerseyNumber" maxlength="3" value="23" oninput="updateJerseyPreview()" class="form-control" style="margin:2px 0 0 0; padding:7px 9px;">
+                            </div>
+                        </div>
+                        <div id="frontLogoInputWrap" style="display:none;">
+                            <label style="font-size:11px; font-weight:700; color:#555;">Tên đội / Chữ ngực trước (hoặc tải ảnh Logo):</label>
+                            <input type="text" id="teamNameInput" maxlength="14" value="SAIGON OWLS" oninput="updateJerseyPreview()" class="form-control" style="margin:2px 0 6px 0; padding:7px 9px;">
+                            <input type="file" id="chestLogoFileInput" accept="image/*" onchange="taiLogoNgucJersey(event)" style="font-size:11px; width:100%;">
+                        </div>
+                    </div>
+
+                    <div class="studio-label-title">SIZE</div>
+                    <select id="studioSizeSelect" class="form-control" style="margin:0; font-weight:600;" onchange="selectedCustomJerseySize = this.value">
+                        <option value="S">S</option>
+                        <option value="M" selected>M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                        <option value="2XL">2XL</option>
+                    </select>
+
+                    <div class="studio-summary-card">
+                        <div class="studio-summary-row"><span>Phôi</span><span id="studioBasePriceText">200.000đ</span></div>
+                        <div class="studio-summary-row"><span id="studioPrintZonesCountText">Phí in (3 vùng)</span><span id="studioPrintFeeText">90.000đ</span></div>
+                        <div class="studio-summary-total"><span>Tổng</span><span style="color:#ff5500;" id="studioTotalPriceText">440.000đ</span></div>
+                    </div>
+
+                    <p style="font-size:11.5px; color:#666; margin: 10px 0;">+2–3 ngày làm việc · <b>Hàng in tên không đổi trả</b></p>
+                    <p id="jerseyCustomStockNotice" style="font-size: 12.5px; font-weight: 600; color: #27ae60; margin-bottom: 8px;"></p>
+
+                    <button class="btn-orange-primary" id="btnAddCustomJersey" onclick="themJerseyCustomVaoGio()">Thêm vào giỏ</button>
+                    <button class="btn-roster-outline" onclick="chuyenSangTrangDatChoDoi()">👥 Đặt đồ cho cả đội (Qua trang Roster) →</button>
+                </div>
+
+                <div class="studio-right-canvas" id="studioRightCanvasBox">
+                    <button type="button" class="btn-toggle-canvas-bg" id="btnToggleJerseyCanvasBg" onclick="batTatNenSangToiJersey()" title="Đổi nền Sáng / Tối để dễ nhìn phôi & viền trắng">🌙 Nền tối</button>
+                    <div class="view-toggle-pills">
+                        <button type="button" class="view-pill-btn" id="btnViewFrontJersey" onclick="chuyenMatAoJersey('front')">Mặt trước</button>
+                        <button type="button" class="view-pill-btn active" id="btnViewBackJersey" onclick="chuyenMatAoJersey('back')">Mặt sau</button>
+                    </div>
+
+                    <div class="jersey-svg-stage" id="jerseyStageContainer">
+                        <svg viewBox="0 0 300 390" xmlns="http://www.w3.org/2000/svg">
+                            <path id="jerseySvgBody" d="M 84 18 L 108 18 Q 150 54 192 18 L 216 18 Q 198 85 232 128 L 232 372 L 68 372 L 68 128 Q 102 85 84 18 Z" fill="#6d28d9" stroke="none"/>
+                            <path id="jerseySvgSideLeft" d="M 68 128 L 68 372" fill="none" stroke="#eab308" stroke-width="5.5" stroke-linecap="butt"/>
+                            <path id="jerseySvgSideRight" d="M 232 128 L 232 372" fill="none" stroke="#eab308" stroke-width="5.5" stroke-linecap="butt"/>
+                            <path id="jerseySvgCollar" d="M 108 18 Q 150 54 192 18" fill="none" stroke="#eab308" stroke-width="6.5" stroke-linecap="butt"/>
+                            <path id="jerseySvgArmLeft" d="M 84 18 Q 102 85 68 128" fill="none" stroke="#eab308" stroke-width="6" stroke-linecap="butt"/>
+                            <path id="jerseySvgArmRight" d="M 216 18 Q 198 85 232 128" fill="none" stroke="#eab308" stroke-width="6" stroke-linecap="butt"/>
+                        </svg>
+
+                        <div class="print-zone-guide-box" style="top: 22%; left: 26%; width: 48%; height: 14%;"></div>
+                        <div class="print-zone-guide-box" style="top: 39%; left: 26%; width: 48%; height: 42%;"></div>
+
+                        <div id="dragBackName" class="jersey-draggable-item" style="top: 29%; left: 50%; font-size: 32px;">LAM</div>
+                        <div id="dragBackNum" class="jersey-draggable-item" style="top: 57%; left: 50%; font-size: 108px;">23</div>
+
+                        <div id="dragFrontLogo" class="jersey-draggable-item" style="top: 29%; left: 50%; font-size: 26px; display: none;">
+                            <span id="dragFrontLogoText">SAIGON OWLS</span>
+                            <img id="dragFrontLogoImg" src="" alt="" style="max-height:48px; max-width:120px; display:none; pointer-events:none;">
+                        </div>
+                        <div id="dragFrontNum" class="jersey-draggable-item" style="top: 56%; left: 50%; font-size: 96px; display: none;">23</div>
+                    </div>
+
+                    <div id="shortsPreviewBox" style="display:none; text-align:center; margin-top:6px;">
+                        <div style="position:relative; width:300px; max-width:100%; margin:0 auto;">
+                            <svg viewBox="0 0 300 170" xmlns="http://www.w3.org/2000/svg" style="width:100%; display:block;">
+                                <path id="shortsSvgBody" d="M 70 10 L 230 10 L 240 160 L 162 160 L 150 85 L 138 160 L 60 160 Z" fill="#6d28d9" stroke="none"/>
+                                <path id="shortsSvgSideLeft" d="M 70 10 L 60 160" fill="none" stroke="#eab308" stroke-width="7" stroke-linecap="butt"/>
+                                <path id="shortsSvgSideRight" d="M 230 10 L 240 160" fill="none" stroke="#eab308" stroke-width="7" stroke-linecap="butt"/>
+                            </svg>
+                            <div id="shortsFrontNum" class="jersey-draggable-item" style="top:68%; left:64%; font-size:46px; line-height:1;">23</div>
+                        </div>
+                        <div style="font-size:11.5px; color:#777; margin-top:4px;">Kéo thả số trên quần để chỉnh vị trí.</div>
+                    </div>
+
+                    <div style="text-align:center;" id="jerseyFooterBox">
+                        <p class="studio-canvas-footer-text" style="font-size: 12.5px; color: #666;">Bản xem trước 2D — khung nét đứt là vùng in gợi ý. <b>Bạn có thể kéo thả riêng lẻ từng Chữ và từng Số trên áo!</b></p>
+                        <button type="button" class="studio-canvas-reset-btn" onclick="datLaiViTriChuSoJersey()" style="margin-top:6px; background:none; border:1px solid #ccc; padding:4px 10px; border-radius:6px; font-size:11.5px; cursor:pointer; color:#555;">↺ Đặt lại vị trí chuẩn giữa áo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRANG ĐẶT CHO CẢ ĐỘI - ROSTER -->
+    <div id="view-roster" class="view-section">
+        <div class="main-container">
+            <div class="roster-page-header">
+                <h1>ĐẶT CHO CẢ ĐỘI</h1>
+                <p>Một thiết kế chung, mỗi cầu thủ một tên/số. Tối thiểu 5 dòng · giảm 5% từ 5 áo, 10% từ 10, 15% từ 20.</p>
+            </div>
+
+            <div class="roster-layout-grid">
+                <div class="roster-card-box">
+                    <div class="studio-label-title" style="margin-top:0; color:#111; font-size:13px;">THIẾT KẾ CHUNG</div>
+                    <input type="text" id="rosterTeamTitleInput" class="form-control" value="MVP Saigon Owls" oninput="capNhatGiaoDienRoster()" placeholder="Nhập tên đội bóng...">
+
+                    <div style="font-size:12px; color:#666; margin-bottom:6px; font-weight:600; margin-top:6px;">Phôi</div>
+                    <div style="display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px;" id="rosterBaseSwatches"></div>
+
+                    <div style="font-size:12px; color:#666; margin-bottom:6px; font-weight:600;">Viền áo (Cổ, 2 tay & 2 sườn)</div>
+                    <div style="display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px;" id="rosterTrimSwatches"></div>
+
+                    <div style="font-size:12px; color:#666; margin-bottom:6px; font-weight:600;">Chữ</div>
+                    <div style="display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px;" id="rosterFillSwatches"></div>
+
+                    <div style="font-size:12px; color:#666; margin-bottom:6px; font-weight:600;">Viền chữ / số</div>
+                    <div style="display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin-bottom:14px;" id="rosterStrokeSwatches"></div>
+
+                    <div style="font-size:12px; color:#666; margin-bottom:6px; font-weight:600;">Font</div>
+                    <div class="studio-font-grid-4" id="rosterFontCardsBox" style="margin-bottom:14px;">
+                        <button type="button" class="studio-font-card active" data-font="'Bebas Neue', sans-serif" style="font-family:'Bebas Neue', sans-serif; letter-spacing:0.8px;" onclick="thayDoiFontJerseyStudio(`'Bebas Neue', sans-serif`)">BEBAS NEUE</button>
+                        <button type="button" class="studio-font-card" data-font="'Anton', sans-serif" style="font-family:'Anton', sans-serif; letter-spacing:0.5px;" onclick="thayDoiFontJerseyStudio(`'Anton', sans-serif`)">Anton</button>
+                        <button type="button" class="studio-font-card" data-font="'Oswald', sans-serif" style="font-family:'Oswald', sans-serif; font-weight:700;" onclick="thayDoiFontJerseyStudio(`'Oswald', sans-serif`)">Oswald</button>
+                        <button type="button" class="studio-font-card" data-font="'Teko', sans-serif" style="font-family:'Teko', sans-serif; font-size:19px; font-weight:700;" onclick="thayDoiFontJerseyStudio(`'Teko', sans-serif`)">Teko</button>
+                    </div>
+
+                    <div class="print-zone-list">
+                        <label class="print-zone-row"><span><input type="checkbox" id="rosterChkBackName" checked onchange="dongBoVungInTuRoster()"> Tên sau lưng</span><span class="print-zone-fee">+30.000đ</span></label>
+                        <label class="print-zone-row"><span><input type="checkbox" id="rosterChkBackNum" checked onchange="dongBoVungInTuRoster()"> Số sau lưng</span><span class="print-zone-fee">+30.000đ</span></label>
+                        <label class="print-zone-row"><span><input type="checkbox" id="rosterChkFrontNum" checked onchange="dongBoVungInTuRoster()"> Số trước ngực</span><span class="print-zone-fee">+30.000đ</span></label>
+                        <label class="print-zone-row"><span><input type="checkbox" id="rosterChkFrontLogo" onchange="dongBoVungInTuRoster()"> Logo ngực</span><span class="print-zone-fee">+50.000đ</span></label>
+                    </div>
+                </div>
+
+                <div class="roster-card-box" style="overflow-x:auto;">
+                    <table class="roster-table">
+                        <thead>
+                            <tr><th style="width:36px;">#</th><th style="width:52px;">XEM</th><th>TÊN</th><th style="width:110px;">SỐ</th><th style="width:90px;">SIZE</th><th style="width:65px;">SL</th><th style="width:36px;"></th></tr>
+                        </thead>
+                        <tbody id="rosterTableBody"></tbody>
+                    </table>
+
+                    <div style="display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;">
+                        <button type="button" onclick="themDongCauThuRoster()" style="background:#111; color:#fff; border:none; padding:9px 16px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; font-family:'Poppins',sans-serif;">+ Thêm dòng</button>
+                        <button type="button" onclick="taiFileMauCSVRoster()" style="background:#fff; color:#ff5500; border:1.5px solid #ff5500; padding:8px 16px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; font-family:'Poppins',sans-serif;">↓ Tải file mẫu CSV</button>
+                    </div>
+                </div>
+
+                <div class="roster-card-box">
+                    <h3 id="rosterSummaryHeading" style="font-size:16px; font-weight:800; text-transform:uppercase; line-height:1.35; margin-bottom:4px;">ROSTER MVP SAIGON OWLS – 6 JERSEY</h3>
+                    <div id="rosterSummarySpecs" style="font-size:12px; color:#777; margin-bottom:14px;">Tím · Bebas Neue · Vàng gold/Trắng</div>
+
+                    <div class="studio-summary-row"><span id="rosterCalcLineLabel">6 × 440.000đ</span><span id="rosterSubtotalText" style="font-weight:600;">2.640.000đ</span></div>
+                    <div class="studio-summary-row" style="color:#16a34a; font-weight:600;"><span id="rosterDiscountLabel">Giảm theo SL (5%)</span><span id="rosterDiscountAmountText">-132.000đ</span></div>
+                    <div class="studio-summary-total" style="margin-bottom:10px;"><span>Tổng</span><span style="color:#ff5500;" id="rosterFinalTotalText">2.508.000đ</span></div>
+
+                    <div style="font-size:11.5px; color:#777; line-height:1.5; margin-bottom:12px;">
+                        Bậc giảm: 5–9: 5% · 10–19: 10% · 20+: 15%<br>
+                        +2–3 ngày làm việc · <b>Hàng in tên không đổi trả</b>
+                    </div>
+
+                    <div id="rosterDuplicateAlertBox" style="display:none; background:#fffbeb; border:1px solid #fde68a; color:#92400e; padding:10px 12px; border-radius:8px; font-size:12px; margin-bottom:14px;">
+                        ⚠ Có <span id="rosterDupCountSpan">1</span> số áo bị trùng — vẫn đặt được, hãy kiểm tra lại.
+                    </div>
+
+                    <button type="button" class="btn-orange-primary" onclick="themRosterVaoGioHang()">Thêm roster vào giỏ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRANG GIỎ HÀNG RIÊNG -->
+    <div id="view-cart" class="view-section">
+        <div class="main-container">
+            <h1 class="cart-page-title" id="cartPageHeaderTitle">GIỎ HÀNG (0)</h1>
+
+            <div class="cart-page-layout">
+                <div class="cart-left-list" id="cartPageItemsContainer"></div>
+
+                <div class="cart-right-summary">
+                    <div class="voucher-input-group">
+                        <input type="text" id="couponInputCode" placeholder="Nhập mã voucher">
+                        <button type="button" onclick="apDungCoupon()">Áp dụng</button>
+                    </div>
+                    <div style="font-size:11.5px; color:#777; margin-bottom:6px;">
+                        Tối đa 1 voucher mỗi đơn · xem mã được tặng tại <b>Voucher của tôi</b>.
+                    </div>
+                    <div id="couponStatusMsg" style="font-size: 12px; margin-bottom: 10px; font-weight: 600;"></div>
+
+                    <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:#333; margin: 12px 0 16px 0; cursor:pointer;">
+                        <input type="checkbox" id="chkUseMCoin" onchange="capNhatGioHang()" style="width:15px; height:15px; accent-color:#ff5500;">
+                        <span>Dùng <b>M-Coin</b> (có <span id="cartAvailableMCoinText">0</span> · 1 coin = 1đ · tối đa 30%)</span>
+                    </label>
+
+                    <div class="summary-line-item"><span>Tạm tính</span><span id="cartSubtotal" style="font-weight:600;">0đ</span></div>
+                    <div class="summary-line-item green" id="cartRosterDiscountRow" style="display:none;"><span id="cartRosterDiscountLabel">Giảm roster (5%)</span><span id="cartRosterDiscountAmount">-0đ</span></div>
+                    <div class="summary-line-item green" id="cartDiscountRow"><span id="cartDiscountLabel">Voucher (chưa áp)</span><span id="cartDiscountAmount">-0đ</span></div>
+                    <div class="summary-line-item green"><span>M-Coin</span><span id="cartMCoinAmount">-0đ</span></div>
+                    <div class="summary-line-item"><span>Phí ship ước tính (miễn phí đơn trên 2tr)</span><span id="cartShippingFee">30.000đ</span></div>
+
+                    <div class="studio-summary-total" style="margin: 12px 0 6px 0;">
+                        <span>Tổng</span>
+                        <span id="cartTotal" style="color:#e74c3c;">0đ</span>
+                    </div>
+                    <div style="font-size:11.5px; color:#777; line-height:1.45; margin-bottom:12px;">
+                        Hoàn <b id="cartCashbackRateText">5% M-Coin</b> (<span id="cartEarnedCoinText">+0</span> M-Coin) & tặng <b>+1 Token AI</b> cho đơn hàng này.
+                    </div>
+
+                    <div class="custom-policy-warning" id="cartCustomWarningBox">
+                        <b>Giỏ có sản phẩm in custom:</b> phải thanh toán trước 100% online (không hỗ trợ COD) vì sản phẩm in tên/số không thể bán lại nếu khách từ chối nhận. Toàn bộ đơn <b>giao 1 kiện</b> sau khi in xong — dự kiến nhận <b id="cartDynamicEstDate">---</b>.
+                    </div>
+
+                    <div style="border-top: 1px solid #eee; padding-top: 14px; margin-top: 10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <span style="font-size: 12.5px; font-weight: 700; color: #222;">📍 Chọn địa chỉ nhận hàng đã lưu:</span>
+                            <span onclick="moTabTaiKhoan('addr')" style="font-size:11.5px; color:#ff5500; font-weight:700; cursor:pointer;">+ Quản lý Sổ địa chỉ</span>
+                        </div>
+                        <div id="cartSavedAddressListBox" style="margin-bottom: 12px;"></div>
+
+                        <!-- TÙY CHỌN XUẤT HÓA ĐƠN ĐIỆN TỬ (BILL BÁN LẺ / VAT) -->
+                        <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+                            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:#c2410c; cursor:pointer; margin-bottom:0;">
+                                <input type="checkbox" id="chkNeedInvoice" onchange="batTatFormHoaDonGioHang()" style="width:16px; height:16px; accent-color:#ff5500;">
+                                <span>🧾 Xuất Hóa đơn điện tử (Bill bán lẻ / VAT)</span>
+                            </label>
+                            <div id="invoiceInputFieldsWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #fdba74;">
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:6px;">
+                                    <div>
+                                        <label style="font-size:11px; color:#555; font-weight:600;">Tên công ty / Cá nhân:</label>
+                                        <input type="text" id="invoiceTaxName" placeholder="Mặc định = Tên người nhận" class="form-control" style="padding:6px 9px; font-size:12px; margin:2px 0 0 0;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:11px; color:#555; font-weight:600;">Mã số thuế (nếu có):</label>
+                                        <input type="text" id="invoiceTaxCode" placeholder="VD: 0318956888" class="form-control" style="padding:6px 9px; font-size:12px; margin:2px 0 0 0;">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style="font-size:11px; color:#555; font-weight:600;">Email nhận hóa đơn điện tử:</label>
+                                    <input type="email" id="invoiceEmail" placeholder="Mặc định = Email tài khoản" class="form-control" style="padding:6px 9px; font-size:12px; margin:2px 0 0 0;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn-orange-primary" id="btnCheckoutUnified" onclick="thanhToanGiaoXa()">💳 Thanh toán & Đặt hàng</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRANG TÀI KHOẢN CỦA KHÁCH HÀNG -->
+    <div id="view-account" class="view-section">
+        <div class="main-container">
+            <div class="account-layout">
+                <div class="account-sidebar">
+                    <div class="account-user-header">
+                        <h3 id="accSidebarName">Khách hàng</h3>
+                        <p><span id="accSidebarTierLabel">Hạng Thành Viên</span> · <span id="accSidebarMCoin">0</span> M-Coin · <span id="accSidebarToken">3</span> Token AI</p>
+                    </div>
+                    <ul class="account-nav-list">
+                        <li><button type="button" class="account-nav-btn active" id="accNav-orders" onclick="moTabTaiKhoan('orders')"><span>Đơn hàng</span></button></li>
+                        <li><button type="button" class="account-nav-btn" id="accNav-mcoin" onclick="moTabTaiKhoan('mcoin')"><span>M-Coin</span></button></li>
+                        <li><button type="button" class="account-nav-btn" id="accNav-tier" onclick="moTabTaiKhoan('tier')"><span>Hạng thành viên</span></button></li>
+                        <li><button type="button" class="account-nav-btn" id="accNav-vouchers" onclick="moTabTaiKhoan('vouchers')"><span>Voucher của tôi</span><span id="accVoucherCountBadge" style="background:#ff5500;color:#fff;font-size:11px;padding:1px 7px;border-radius:10px;display:none;">0</span></button></li>
+                        <li><button type="button" class="account-nav-btn" id="accNav-addr" onclick="moTabTaiKhoan('addr')"><span>Sổ địa chỉ</span></button></li>
+                        <li><button type="button" class="account-nav-btn" id="accNav-profile" onclick="moTabTaiKhoan('profile')"><span>Quản lý tài khoản</span></button></li>
+                        <li><button type="button" class="account-nav-btn" style="color:#dc2626;" onclick="dangXuat()"><span>Đăng xuất</span></button></li>
+                    </ul>
+                </div>
+
+                <div class="account-main-card">
+                    <div id="accPanel-orders">
+                        <div id="accOrdersListView">
+                            <h2 class="account-tab-heading">ĐƠN HÀNG</h2>
+                            <div id="accOrdersListContainer"></div>
+                        </div>
+                        <div id="accOrderDetailView" style="display:none;"></div>
+                    </div>
+
+                    <div id="accPanel-mcoin" style="display:none;">
+                        <h2 class="account-tab-heading">M-COIN & TOKEN AI</h2>
+                        <div style="background: linear-gradient(135deg, #111827, #1f2937); color:#fff; padding:22px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; margin-bottom:20px;">
+                            <div>
+                                <div style="font-size:12px; color:#9ca3af; text-transform:uppercase; font-weight:600;">Số dư M-Coin khả dụng</div>
+                                <div style="font-size:32px; font-weight:800; color:#ff5500;" id="mcoinBalanceBig">0 M-Coin</div>
+                                <div style="font-size:12px; color:#d1d5db; margin-top:4px;">1 M-Coin = 1đ · Dùng giảm tối đa 30% giá trị mỗi đơn hàng</div>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.08); padding:12px 18px; border-radius:10px; border:1px solid rgba(255,255,255,0.12);">
+                                <div style="font-size:12px; color:#fbbf24; font-weight:700;">🎁 Chính sách tích lũy mỗi đơn:</div>
+                                <div style="font-size:12.5px; color:#fff; margin-top:4px;">• Hoàn <b id="mcoinPolicyRateText">5% M-Coin</b> trên tổng giá trị đơn hàng (theo Hạng thành viên)</div>
+                                <div style="font-size:12.5px; color:#fff;">• Tặng <b>+1 Token AI</b> / 1 đơn hàng</div>
+                            </div>
+                        </div>
+                        <h4 style="font-size:14px; font-weight:700; margin-bottom:10px; color:#222;">Lịch sử nhận & dùng M-Coin</h4>
+                        <div id="mcoinHistoryList"></div>
+                    </div>
+
+                    <div id="accPanel-tier" style="display:none;">
+                        <h2 class="account-tab-heading">HẠNG THÀNH VIÊN</h2>
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; font-size:14.5px;">
+                            <div style="font-weight:800; color:#111;" id="tierHeaderCurrentText">Hạng Thành Viên · 5% M-Coin</div>
+                            <div style="color:#4b5563; font-size:13.5px;">Chi tiêu tích lũy: <b style="color:#111;" id="tierTotalSpentText">0đ</b></div>
+                        </div>
+                        <div class="tier-progress-track">
+                            <div class="tier-progress-fill" id="tierProgressBarFill" style="width: 0%;"></div>
+                        </div>
+                        <div style="font-size:13px; color:#6b7280; margin-bottom:6px;" id="tierNextMilestoneText">
+                            Còn 5.000.000đ để lên Hạng Đồng (10% M-Coin)
+                        </div>
+                        <div style="font-size:11.5px; color:#777; margin-bottom:14px;">
+                            💡 Mặc định tài khoản dưới 5tr nhận <b>5% M-Coin</b>/đơn. Tích lũy từ <b>5tr lên Đồng (10%)</b> · <b>10tr lên Bạc (15%)</b> · <b>15tr lên Vàng (20%)</b> · <b>20tr lên Kim Cương (25%)</b>.
+                        </div>
+
+                        <div class="tier-cards-grid-4" id="tierCardsGridBox">
+                            <div class="tier-card-item tier-card-bronze" id="tierCard-dong">
+                                <div class="tier-title">Đồng</div>
+                                <div class="tier-sub">5tr+ · 10% M-Coin</div>
+                            </div>
+                            <div class="tier-card-item tier-card-silver" id="tierCard-bac">
+                                <div class="tier-title">Bạc</div>
+                                <div class="tier-sub">10tr+ · 15% M-Coin</div>
+                            </div>
+                            <div class="tier-card-item tier-card-gold" id="tierCard-vang">
+                                <div class="tier-title">Vàng</div>
+                                <div class="tier-sub">15tr+ · 20% M-Coin</div>
+                            </div>
+                            <div class="tier-card-item tier-card-diamond" id="tierCard-kimcuong">
+                                <div class="tier-title">💎 Kim Cương</div>
+                                <div class="tier-sub">20tr+ · 25% M-Coin</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="accPanel-vouchers" style="display:none;">
+                        <h2 class="account-tab-heading">VOUCHER CỦA TÔI</h2>
+                        <div id="myVouchersListContainer"></div>
+                    </div>
+
+                    <div id="accPanel-addr" style="display:none;">
+                        <h2 class="account-tab-heading">SỔ ĐỊA CHỈ</h2>
+                        <div id="savedAddressesContainer"></div>
+
+                        <div class="addr-form-box">
+                            <h4 style="font-size:13.5px; font-weight:800; text-transform:uppercase; margin-bottom:12px; color:#111;">+ THÊM ĐỊA CHỈ (TỈNH/TP → PHƯỜNG/XÃ)</h4>
+                            <div class="addr-grid-4">
+                                <div>
+                                    <label style="font-size:11.5px; color:#555; font-weight:600;">Họ tên</label>
+                                    <input type="text" id="addrInputName" class="form-control" placeholder="VD: Trần Minh Lâm" style="margin:4px 0 0 0; background:#fff;">
+                                </div>
+                                <div>
+                                    <label style="font-size:11.5px; color:#555; font-weight:600;">Số điện thoại</label>
+                                    <input type="text" id="addrInputPhone" class="form-control" placeholder="09xx xxx xxx" style="margin:4px 0 0 0; background:#fff;">
+                                </div>
+                                <div>
+                                    <label style="font-size:11.5px; color:#555; font-weight:600;">Tỉnh/Thành phố</label>
+                                    <select id="addrSelectProvince" class="form-control" style="margin:4px 0 0 0; background:#fff;" onchange="capNhatPhuongXaTheoTinh()">
+                                        <option value="">— Chọn —</option>
+                                        <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
+                                        <option value="Hà Nội">Hà Nội</option>
+                                        <option value="Đà Nẵng">Đà Nẵng</option>
+                                        <option value="Cần Thơ">Cần Thơ</option>
+                                        <option value="Đồng Nai">Đồng Nai</option>
+                                        <option value="Khánh Hòa">Khánh Hòa</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size:11.5px; color:#555; font-weight:600;">Phường/Xã</label>
+                                    <select id="addrSelectWard" class="form-control" style="margin:4px 0 0 0; background:#fff;">
+                                        <option value="">— Chọn tỉnh trước —</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="margin-bottom:14px;">
+                                <label style="font-size:11.5px; color:#555; font-weight:600;">Số nhà, tên đường</label>
+                                <input type="text" id="addrInputStreet" class="form-control" placeholder="VD: 12 Lê Lợi" style="margin:4px 0 0 0; background:#fff;">
+                            </div>
+                            <button type="button" onclick="luuDiaChiMoi()" style="background:#ff5500; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; font-family:'Poppins',sans-serif;">Lưu địa chỉ</button>
+                        </div>
+                    </div>
+
+                    <div id="accPanel-profile" style="display:none;">
+                        <h2 class="account-tab-heading">QUẢN LÝ TÀI KHOẢN</h2>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px;">
+                            <div style="background:#fafafa; border:1px solid #e5e7eb; border-radius:12px; padding:18px;">
+                                <h4 style="font-size:14px; font-weight:800; color:#111; margin-bottom:12px; text-transform:uppercase;">👤 Thông tin & Tên tài khoản</h4>
+                                <div style="margin-bottom:10px;">
+                                    <label style="font-size:11.5px; color:#555; font-weight:600;">Số điện thoại đăng nhập (ID cố định):</label>
+                                    <input type="text" id="profileInputPhone" class="form-control" disabled style="margin:4px 0 0 0; background:#e5e7eb; color:#4b5563; font-weight:700; cursor:not-allowed;">
+                                </div>
+                                <div style="margin-bottom:12px;">
+                                    <label style="font-size:11.5px; color:#555; font-weight:600;">Tên tài khoản hiển thị:</label>
+                                    <input type="text" id="profileInputName" class="form-control" placeholder="Nhập họ và tên hiển thị..." style="margin:4px 0 0 0; background:#fff;">
+                                </div>
+                                <button type="button" onclick="capNhatTenTaiKhoanKhach()" style="background:#111; color:#fff; border:none; padding:9px 18px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; font-family:'Poppins',sans-serif;">💾 Lưu tên tài khoản</button>
+
+                                <hr style="border:none; border-top:1px dashed #d1d5db; margin:18px 0;">
+
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+                                    <h4 style="font-size:14px; font-weight:800; color:#111; margin:0; text-transform:uppercase;">📧 Liên kết Email</h4>
+                                    <span id="profileEmailStatusBadge" style="font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; background:#fef3c7; color:#b45309;">Chưa liên kết</span>
+                                </div>
+                                <div style="margin-bottom:12px;">
+                                    <label style="font-size:11.5px; color:#555; font-weight:600;">Địa chỉ Email nhận thông báo & bảo mật:</label>
+                                    <input type="email" id="profileInputEmail" class="form-control" placeholder="VD: tenban@gmail.com" style="margin:4px 0 0 0; background:#fff;">
+                                </div>
+                                <button type="button" onclick="lienKetEmailTaiKhoanKhach()" style="background:#2563eb; color:#fff; border:none; padding:9px 18px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; font-family:'Poppins',sans-serif;">🔗 Liên kết / Cập nhật Email</button>
+                            </div>
+
+                            <div style="background:#fafafa; border:1px solid #e5e7eb; border-radius:12px; padding:18px;">
+                                <h4 style="font-size:14px; font-weight:800; color:#111; margin-bottom:12px; text-transform:uppercase;">🔒 Đổi mật khẩu đăng nhập</h4>
+                                <div style="margin-bottom:10px;">
+                                    <label style="font-size:11.5px; color:#555; font-weight:600;">Mật khẩu hiện tại:</label>
+                                    <input type="password" id="profileOldPass" class="form-control" placeholder="Nhập mật khẩu đang dùng..." style="margin:4px 0 0 0; background:#fff;">
+                                </div>
+                                <div style="margin-bottom:10px;">
+                                    <label style="font-size:11.5px; color:#555; font-weight:600;">Mật khẩu mới:</label>
+                                    <input type="password" id="profileNewPass" class="form-control" placeholder="Nhập mật khẩu mới..." style="margin:4px 0 0 0; background:#fff;">
+                                </div>
+                                <div style="margin-bottom:14px;">
+                                    <label style="font-size:11.5px; color:#555; font-weight:600;">Xác nhận mật khẩu mới:</label>
+                                    <input type="password" id="profileConfirmPass" class="form-control" placeholder="Nhập lại mật khẩu mới..." style="margin:4px 0 0 0; background:#fff;">
+                                </div>
+                                <button type="button" onclick="doiMatKhauTaiKhoanKhach()" style="background:#ff5500; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; font-family:'Poppins',sans-serif;">🔑 Cập nhật mật khẩu mới</button>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= TRANG CHUÔNG THÔNG BÁO TOÀN MÀN HÌNH CỦA ADMIN (2 MỤC: VOUCHER & THÔNG BÁO HÀNG TỒN) ================= -->
+    <div id="view-adminNotif" class="view-section">
+        <div class="main-container">
+            <div class="account-layout">
+                <div class="account-sidebar">
+                    <div class="account-user-header">
+                        <h3>Quản Trị Viên (Admin)</h3>
+                        <p>Trung tâm Voucher & Cảnh báo Kho</p>
+                    </div>
+                    <ul class="account-nav-list">
+                        <li>
+                            <button type="button" class="account-nav-btn active" id="adminNotifNav-voucher" onclick="moTabChuongAdmin('voucher')">
+                                <span>🎟️ Voucher</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="account-nav-btn" id="adminNotifNav-lowstock" onclick="moTabChuongAdmin('lowstock')">
+                                <span>⚠️ Thông báo hàng tồn</span>
+                                <span id="adminLowStockNavBadge" style="background:#dc2626; color:#fff; font-size:11px; font-weight:800; padding:2px 8px; border-radius:10px;">0</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="account-nav-btn" style="color:#2563eb;" onclick="chuyenTab('remoteOrder')">
+                                <span>📦 Về Bảng Quản Trị Kho</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="account-main-card">
+                    <!-- MỤC 1: VOUCHER (PHÁT HÀNH & XEM LỊCH SỬ MÃ ĐÃ GỬI) -->
+                    <div id="adminNotifPanel-voucher">
+                        <h2 class="account-tab-heading">QUẢN LÝ & PHÁT HÀNH VOUCHER</h2>
+                        <div style="background:#fff8f5; border:1px solid #fed7aa; border-radius:12px; padding:20px; margin-bottom:24px;">
+                            <h4 style="color: #c2410c; margin-bottom: 8px; font-size: 15px;">📢 Phát Hành Mã Giảm Giá Mới</h4>
+                            <p style="font-size: 13px; color: #555; margin-bottom: 12px;">Nhập số % giảm giá (1 - 100). Hiệu lực <b>48 giờ</b> & mỗi tài khoản chỉ dùng được <b>1 lần</b>. Voucher phát hành sẽ tự động hiển thị trong mục <b>"Voucher của tôi"</b> và Chuông thông báo của khách hàng:</p>
+                            <div style="display: flex; gap: 10px; max-width: 460px; margin-bottom: 12px;">
+                                <input type="number" id="adminDiscountPercentInput" min="1" max="100" placeholder="Nhập % giảm (VD: 20)" class="form-control" style="margin: 0; flex: 1; background:#fff;">
+                                <button class="btn-submit" style="width: auto; padding: 0 24px; background: #16a34a;" onclick="phatHanhMaGiamGia()">Phát hành ngay</button>
+                            </div>
+
+                            <div class="target-options-row" style="max-width:460px; background:#fff;">
+                                <label><input type="radio" name="couponTargetMode" value="all" checked onchange="chuyenCheDoGuiCoupon('all')"> Gửi tất cả khách hàng</label>
+                                <label><input type="radio" name="couponTargetMode" value="select" onchange="chuyenCheDoGuiCoupon('select')"> Chọn SĐT đã mua</label>
+                            </div>
+
+                            <div class="target-customer-list" id="targetCustomerListBox"></div>
+                        </div>
+
+                        <h4 style="font-size: 15px; font-weight: 700; color: #111; margin-bottom: 12px;">📋 Danh sách Voucher đã phát hành</h4>
+                        <div id="adminCouponHistoryList"></div>
+                    </div>
+
+                    <!-- MỤC 2: THÔNG BÁO HÀNG TỒN (<= 5 CÁI) -->
+                    <div id="adminNotifPanel-lowstock" style="display:none;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                            <div>
+                                <h2 class="account-tab-heading" style="margin-bottom:4px;">THÔNG BÁO HÀNG TỒN (≤ 5 CÁI)</h2>
+                                <p style="font-size:13px; color:#666;">Danh sách các sản phẩm và màu sắc (bao gồm cả Phôi Áo Jersey) có số lượng tồn kho từ <b>5 cái trở xuống</b> cần nhập thêm hàng:</p>
+                            </div>
+                            <button type="button" onclick="chuyenTab('remoteOrder')" style="background:#16a34a; color:#fff; border:none; padding:9px 16px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer;">📥 Đi tới Bảng Nhập Kho</button>
+                        </div>
+                        <div id="adminLowStockAlertContainer"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB QUẢN LÝ & THEO DÕI ĐƠN HÀNG (ADMIN & KHÁCH) -->
+    <div id="view-remoteOrder" class="view-section">
+        <div class="main-container">
+            <h2 class="section-title">
+                <span>📦 Hệ Thống Quản Lý Đơn Hàng & Tồn Kho (Cloud Database)</span>
+                <button class="sync-indicator" id="cloudSyncStatusBtn" onclick="dongBoTuGoogleSheets(true)">🔄 Làm mới & Đồng bộ Google Sheets</button>
+            </h2>
+
+            <div id="customerOrderHistoryView" style="display: none; margin-bottom: 30px;">
+                <div class="admin-box" style="border-color: #ff5500; margin-top: 0;">
+                    <h3 style="color: #ff5500; margin-bottom: 8px;">📋 Theo Dõi Tiến Trình Đơn Hàng Của Bạn</h3>
+                    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Bạn có thể nhấn vào đơn hàng bên dưới để xem chi tiết từng công đoạn xử lý:</p>
+                    <div id="remoteCustOrdersWrapper"></div>
+                </div>
+            </div>
+
+            <!-- VIEW CỦA ADMIN -->
+            <div id="adminDashboardSection" style="display: none;">
+                <div class="admin-box" style="margin-top: 0; border-color: #2980b9;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
+                        <div>
+                            <h3 style="color: #2980b9; margin-bottom: 3px;">📊 Thống Kê Tỉ Lệ Khách Hàng Quay Lại & Hệ Thống Đơn Tự Động (Trừ Tồn Kho Thực Tế)</h3>
+                            <p style="font-size: 12.5px; color: #666;">Mỗi đơn hàng khách đặt hoặc đơn tự động đều trừ trực tiếp vào số lượng tồn kho của đúng màu sản phẩm đó.</p>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn-submit" id="btnToggleAutoFakeOrder" style="width: auto; padding: 8px 14px; font-size: 12px; background: #27ae60;" onclick="batTatCheDoDonAo()">
+                                🟢 Tự động đơn mới: ĐANG BẬT (~1.5 - 2 phút/đơn)
+                            </button>
+                            <button class="btn-submit" style="width: auto; padding: 8px 14px; font-size: 12px; background: #8e44ad;" onclick="taoMotDonHangAoTuDong(true)">
+                                ⚡ Tạo 1 đơn khách thật ngay (Trừ kho)
+                            </button>
+                        </div>
+                    </div>
+                    <div class="retention-grid" id="adminRetentionStats"></div>
+                </div>
+
+                <div class="admin-box">
+                    <h3 style="color: #c0392b; margin-bottom: 5px;">🛡️ QUẢN TRỊ VIÊN: Bảng Quản Lý Tồn Kho Chi Tiết Theo Từng Màu (Kể Cả Phôi Áo)</h3>
+                    <div style="overflow-x: auto; max-height: 420px; overflow-y: auto;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr><th>Hạng</th><th>Tên Sản Phẩm</th><th>Phân Loại Màu / Kiểu</th><th>Giá Bán</th><th>Đã Bán</th><th>Tồn Kho Còn Lại</th></tr>
+                            </thead>
+                            <tbody id="adminInventoryTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="admin-box">
+                    <div style="margin-bottom: 12px;">
+                        <h3 style="color: #c0392b; margin-bottom: 3px;">📦 Danh Sách Toàn Bộ Khách Hàng Đặt Đơn (<span id="adminTotalOrdersCount">0</span> đơn)</h3>
+                        <p style="font-size: 13px; color: #666;">Nhấn vào bất kỳ đơn hàng nào để xem Timeline tiến trình in/ép & giao hàng chi tiết:</p>
+                    </div>
+
+                    <div class="admin-search-panel">
+                        <span style="font-weight: 700; font-size: 13px; color: #1e293b;">🔍 Tìm kiếm đơn hàng:</span>
+                        <input type="text" id="adminOrderSearchInput" placeholder="Nhập mã đơn, tên người mua hoặc số điện thoại..." oninput="renderAdminOrdersTableOnly()">
+                        <button class="btn-submit" style="width: auto; padding: 9px 16px; font-size: 12px; background: #334155;" onclick="xoaTimKiemDonAdmin()">Xóa từ khóa</button>
+                    </div>
+
+                    <div class="admin-date-filter-panel">
+                        <div class="date-inputs-group">
+                            <span style="font-weight: 700; font-size: 13px; color: #1e293b;">📅 Lọc theo ngày đặt:</span>
+                            <label style="font-size: 12px; color: #64748b; font-weight: 600;">Từ ngày:</label>
+                            <input type="date" id="adminFilterDateFrom" onchange="locDonTheoKhoangNgay()">
+                            <label style="font-size: 12px; color: #64748b; font-weight: 600;">Đến ngày:</label>
+                            <input type="date" id="adminFilterDateTo" onchange="locDonTheoKhoangNgay()">
+                        </div>
+                        <div class="date-quick-btns">
+                            <button type="button" class="btn-date-preset active" id="btnDateAll" onclick="datKhoangNgayNhanh('all', this)">Tất cả</button>
+                            <button type="button" class="btn-date-preset" id="btnDateToday" onclick="datKhoangNgayNhanh('today', this)">Hôm nay</button>
+                            <button type="button" class="btn-date-preset" id="btnDate7Days" onclick="datKhoangNgayNhanh('7days', this)">7 ngày qua</button>
+                            <button type="button" class="btn-date-preset" id="btnDateMonth" onclick="datKhoangNgayNhanh('30days', this)">30 ngày qua</button>
+                            <button type="button" class="btn-date-preset" style="background:#e2e8f0; color:#333;" onclick="datLaiLocNgay()">Đặt lại ngày</button>
+                        </div>
+                    </div>
+
+                    <!-- BANNER CẢNH BÁO ĐƠN HÀNG KHÁCH ĐẶT CHỜ DUYỆT -->
+                    <div id="adminPendingOrdersBanner" style="display:none; margin: 10px 0 14px 0; background: linear-gradient(135deg, #fefce8 0%, #fef08a 100%); border: 1.5px solid #eab308; padding: 12px 18px; border-radius: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; box-shadow: 0 3px 10px rgba(234,179,8,0.15);">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:22px;">🚨</span>
+                            <div>
+                                <span id="adminPendingOrdersBannerText" style="font-weight:800; color:#854d0e; font-size:13.5px;">Có đơn hàng mới từ khách thật đang chờ duyệt!</span>
+                                <div style="font-size:12px; color:#a16207;">Đơn khách thật cần Admin duyệt để chuyển từ "Chờ xác nhận" sang "Chờ lấy hàng".</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button type="button" onclick="adminDuyetTatCaDonCho()" style="background:#16a34a; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:800; font-size:12px; cursor:pointer; font-family:'Poppins',sans-serif; box-shadow:0 2px 6px rgba(22,163,74,0.3);">✅ Duyệt tất cả đơn chờ</button>
+                            <button type="button" onclick="locDonChoDuyetNhanh()" style="background:#ca8a04; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; font-family:'Poppins',sans-serif;">🔍 Xem đơn chờ</button>
+                        </div>
+                    </div>
+
+                    <div style="overflow-x: auto; max-height: 480px; overflow-y: auto;">
+                        <table class="admin-table" style="margin-top: 5px;">
+                            <thead>
+                                <tr><th>Mã Đơn</th><th>Khách Hàng</th><th>Số Điện Thoại</th><th>Địa Chỉ Nhận</th><th>Thời Gian Đặt</th><th>Trạng Thái Hiện Tại</th><th>Thao Tác</th></tr>
+                            </thead>
+                            <tbody id="adminOrdersListTable"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="adminOrderDetailBox" style="display:none; margin-top: 22px; background: #fff; padding: 24px; border-radius: 14px; border: 2px solid #ff5500; position: relative;"></div>
+                </div>
+
+                <!-- MỤC AI NHẬP HÀNG TỰ ĐỘNG BẰNG CÂU LỆNH TỰ NHIÊN (AUTO RESTOCK & XÓA CẢNH BÁO TỒN) -->
+                <div class="admin-box" style="border-color: #8b5cf6; background: linear-gradient(180deg, #fbf7ff 0%, #ffffff 100%);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom: 8px;">
+                        <h3 style="color: #7c3aed; margin:0; display:flex; align-items:center; gap:8px;">
+                            🤖 AI Nhập Hàng Tự Động (Nhập theo câu lệnh tự nhiên)
+                        </h3>
+                        <span style="font-size:12px; background:#ede9fe; color:#6d28d9; padding:4px 12px; border-radius:20px; font-weight:700;">✨ Tự động xóa cảnh báo tồn kho ≤ 5 khi đã nhập</span>
+                    </div>
+                    <p style="font-size: 13px; color: #4b5563; margin-bottom: 12px; line-height: 1.55;">
+                        AI tự động phân tích câu lệnh, nhận diện sản phẩm, phân loại màu sắc và cộng dồn tồn kho (Mặc định <b>10 cái</b>/món nếu không ghi số lượng).<br>
+                        <i>Ví dụ mẫu:</i> <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">balo v1</code> (nhập mỗi màu v1 10 cái) · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">balo v1 đỏ</code> (nhập 10 cái v1 đỏ) · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">quần combat</code> (nhập đủ màu, chủng loại, size) · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">all bóng</code> (nhập mỗi quả 10 trái) · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">bóng size 7</code> · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">áo</code> (áo đấu NBA) · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">phôi áo</code> (nhập 6 màu phôi) · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">bó gối 20</code>...
+                    </p>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <input type="text" id="aiRestockInput" class="form-control" style="margin:0; flex:1; min-width:280px; border:1.5px solid #c4b5fd; font-size:13.5px; font-weight:500;" placeholder="Nhập câu lệnh nhập hàng (VD: balo v1, balo v1 đỏ, quần combat, all bóng 15, bóng size 7, phôi áo...)" onkeypress="if(event.key==='Enter') thucHienAINhapHang()">
+                        <button class="btn-submit" style="width:auto; padding:10px 22px; background:linear-gradient(135deg, #7c3aed, #9333ea); margin:0;" onclick="thucHienAINhapHang()">🚀 AI Nhập Hàng</button>
+                    </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; align-items:center;">
+                        <span style="font-size:12px; font-weight:700; color:#6b7280;">Bấm thử nhanh:</span>
+                        <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('balo v1')">Balo V1</button>
+                        <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('balo v1 đỏ')">Balo V1 đỏ</button>
+                        <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('quần combat')">Quần combat</button>
+                        <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('all bóng')">All bóng</button>
+                        <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('bóng size 7')">Bóng size 7</button>
+                        <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('áo')">Áo Jersey</button>
+                        <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('phôi áo')">Phôi áo (6 màu)</button>
+                        <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('bó gối')">Bó gối</button>
+                        <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('băng quấn cổ chân')">Băng cổ chân</button>
+                    </div>
+                    <div id="aiRestockResultBox" style="display:none; margin-top:12px; padding:12px 14px; border-radius:8px; font-size:13px; line-height:1.6;"></div>
+                </div>
+
+                <!-- BẢNG NHẬP KHO GỌN GÀNG: MỖI SẢN PHẨM 1 DÒNG + CỘT CHỌN MÀU (KỂ CẢ PHÔI ÁO) -->
+                <div class="admin-box" style="border-color: #27ae60;">
+                    <h3 style="color: #27ae60; margin-bottom: 5px;">📥 Nhập Thêm Hàng Vào Kho (Gọn Gàng 1 Dòng / 1 Sản Phẩm — Chọn Màu Để Nhập)</h3>
+                    <p style="font-size: 13px; color: #666; margin-bottom: 12px;">Chọn màu sắc / phân loại ở cột thứ 2 để xem tồn hiện tại của màu đó, điền số lượng và tích chọn để nhập kho (bao gồm cả Phôi Áo Jersey Custom):</p>
+                    <div style="overflow-x: auto; max-height: 440px; overflow-y: auto;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr><th>Tên Sản Phẩm</th><th>Chọn Màu Sắc / Phân Loại</th><th>Tồn Hiện Tại (Màu Đã Chọn)</th><th>Nhập Số Lượng</th><th>Tích Chọn Nhập</th></tr>
+                            </thead>
+                            <tbody id="adminRestockTable"></tbody>
+                        </table>
+                    </div>
+                    <button class="btn-submit" style="background-color: #27ae60; margin-top: 15px;" onclick="thucHienNhapHang()">📥 NHẬP HÀNG VÀO KHO</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI STUDIO -->
+    <div id="view-aiTryOn" class="view-section">
+        <div class="main-container">
+            <h2 class="section-title">🤖 AI Gộp Ảnh Trực Tuyến & Tư Vấn Chuyên Sâu (Gemini API)</h2>
+            <div class="ai-studio">
+                <div>
+                    <h3 style="margin-bottom: 8px; color: #2c3e50;">1. Tải ảnh & Chọn sản phẩm để AI trộn thành 1 ảnh duy nhất</h3>
+                    <div class="form-group">
+                        <label>Bước 1: Tải ảnh chân dung của bạn lên:</label>
+                        <input type="file" id="userPhotoUpload" accept="image/*" onchange="xuLyTaiAnh(event)">
+                    </div>
+                    <div class="form-group">
+                        <label>Bước 2: Chọn sản phẩm muốn gộp:</label>
+                        <select id="aiProductSelect" onchange="gopAnhTuDong()">
+                            <option value="v1_trang">Balo Nike Elite V1 (Trắng Đen)</option>
+                            <option value="v2_xanh">Balo Nike Elite V2 (Xanh Đen)</option>
+                            <option value="utility_reu">Balo Nike Utility Speed (Xanh Rêu)</option>
+                            <option value="lakers">Áo Jersey Los Angeles Lakers Vàng</option>
+                            <option value="warriors_xanh">Áo Jersey Warriors Xanh Dương</option>
+                            <option value="bulls">Áo Jersey Chicago Bulls Đỏ Đen</option>
+                        </select>
+                    </div>
+                    <button class="btn-submit" style="background-color: #8e44ad; margin-top: 10px;" onclick="chayAIPhanTichGopAnh()">✨ Chạy AI Gộp Ảnh & Tư Vấn Thời Trang (-1 Token)</button>
+                </div>
+
+                <div class="ai-screen" id="aiScreenBox">
+                    <div id="aiPlaceholder" style="text-align: center;">
+                        <div style="font-size: 40px; margin-bottom: 10px;">📸</div>
+                        <p style="font-size: 13px;">Tải ảnh chân dung lên để hệ thống gộp thành 1 ảnh hoàn chỉnh!</p>
+                    </div>
+                    <div class="tryon-canvas-wrap" id="tryOnCanvasWrap">
+                        <canvas id="mergeCanvas" style="display:none;"></canvas>
+                        <img id="mergedResultImg" class="tryon-result-img" src="" alt="Merged Result">
+                    </div>
+                    <div class="ai-response-box" id="aiAnalysisText">
+                        🤖 <b>AI Stylist:</b> Tải ảnh lên và bấm <i>"Chạy AI Gộp Ảnh"</i> để xem kết quả!
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-box-container">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                    <h3 style="color: #2c3e50; margin:0;">2. AI Chatbot Tư Vấn Thiết Bị Bóng Rổ & Combo Chuyên Sâu</h3>
+                    <span style="font-size:12px; color:#ff5500; font-weight:700;">✨ Tự động phân tích & lên Combo theo ngân sách</span>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="msg-bot">🏀 Xin chào! Mình là AI Assistant của <b>Mairua.com</b>. Bạn cần tìm trang phục thi đấu, balo, bóng rổ hay muốn lên <b>Combo 1 triệu</b> (đầy đủ quần, áo, combat, bảo hộ) cứ nhắn cho mình nhé!</div>
+                </div>
+                <!-- GỢI Ý CÂU HỎI NHANH -->
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+                    <button type="button" class="btn-date-preset" style="background:#fff7ed; border-color:#ffedd5; color:#c2410c; font-weight:700;" onclick="guiCauHoiNhanhAI('Tư vấn combo 1tr gồm quần, áo và combat')">🎯 Lên Combo 1 triệu (Áo, Quần, Combat)</button>
+                    <button type="button" class="btn-date-preset" onclick="guiCauHoiNhanhAI('Tư vấn chọn bóng rổ sàn gỗ và bê tông')">🏀 Chọn bóng (Trong nhà / Bê tông)</button>
+                    <button type="button" class="btn-date-preset" onclick="guiCauHoiNhanhAI('Tư vấn đồ combat và bó gối')">🛡️ Đồ combat & Bó gối có đệm</button>
+                    <button type="button" class="btn-date-preset" onclick="guiCauHoiNhanhAI('Áo đấu NBA và đặt áo cho cả đội')">🎽 Áo đấu NBA & Roster đội</button>
+                    <button type="button" class="btn-date-preset" onclick="guiCauHoiNhanhAI('Tư vấn chọn size quần áo bóng rổ')">📏 Bảng tư vấn size chuẩn</button>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="chatInput" class="form-control" style="margin: 0;" placeholder="VD: Lên cho mình combo 1tr, tư vấn bóng Molten, size áo cho 1m72 65kg..." onkeypress="if(event.key==='Enter') guiTinNhanAI()">
+                    <button class="btn-submit" style="width: 140px;" onclick="guiTinNhanAI()">Gửi câu hỏi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ĐĂNG NHẬP -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="dongModal('loginModal')">&times;</span>
+            <h3 style="margin-bottom: 10px;">🔑 Đăng nhập tài khoản</h3>
+            <label style="font-size: 13px; font-weight: 500;">Số điện thoại:</label>
+            <input type="text" id="loginPhone" class="form-control" placeholder="Nhập số điện thoại của bạn" autocomplete="off">
+            <label style="font-size: 13px; font-weight: 500;">Mật khẩu:</label>
+            <input type="password" id="loginPass" class="form-control" placeholder="Nhập mật khẩu" autocomplete="new-password">
+            <button class="btn-submit" onclick="xuLyDangNhap()">Đăng nhập</button>
+        </div>
+    </div>
+
+    <!-- MODAL ĐĂNG KÝ -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="dongModal('registerModal')">&times;</span>
+            <h3 style="margin-bottom: 10px;">📝 Đăng ký tài khoản mới</h3>
+            <label style="font-size: 13px; font-weight: 500;">Họ và Tên:</label>
+            <input type="text" id="regName" class="form-control" placeholder="Nhập họ tên của bạn" autocomplete="off">
+            <label style="font-size: 13px; font-weight: 500;">Số điện thoại (10 chữ số):</label>
+            <input type="text" id="regPhone" class="form-control" placeholder="Nhập SĐT 10 số (VD: 0908123456)" autocomplete="off">
+            <label style="font-size: 13px; font-weight: 500;">Mật khẩu:</label>
+            <input type="password" id="regPass" class="form-control" placeholder="Tạo mật khẩu đăng nhập" value="123" autocomplete="new-password">
+            <button class="btn-submit" style="background-color: #27ae60;" onclick="xuLyDangKy()">Đăng ký ngay</button>
+        </div>
+    </div>
+
+    <!-- MODAL ĐÁNH GIÁ SẢN PHẨM THEO ĐƠN HÀNG (KIỂU SHOPEE: ĐÁNH GIÁ TỪNG SẢN PHẨM, CHỌN SAO, BÌNH LUẬN, UP ẢNH) -->
+    <div class="modal" id="orderReviewModal">
+        <div class="modal-content" style="width: 680px; max-width: 95vw; max-height: 88vh; overflow-y: auto; padding: 24px 26px;">
+            <span class="modal-close" onclick="dongModal('orderReviewModal')">&times;</span>
+            <h3 style="margin-bottom: 4px; font-size: 20px; color: #111; display:flex; align-items:center; gap:8px;">⭐ Đánh Giá Sản Phẩm</h3>
+            <p id="orderReviewModalSub" style="font-size: 12.5px; color: #64748b; margin-bottom: 16px;">Hãy chia sẻ cảm nhận và hình ảnh thực tế của từng sản phẩm trong đơn hàng nhé!</p>
+            <div id="orderReviewItemsContainer"></div>
+            <div id="orderReviewFooterActions" style="display:flex; justify-content:flex-end; gap:10px; margin-top: 12px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
+                <button type="button" onclick="dongModal('orderReviewModal')" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:10px 20px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; font-family:'Poppins',sans-serif;">Trở lại</button>
+                <button type="button" id="btnSubmitAllOrderReviews" onclick="guiTatCaDanhGiaTrongDon()" style="background:#ff5500; color:#fff; border:none; padding:10px 24px; border-radius:8px; font-weight:700; font-size:13.5px; cursor:pointer; font-family:'Poppins',sans-serif;">🚀 Hoàn thành & Gửi đánh giá</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PHÓNG TO ẢNH ĐÁNH GIÁ -->
+    <div class="modal" id="reviewPhotoLightboxModal" onclick="dongModal('reviewPhotoLightboxModal')">
+        <div class="modal-content" style="width: auto; max-width: 90vw; max-height: 90vh; padding: 12px; background: #111; text-align: center;" onclick="event.stopPropagation()">
+            <span class="modal-close" style="color: #fff; top: 8px; right: 14px; font-size: 26px;" onclick="dongModal('reviewPhotoLightboxModal')">&times;</span>
+            <img id="reviewLightboxImg" src="" alt="Review Photo" style="max-width: 84vw; max-height: 80vh; border-radius: 10px; object-fit: contain;">
+        </div>
+    </div>
+
+    <!-- MODAL HÓA ĐƠN ĐIỆN TỬ (KIỂU BILL SIÊU THỊ / RETAIL RECEIPT) -->
+    <div class="modal" id="eInvoiceModal" onclick="dongModal('eInvoiceModal')">
+        <div class="modal-content" style="width: 530px; max-width: 95vw; max-height: 90vh; overflow-y: auto; padding: 22px; background: #fdfbf7; border-radius: 12px; border: 1px solid #e2e8f0; font-family: 'Roboto Mono', 'Courier New', monospace;" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="dongModal('eInvoiceModal')">&times;</span>
+            <div id="eInvoicePrintableArea"></div>
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px; padding-top:14px; border-top:1px dashed #cbd5e1; flex-wrap:wrap;" class="no-print">
+                <button type="button" onclick="dongModal('eInvoiceModal')" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:8px 16px; border-radius:6px; font-size:12.5px; font-weight:700; cursor:pointer;">Đóng</button>
+                <button type="button" id="btnCopyInvoiceCode" onclick="saoChepMaTraCuuHoaDon()" style="background:#fff; color:#0284c7; border:1px solid #0284c7; padding:8px 16px; border-radius:6px; font-size:12.5px; font-weight:700; cursor:pointer;">📋 Copy mã tra cứu</button>
+                <button type="button" onclick="inHoaDonDienTu()" style="background:#ff5500; color:#fff; border:none; padding:8px 20px; border-radius:6px; font-size:12.5px; font-weight:700; cursor:pointer;">🖨️ In hóa đơn / Lưu PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================
+         MODAL XEM NHANH SẢN PHẨM (QUICK VIEW)
+         ======================================================== -->
+    <div class="modal" id="quickViewModal" onclick="dongQuickView()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="dongQuickView()">&times;</span>
+            <div class="quickview-layout">
+                <div class="quickview-img-box">
+                    <img id="qvImg" src="" alt="Sản phẩm bóng rổ">
+                </div>
+                <div class="quickview-info-box">
+                    <div>
+                        <div class="quickview-rating-badge" id="qvRatingBadge">
+                            <span style="color:#ff5500;">★</span> 4.9 · Đang bán chạy
+                        </div>
+                        <h2 class="quickview-title" id="qvTitle">Tên sản phẩm</h2>
+                        <div class="quickview-price-row">
+                            <span class="quickview-price" id="qvPrice">0đ</span>
+                            <span id="qvStockBadge" style="font-size:12px; font-weight:700; color:#16a34a; background:#f0fdf4; padding:3px 8px; border-radius:6px;">Còn hàng</span>
+                        </div>
+                        
+                        <div class="quickview-section-label">Màu sắc / Phân loại:</div>
+                        <div class="quickview-swatches" id="qvSwatches"></div>
+
+                        <div id="qvSizeSection" style="display:none;">
+                            <div class="quickview-section-label">Chọn Size:</div>
+                            <div class="quickview-sizes" id="qvSizes"></div>
+                        </div>
+
+                        <div style="margin-bottom:16px;">
+                            <div class="quickview-section-label">Số lượng:</div>
+                            <div style="display:inline-flex; align-items:center; border:1.5px solid #cbd5e1; border-radius:8px; overflow:hidden; background:#fff;">
+                                <button type="button" onclick="thayDoiQtyQuickView(-1)" style="width:34px; height:34px; border:none; background:#f8fafc; font-weight:700; font-size:15px; cursor:pointer;">-</button>
+                                <span id="qvQtyVal" style="width:40px; text-align:center; font-weight:700; font-size:14px;">1</span>
+                                <button type="button" onclick="thayDoiQtyQuickView(1)" style="width:34px; height:34px; border:none; background:#f8fafc; font-weight:700; font-size:15px; cursor:pointer;">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="quickview-action-row">
+                            <button class="quickview-add-btn" id="qvBtnAdd" onclick="themVaoGioTuQuickView()">🛒 Thêm vào giỏ hàng</button>
+                        </div>
+                        <div style="text-align:center; margin-top:12px;">
+                            <a id="qvFullDetailLink" style="font-size:12.5px; color:#2563eb; font-weight:600; cursor:pointer; text-decoration:underline;">👁️ Xem trang thông tin chi tiết đầy đủ →</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================
+         SLIDE-OUT CART DRAWER (GIỎ HÀNG TRƯỢT NGANG STREETWEAR)
+         ======================================================== -->
+    <div class="cart-drawer-overlay" id="cartDrawerOverlay" onclick="dongCartDrawer()"></div>
+    <div class="cart-drawer" id="cartDrawer">
+        <div class="cart-drawer-header">
+            <div class="cart-drawer-title">
+                <span>🛒 Giỏ Hàng Mairua</span>
+                <span class="cart-drawer-badge" id="cartDrawerCountBadge">0</span>
+            </div>
+            <button class="cart-drawer-close" onclick="dongCartDrawer()">&times;</button>
+        </div>
+        <div class="cart-drawer-body" id="cartDrawerBody">
+            <!-- Dynamic Items or Empty state -->
+        </div>
+        <div class="cart-drawer-footer" id="cartDrawerFooter">
+            <div class="cart-drawer-subtotal">
+                <span>Tạm tính giỏ hàng:</span>
+                <span class="cart-drawer-total-price" id="cartDrawerSubtotalVal">0đ</span>
+            </div>
+            <p style="font-size:11.5px; color:#64748b; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                <span>🚚</span> <span>Miễn phí giao hàng cho đơn từ <b>500.000đ</b></span>
+            </p>
+            <button class="btn-drawer-checkout" onclick="dongCartDrawer(); chuyenTab('cart');">
+                <span>Tiến hành Đặt hàng</span>
+                <span>→</span>
+            </button>
+            <button class="btn-drawer-view-full" onclick="dongCartDrawer(); chuyenTab('cart');">
+                Xem trang giỏ hàng chi tiết
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================================
+         TOAST NOTIFICATIONS (THÔNG BÁO HOOPS NỔI GÓC MÀN HÌNH)
+         ======================================================== -->
+    <div class="mairua-toast-container" id="mairuaToastContainer"></div>
+
+    <!-- FOOTER THÔNG TIN LIÊN HỆ -->
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-col">
+                <a class="footer-brand-title" onclick="chuyenTab('home')" style="display:inline-flex; align-items:center; gap:8px;">
+                    <img src="logo.png" alt="Mairua Logo" style="height:28px; width:auto; object-fit:contain; vertical-align:middle;">
+                    <span>MAI<span>RUA</span>.COM</span>
+                </a>
+                <p style="line-height: 1.6; color: #a3a3a3; max-width: 320px;">
+                    Trang thiết bị bóng rổ chính hãng & dịch vụ in tên, số áo trên Balo Elite và Jersey.
+                </p>
+            </div>
+            <div class="footer-col">
+                <h4>Mua sắm</h4>
+                <ul>
+                    <li><a onclick="chuyenTab('home')">Sản phẩm</a></li>
+                    <li><a onclick="chuyenTab('customJersey')">Custom Studio</a></li>
+                    <li><a onclick="chuyenTab('roster')">Đặt cho đội</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Chính sách</h4>
+                <ul>
+                    <li><a onclick="alert('Chính sách đổi trả: Hỗ trợ đổi size trong 7 ngày đối với sản phẩm nguyên tem mác (Không áp dụng cho hàng in Custom tên/số).')">Đổi trả</a></li>
+                    <li><a onclick="alert('Hàng Custom: Gia công in nhiệt cao cấp, mỗi áo in khoảng 10 phút, thanh toán trước 100% online.')">Hàng custom</a></li>
+                    <li><a onclick="alert('Chính sách bảo mật: Thông tin SĐT và địa chỉ nhận hàng của quý khách được bảo mật tuyệt đối.')">Bảo mật</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Quản trị</h4>
+                <ul>
+                    <li><a onclick="chuyenTab('remoteOrder')">Dashboard</a></li>
+                    <li><a onclick="chuyenTab('remoteOrder')">Đơn hàng</a></li>
+                    <li><a onclick="chuyenTab('customJersey')">Xưởng sản xuất</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            © 2026 MVP Hoops · mairua.com. Bảo lưu mọi quyền.
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
