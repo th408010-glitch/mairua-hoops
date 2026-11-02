@@ -3050,15 +3050,16 @@
                 }
             })();
 
-            hienThiToast(`🎉 Đặt hàng thành công! Mã đơn: ${newOrder.orderCode}`, 'success');
-
-            if (firstCartItem) hienPopupDonAoFomo(name, phone, addr, firstCartItem.name, "Đơn mới", firstCartItem.img || "", firstCartItem.qty);
-
+            // 1. Dọn sạch giỏ hàng lập tức trên mọi bộ nhớ
             cart = [];
             let cKey = layKeyGioHangHienTai();
             cartsByPhone[cKey] = [];
+            if (currentCustomer && currentCustomer.phone) cartsByPhone[currentCustomer.phone] = [];
+            cartsByPhone['guest'] = [];
             localStorage.setItem('mairua_cartsByPhone', JSON.stringify(cartsByPhone));
             localStorage.setItem('mairua_cart', JSON.stringify([]));
+            sessionStorage.setItem('mairua_cart', JSON.stringify([]));
+
             if (currentCustomer && currentCustomer.phone && !currentCustomer.isAdmin) {
                 fetch('/api/cart/' + encodeURIComponent(currentCustomer.phone), {
                     method: 'POST',
@@ -3067,6 +3068,11 @@
                 }).catch(() => {});
             }
             capNhatGioHang();
+
+            // 2. Hiện POPUP thông báo đặt hàng thành công cực rõ ràng
+            alert(`🎉 ĐẶT HÀNG THÀNH CÔNG!\n\n📦 Mã đơn hàng: ${newOrder.orderCode}\n👤 Khách hàng: ${newOrder.name}\n💰 Tổng thanh toán: ${newOrder.finalTotal.toLocaleString('vi-VN')}đ\n\n✅ Đơn hàng đã được lưu và gửi đến xưởng Mairua Hoops!\nGiỏ hàng của bạn đã được dọn trống.`);
+
+            if (firstCartItem) hienPopupDonAoFomo(name, phone, addr, firstCartItem.name, "Đơn mới", firstCartItem.img || "", firstCartItem.qty);
             if (appliedCoupon) {
                 guiDuLieuGoogleSheets('useCoupon', {
                     code: appliedCoupon.code,
@@ -5543,7 +5549,8 @@ Câu hỏi của khách: "${rawQ}"`;
             }
 
             let totalDiscount = rosterDiscountAmt + voucherDiscountAmt + mCoinDiscountAmt;
-            let finalTotal = Math.max(0, subtotal - totalDiscount + shippingFee);
+            let rawFinal = Math.max(0, subtotal - totalDiscount + shippingFee);
+            let finalTotal = Math.round(rawFinal / 1000) * 1000;
             return { subtotal, customItemsQty, rosterDiscPercent, rosterDiscountAmt, voucherDiscountAmt, mCoinDiscountAmt, shippingFee, totalDiscount, finalTotal };
         }
 
