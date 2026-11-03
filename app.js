@@ -1021,21 +1021,24 @@
             return list;
         }
 
+        let isProductsSyncedFromBackend = false;
         function dongBoTonKhoChuanXac() {
-            let freshLocalProds = JSON.parse(localStorage.getItem('mairua_products'));
-            if (Array.isArray(freshLocalProds)) {
-                products.forEach(p => {
-                    let savedP = freshLocalProds.find(sp => sp.id === p.id);
-                    if (savedP && Array.isArray(savedP.variants)) {
-                        p.variants.forEach((v, idx) => {
-                            let savedV = savedP.variants.find(sv => sv.colorName === v.colorName) || savedP.variants[idx];
-                            if (savedV) {
-                                if (typeof savedV.stock === 'number') v.stock = savedV.stock;
-                                if (typeof savedV.sold === 'number') v.sold = savedV.sold;
-                            }
-                        });
-                    }
-                });
+            if (!isProductsSyncedFromBackend) {
+                let freshLocalProds = JSON.parse(localStorage.getItem('mairua_products'));
+                if (Array.isArray(freshLocalProds)) {
+                    products.forEach(p => {
+                        let savedP = freshLocalProds.find(sp => sp.id === p.id);
+                        if (savedP && Array.isArray(savedP.variants)) {
+                            p.variants.forEach((v, idx) => {
+                                let savedV = savedP.variants.find(sv => sv.colorName === v.colorName) || savedP.variants[idx];
+                                if (savedV) {
+                                    if (typeof savedV.stock === 'number') v.stock = savedV.stock;
+                                    if (typeof savedV.sold === 'number') v.sold = savedV.sold;
+                                }
+                            });
+                        }
+                    });
+                }
             }
 
             let stockLedger = JSON.parse(localStorage.getItem('mairua_stockLedgerV2')) || {};
@@ -2443,6 +2446,21 @@
             }
                         }
                     }
+                    if (Array.isArray(data.variantStocks)) {
+                        data.variantStocks.forEach(vs => {
+                            let prod = products.find(p => p.id === vs.id);
+                            if (prod && Array.isArray(prod.variants) && Array.isArray(vs.v)) {
+                                vs.v.forEach((vItem, vIdx) => {
+                                    if (prod.variants[vIdx]) {
+                                        if (typeof vItem.s === 'number') prod.variants[vIdx].stock = vItem.s;
+                                        if (typeof vItem.d === 'number') prod.variants[vIdx].sold = vItem.d;
+                                    }
+                                });
+                            }
+                        });
+                        capNhatTongStockVaSoldSanPham();
+                        localStorage.setItem('mairua_products', JSON.stringify(products));
+                    }
                 }
                 capNhatGiaoDienTheoDuLieuMoi();
                 if (document.getElementById('view-detail').classList.contains('active') && currentOpenedProductId) { let p = products.find(x => x.id === currentOpenedProductId); if (p) veBangSizeVaDanhGiaChiTiet(p); }
@@ -2457,7 +2475,6 @@
         }
 
         function luuDuLieuLenDamMay() {
-            dongBoTonKhoChuanXac();
             capNhatTongStockVaSoldSanPham();
             localStorage.setItem('mairua_remoteOrdersList', JSON.stringify(remoteOrdersList));
             localStorage.setItem('mairua_products', JSON.stringify(products));
@@ -2472,10 +2489,18 @@
                 updatedAt: Date.now()
             };
 
+            // 1. Lưu dự phòng Cloud JSONBin
             fetch('/api/sync/cloud', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
+            }).catch(() => {});
+
+            // 2. Đồng bộ trực tiếp tồn kho lên Máy Chủ Cloud Backend
+            fetch('/api/products/sync-stocks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productsList: products })
             }).catch(() => {});
         }
 
@@ -5919,6 +5944,7 @@ async function taiSanPhamTuBackendAPI() {
             const json = await res.json();
             if (json.success && Array.isArray(json.data) && json.data.length > 0) {
                 console.log(`🏀 [REST API] Đã nạp thành công ${json.data.length} sản phẩm từ Backend!`);
+                isProductsSyncedFromBackend = true;
                 json.data.forEach(dbItem => {
                     let localItem = products.find(p => p.id === dbItem.id);
                     if (localItem) {
@@ -5945,6 +5971,8 @@ async function taiSanPhamTuBackendAPI() {
                 localStorage.setItem('mairua_stockLedgerV2', JSON.stringify(stockLedger));
 
                 renderHomeProducts();
+                renderAdminDashboard();
+                renderGiaoDienChuong();
                 if (document.getElementById('view-detail') && document.getElementById('view-detail').classList.contains('active') && currentOpenedProductId) {
                     let p = products.find(x => x.id === currentOpenedProductId);
                     if (p) {
@@ -5956,6 +5984,26 @@ async function taiSanPhamTuBackendAPI() {
         }
     } catch (e) {
         console.log('ℹ️ Kết nối Local fallback.');
+    }
+}
+
+// 1.1 Hàm bấm nút đẩy tồn kho máy này lên Máy Chủ Cloud để mọi máy khác đồng bộ
+async function dongBoTonKhoThuCong() {
+    let btn = document.getElementById('manualSyncStockBtn');
+    if (btn) btn.innerText = '⏳ Đang đồng bộ...';
+    try {
+        await fetch('/api/products/sync-stocks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productsList: products })
+        });
+        await taiSanPhamTuBackendAPI();
+        if (btn) btn.innerText = '✅ Đã đồng bộ kho!';
+        setTimeout(() => { if (btn) btn.innerText = '📦 Đồng Bộ Tồn Kho Đa Máy'; }, 3000);
+        alert('🎉 Đã đồng bộ tồn kho toàn hệ thống lên Máy Chủ Cloud thành công!\nMọi thiết bị khác (Điện thoại/Laptop) đều sẽ thấy cùng số tồn kho chính xác này.');
+    } catch(e) {
+        if (btn) btn.innerText = '❌ Lỗi đồng bộ';
+        alert('Lỗi đồng bộ: ' + e.message);
     }
 }
 
@@ -6006,6 +6054,14 @@ try {
         dongBoGioHangTuServer(currentCustomer.phone);
         dongBoDonHangTuBackend(currentCustomer.phone);
     }
+
+    // Tự động đồng bộ tồn kho mỗi 8 giây hoặc khi người dùng quay lại tab trình duyệt
+    window.addEventListener('focus', () => {
+        taiSanPhamTuBackendAPI();
+    });
+    setInterval(() => {
+        taiSanPhamTuBackendAPI();
+    }, 8000);
 } catch(e) {
     console.error('Lỗi khởi động kết nối backend:', e);
 }

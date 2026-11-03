@@ -792,7 +792,10 @@
         <div class="main-container">
             <h2 class="section-title">
                 <span>📦 Hệ Thống Quản Lý Đơn Hàng & Tồn Kho (Cloud Database)</span>
-                <button class="sync-indicator" id="cloudSyncStatusBtn" onclick="dongBoTuGoogleSheets(true)">🔄 Làm mới & Đồng bộ Google Sheets</button>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="sync-indicator" id="manualSyncStockBtn" style="background:#ff5500; color:#fff; border:none;" onclick="dongBoTonKhoThuCong()">📦 Đồng Bộ Tồn Kho Đa Máy</button>
+                    <button class="sync-indicator" id="cloudSyncStatusBtn" onclick="dongBoTuGoogleSheets(true)">🔄 Làm mới & Đồng bộ Google Sheets</button>
+                </div>
             </h2>
 
             <div id="customerOrderHistoryView" style="display: none; margin-bottom: 30px;">
@@ -1219,6 +1222,6 @@
         </div>
     </footer>
 
-    <script src="app.js?v=5.0"></script>
+    <script src="app.js?v=6.0"></script>
 </body>
 </html>

@@ -170,6 +170,56 @@ app.get('/api/products', async (req, res) => {
 });
 
 /**
+ * POST /api/products/sync-stocks
+ * Đồng bộ toàn bộ tồn kho giữa các thiết bị (Laptop, Điện thoại) lên Server Cloud
+ */
+app.post('/api/products/sync-stocks', (req, res) => {
+    try {
+        const { productsList, variantStocks } = req.body;
+        if (Array.isArray(productsList) && productsList.length > 0) {
+            productsList.forEach(p => {
+                const prod = fallbackProducts.find(fp => fp.id === p.id);
+                if (prod && Array.isArray(p.variants)) {
+                    p.variants.forEach((v, vIdx) => {
+                        if (prod.variants[vIdx]) {
+                            if (typeof v.stock === 'number') prod.variants[vIdx].stock = v.stock;
+                            if (typeof v.sold === 'number') prod.variants[vIdx].sold = v.sold;
+                        }
+                    });
+                    prod.stock = prod.variants.reduce((s, vr) => s + (vr.stock || 0), 0);
+                    prod.sold = prod.variants.reduce((s, vr) => s + (vr.sold || 0), 0);
+                }
+            });
+        } else if (Array.isArray(variantStocks)) {
+            variantStocks.forEach(vs => {
+                const prod = fallbackProducts.find(fp => fp.id === vs.id);
+                if (prod && Array.isArray(prod.variants) && Array.isArray(vs.v)) {
+                    vs.v.forEach((vItem, vIdx) => {
+                        if (prod.variants[vIdx]) {
+                            if (typeof vItem.s === 'number') prod.variants[vIdx].stock = vItem.s;
+                            if (typeof vItem.d === 'number') prod.variants[vIdx].sold = vItem.d;
+                        }
+                    });
+                    prod.stock = prod.variants.reduce((s, vr) => s + (vr.stock || 0), 0);
+                    prod.sold = prod.variants.reduce((s, vr) => s + (vr.sold || 0), 0);
+                }
+            });
+        }
+
+        // Lưu bản sao dự phòng xuống file nếu môi trường cho phép
+        try {
+            const fs = require('fs');
+            fs.writeFileSync('./products_seed.json', JSON.stringify(fallbackProducts, null, 2));
+        } catch(e) {}
+
+        res.json({ success: true, message: 'Đã đồng bộ tồn kho thành công lên Máy Chủ Cloud!', count: fallbackProducts.length });
+    } catch (err) {
+        console.error('Lỗi POST /api/products/sync-stocks:', err);
+        res.status(500).json({ success: false, message: 'Lỗi đồng bộ tồn kho', error: err.message });
+    }
+});
+
+/**
  * POST /api/admin/restock
  * Tính năng "AI Nhập Hàng Tự Động"
  */
