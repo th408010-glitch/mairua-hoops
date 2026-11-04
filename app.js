@@ -3409,6 +3409,7 @@
                         <div class="ai-product-card-title">${p.name}</div>
                         <div class="ai-product-card-tag">Áo đấu · ${v.colorName || 'Tiêu chuẩn'}</div>
                     </div>
+                    <div class="ai-product-card-check">✓</div>
                 </div>`;
             }).join('');
 
@@ -3422,6 +3423,7 @@
                         <div class="ai-product-card-title">${p.name}</div>
                         <div class="ai-product-card-tag">Balo · ${v.colorName || 'Chính hãng'}</div>
                     </div>
+                    <div class="ai-product-card-check">✓</div>
                 </div>`;
             }).join('');
 
