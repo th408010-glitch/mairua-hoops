@@ -301,36 +301,46 @@
 
                     <!-- BỘ CHỌN MÀU DUY NHẤT (MASTER UNIFIED COLOR CONTROL) -->
                     <div class="studio-unified-color-card">
-                        <div class="studio-label-title" style="margin-top:0;">BỘ ĐIỀU KHIỂN MÀU (CHỌN BỘ PHẬN)</div>
-                        <div class="studio-part-selector" id="studioColorPartSelector">
-                            <button type="button" class="studio-part-btn active" data-part="base" onclick="setStudioColorTarget('base')">Phôi áo</button>
-                            <button type="button" class="studio-part-btn" data-part="trim" onclick="setStudioColorTarget('trim')">Viền áo</button>
-                            <button type="button" class="studio-part-btn" data-part="fill" onclick="setStudioColorTarget('fill')">Màu chữ</button>
-                            <button type="button" class="studio-part-btn" data-part="stroke" onclick="setStudioColorTarget('stroke')">Viền chữ</button>
-                            <button type="button" class="studio-part-btn" data-part="shorts" onclick="setStudioColorTarget('shorts')">Phôi quần</button>
-                            <button type="button" class="studio-part-btn" data-part="shortsTrim" onclick="setStudioColorTarget('shortsTrim')">Line quần</button>
+                        <!-- CHỌN BỘ PHẬN GỌN GÀNG DẠNG SELECT -->
+                        <div class="studio-part-selector-wrap" style="margin-bottom: 12px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <span class="studio-label-title" style="margin:0;">CHỌN BỘ PHẬN ĐỔI MÀU:</span>
+                                <span id="studioActivePartBadge" style="font-size:11px; font-weight:800; color:#ff5500; background:#fff7ed; padding:2px 8px; border-radius:4px; border:1px solid #fed7aa;">Phôi áo</span>
+                            </div>
+                            <select id="studioPartSelect" class="studio-part-select" onchange="setStudioColorTarget(this.value)">
+                                <option value="base" selected>👕 Phôi áo</option>
+                                <option value="trim">🧵 Viền cổ & tay áo</option>
+                                <option value="fill">🔤 Màu chữ & số</option>
+                                <option value="stroke">✨ Viền chữ & số</option>
+                                <option value="shorts">🩳 Phôi quần</option>
+                                <option value="shortsTrim">⚡ Line viền quần</option>
+                            </select>
                         </div>
 
+                        <!-- BẢNG MÀU TỰ DO INLINE (HIỆN TRỰC TIẾP, KHÔNG BẮT BẤM MỚI MỞ) -->
                         <div class="studio-color-panel">
-                            <div class="studio-color-picker-row">
-                                <label class="color-picker-custom-label">
-                                    <input type="color" id="studioMasterColorPicker" value="#6d28d9" oninput="applyMasterColor(this.value, this.value)">
-                                    <span class="color-wheel-icon">🎨</span>
-                                    <span>Vòng chọn màu tự do</span>
-                                </label>
-                                <div class="hex-input-wrap">
-                                    <span>HEX:</span>
-                                    <input type="text" id="studioMasterHexInput" value="#6D28D9" maxlength="7" onchange="applyMasterColor(this.value, this.value)">
+                            <div class="inline-color-picker-box">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <span style="font-size: 11.5px; font-weight: 700; color: #475569;">Bảng màu tự do (Chạm hoặc kéo rê trực tiếp):</span>
+                                    <span id="currentChosenColorPreview" style="display:inline-block; width:20px; height:20px; border-radius:4px; border:1.5px solid #cbd5e1; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.15);"></span>
                                 </div>
+                                <div class="spectrum-canvas-container" style="position:relative; width:100%; border-radius:8px; overflow:hidden; border:1.5px solid #cbd5e1; cursor:crosshair; touch-action:none;">
+                                    <canvas id="studioSpectrumCanvas" style="display:block; width:100%; height:50px;"></canvas>
+                                    <div id="spectrumPin" style="position:absolute; top:50%; left:12px; width:14px; height:14px; border-radius:50%; border:2px solid #000000; box-shadow:0 0 4px rgba(0,0,0,0.6); transform:translate(-50%, -50%); pointer-events:none;"></div>
+                                </div>
+                                <!-- Input ẩn phục vụ tương thích -->
+                                <input type="color" id="studioMasterColorPicker" value="#ffffff" style="display:none;" oninput="applyMasterColor(this.value, this.value)">
+                                <input type="hidden" id="studioMasterHexInput" value="#FFFFFF">
                                 <button type="button" id="btnStrokeNoneUnified" class="stroke-none-pill" style="display:none;" onclick="applyMasterColor('', 'Không')">Không viền</button>
                             </div>
 
-                            <div class="quick-palette-label">Màu thể thao cơ bản:</div>
+                            <!-- MÀU THỂ THAO CƠ BẢN BẤM NHANH -->
+                            <div class="quick-palette-label" style="margin-top:12px; margin-bottom:6px; font-size:11.5px; font-weight:700; color:#64748b;">Màu thể thao cơ bản:</div>
                             <div class="quick-palette-swatches">
-                                <span class="swatch-circle-sm" style="background:#ffffff; border:1px solid #ccc;" title="Trắng" onclick="applyMasterColor('#ffffff', 'Trắng')"></span>
+                                <span class="swatch-circle-sm" style="background:#ffffff; border:1.5px solid #ccc;" title="Trắng" onclick="applyMasterColor('#ffffff', 'Trắng')"></span>
                                 <span class="swatch-circle-sm" style="background:#111111;" title="Đen" onclick="applyMasterColor('#111111', 'Đen')"></span>
                                 <span class="swatch-circle-sm" style="background:#dc2626;" title="Đỏ tươi" onclick="applyMasterColor('#dc2626', 'Đỏ tươi')"></span>
-                                <span class="swatch-circle-sm" style="background:#ea550c;" title="Cam" onclick="applyMasterColor('#ea550c', 'Cam')"></span>
+                                <span class="swatch-circle-sm" style="background:#ff5500;" title="Cam" onclick="applyMasterColor('#ff5500', 'Cam')"></span>
                                 <span class="swatch-circle-sm" style="background:#eab308;" title="Vàng Gold" onclick="applyMasterColor('#eab308', 'Vàng Gold')"></span>
                                 <span class="swatch-circle-sm" style="background:#16a34a;" title="Xanh lá" onclick="applyMasterColor('#16a34a', 'Xanh lá')"></span>
                                 <span class="swatch-circle-sm" style="background:#1e3a8a;" title="Xanh Navy" onclick="applyMasterColor('#1e3a8a', 'Xanh Navy')"></span>

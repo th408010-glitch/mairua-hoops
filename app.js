@@ -70,7 +70,7 @@
                 { colorName: 'Lệch Trái - Trắng', baseColor: 'Trắng', cutStyle: 'Lệch Trái', hex: '#ffffff', stock: 4, sold: 3, img: 'https://dothethao.net.vn/wp-content/uploads/2024/01/quan-trang-dai-phai-ngan-phai.jpg' }
             ]},
             { id: 22, cat: 'ao', isJerseyBlank: true, name: 'Phôi Áo Jersey Custom (Đủ Size S - 2XL)', price: 200000, hasSize: true, sizes: ['S', 'M', 'L', 'XL', '2XL'], variants: [
-                { colorName: 'Phôi Tiêu Chuẩn', hex: '#6d28d9', stock: 44, sold: 116, img: 'https://thumbs.dreamstime.com/b/blue-basketball-jersey-template-isolated-white-background-sport-team-club-uniform-features-front-back-views-sleeveless-tank-top-420728673.jpg' }
+                { colorName: 'Phôi Tiêu Chuẩn', hex: '#ffffff', stock: 44, sold: 116, img: 'https://thumbs.dreamstime.com/b/blue-basketball-jersey-template-isolated-white-background-sport-team-club-uniform-features-front-back-views-sleeveless-tank-top-420728673.jpg' }
             ]},
             // 6 MẪU QUẦN BÓNG RỔ GOM CHUNG VÀO MỤC ÁO JERSEY ('ao')
             { id: 23, cat: 'ao', isShorts: true, name: 'Quần Bóng Rổ Swingman USA Olympic 2024', price: 210000, hasSize: true, sizes: ['S', 'M', 'L', 'XL', '2XL'], variants: [
@@ -625,9 +625,9 @@
         ];
 
         let jerseyStudioState = {
-            baseColorHex: '#6d28d9', baseColorName: 'Tím', baseStrokeHex: '#4c1d95',
-            trimColorHex: '#eab308', trimColorName: 'Vàng gold',
-            fillColorHex: '#eab308', fillColorName: 'Vàng gold',
+            baseColorHex: '#ffffff', baseColorName: 'Trắng', baseStrokeHex: '#e2e8f0',
+            trimColorHex: '#111827', trimColorName: 'Đen',
+            fillColorHex: '#111827', fillColorName: 'Đen',
             strokeColorHex: '#ffffff', strokeColorName: 'Trắng',
             fontFamily: "'Bebas Neue', sans-serif", fontLabel: 'Bebas Neue',
             viewSide: 'back',
@@ -635,8 +635,8 @@
             scales: { frontNum: 96, backNum: 108, backName: 32, teamName: 26 },
             basePrice: 200000,
             mode: 'jersey',
-            shortsColorHex: '#6d28d9', shortsColorName: 'Tím', shortsColorCustom: false,
-            shortsTrimHex: '#eab308', shortsTrimName: 'Vàng gold', shortsTrimCustom: false,
+            shortsColorHex: '#ffffff', shortsColorName: 'Trắng', shortsColorCustom: false,
+            shortsTrimHex: '#111827', shortsTrimName: 'Đen', shortsTrimCustom: false,
             shortsNumSize: 46
         };
         const SHORTS_ONLY_BASE_PRICE = 150000;   // Phôi quần bán lẻ
@@ -4168,6 +4168,7 @@ Câu hỏi của khách: "${rawQ}"`;
                 renderBangMauJerseyStudio();
                 updateJerseyPreview();
                 capNhatTrangThaiNutCustom();
+                setTimeout(initStudioSpectrumCanvas, 50);
             } else if (tabName === 'roster') {
                 document.getElementById('view-roster').classList.add('active');
                 let navR = document.getElementById('nav-roster');
@@ -5388,7 +5389,7 @@ Câu hỏi của khách: "${rawQ}"`;
             updateJerseyPreview();
         }
 
-        // BỘ CHỌN MÀU THIẾT KẾ ĐA NĂNG (GOM GỌN PHÔI, VIỀN, CHỮ, SỐ, QUẦN)
+        // BỘ CHỌN MÀU THIẾT KẾ ĐA NĂNG (GOM GỌN SELECT + BẢNG MÀU QUANG PHỔ INLINE)
         let currentStudioColorTarget = 'base';
         const studioPartLabels = {
             'base': 'Phôi áo',
@@ -5401,38 +5402,42 @@ Câu hỏi của khách: "${rawQ}"`;
 
         window.setStudioColorTarget = function(part) {
             currentStudioColorTarget = part;
+            let selectEl = document.getElementById('studioPartSelect');
+            if (selectEl && selectEl.value !== part) selectEl.value = part;
+
+            let badge = document.getElementById('studioActivePartBadge');
+            if (badge) badge.innerText = studioPartLabels[part] || part;
+
             document.querySelectorAll('.studio-part-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.getAttribute('data-part') === part);
             });
-            let label = document.getElementById('studioActivePartLabel');
-            if (label) label.innerText = `Đang chỉnh: ${studioPartLabels[part] || part}`;
 
             let curHex = '#ffffff';
             if (part === 'base') curHex = jerseyStudioState.baseColorHex || '#ffffff';
-            else if (part === 'trim') curHex = jerseyStudioState.trimColorHex || '#000000';
-            else if (part === 'fill') curHex = jerseyStudioState.fillColorHex || '#ffffff';
-            else if (part === 'stroke') curHex = jerseyStudioState.strokeColorHex || '#ff5500';
+            else if (part === 'trim') curHex = jerseyStudioState.trimColorHex || '#111827';
+            else if (part === 'fill') curHex = jerseyStudioState.fillColorHex || '#111827';
+            else if (part === 'stroke') curHex = jerseyStudioState.strokeColorHex || '#ffffff';
             else if (part === 'shorts') curHex = jerseyStudioState.shortsColorHex || '#ffffff';
-            else if (part === 'shortsTrim') curHex = jerseyStudioState.shortsTrimHex || '#ff5500';
+            else if (part === 'shortsTrim') curHex = jerseyStudioState.shortsTrimHex || '#111827';
 
             let picker = document.getElementById('studioMasterColorPicker');
-            let disc = document.getElementById('studioColorPickerDisc');
             let hexInp = document.getElementById('studioMasterHexInput');
+            let preview = document.getElementById('currentChosenColorPreview');
             if (picker) picker.value = curHex;
-            if (disc) disc.style.backgroundColor = curHex;
             if (hexInp) hexInp.value = curHex.toUpperCase();
+            if (preview) preview.style.backgroundColor = curHex;
         };
 
         window.applyMasterColor = function(hex, name) {
             if (!hex) return;
             if (!hex.startsWith('#')) hex = '#' + hex;
 
-            let disc = document.getElementById('studioColorPickerDisc');
-            let hexInp = document.getElementById('studioMasterHexInput');
             let picker = document.getElementById('studioMasterColorPicker');
-            if (disc) disc.style.backgroundColor = hex;
-            if (hexInp && hexInp.value !== hex.toUpperCase()) hexInp.value = hex.toUpperCase();
+            let hexInp = document.getElementById('studioMasterHexInput');
+            let preview = document.getElementById('currentChosenColorPreview');
             if (picker && picker.value !== hex) picker.value = hex;
+            if (hexInp && hexInp.value !== hex.toUpperCase()) hexInp.value = hex.toUpperCase();
+            if (preview) preview.style.backgroundColor = hex;
 
             let colorName = name || 'Màu tùy chọn';
             if (currentStudioColorTarget === 'base') {
@@ -5448,6 +5453,76 @@ Câu hỏi của khách: "${rawQ}"`;
             } else if (currentStudioColorTarget === 'shortsTrim') {
                 chonMauLineQuan(hex, colorName);
             }
+        };
+
+        // KHỞI TẠO BẢNG MÀU QUANG PHỔ INLINE (CHẠM / KÉO RÊ TRỰC TIẾP KHÔNG CẦN POPUP)
+        window.initStudioSpectrumCanvas = function() {
+            let canvas = document.getElementById('studioSpectrumCanvas');
+            if (!canvas) return;
+            let container = canvas.parentElement;
+            let width = container ? container.clientWidth : 320;
+            if (width < 100) width = 320;
+            let height = 50;
+            canvas.width = width;
+            canvas.height = height;
+            let ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (!ctx) return;
+
+            // 1. Dải màu cầu vồng đa sắc ngang (Bắt đầu từ Trắng, đủ các sắc tố, kết thúc ở Đen)
+            let hueGrad = ctx.createLinearGradient(0, 0, width, 0);
+            hueGrad.addColorStop(0, '#ffffff');
+            hueGrad.addColorStop(0.06, '#ff0000');
+            hueGrad.addColorStop(0.18, '#ff7700');
+            hueGrad.addColorStop(0.30, '#ffff00');
+            hueGrad.addColorStop(0.44, '#00e600');
+            hueGrad.addColorStop(0.58, '#00e5ff');
+            hueGrad.addColorStop(0.72, '#0044ff');
+            hueGrad.addColorStop(0.85, '#a600ff');
+            hueGrad.addColorStop(0.94, '#ff0099');
+            hueGrad.addColorStop(1, '#000000');
+            ctx.fillStyle = hueGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            // 2. Lớp chuyển sắc chiều dọc (Trên sáng nhẹ pastel, Dưới bóng đậm)
+            let shadeGrad = ctx.createLinearGradient(0, 0, 0, height);
+            shadeGrad.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
+            shadeGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0)');
+            shadeGrad.addColorStop(0.55, 'rgba(0, 0, 0, 0)');
+            shadeGrad.addColorStop(1, 'rgba(0, 0, 0, 0.85)');
+            ctx.fillStyle = shadeGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            function layMauTuToaDo(e) {
+                let rect = canvas.getBoundingClientRect();
+                let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                let x = Math.max(0, Math.min(width - 1, (clientX - rect.left) * (canvas.width / rect.width)));
+                let y = Math.max(0, Math.min(height - 1, (clientY - rect.top) * (canvas.height / rect.height)));
+
+                let pixel = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+                let r = pixel[0].toString(16).padStart(2, '0');
+                let g = pixel[1].toString(16).padStart(2, '0');
+                let b = pixel[2].toString(16).padStart(2, '0');
+                let hex = `#${r}${g}${b}`;
+
+                let pin = document.getElementById('spectrumPin');
+                if (pin) {
+                    pin.style.left = (clientX - rect.left) + 'px';
+                    pin.style.top = (clientY - rect.top) + 'px';
+                    let brightness = (pixel[0] * 0.299 + pixel[1] * 0.587 + pixel[2] * 0.114);
+                    pin.style.borderColor = brightness > 140 ? '#000000' : '#ffffff';
+                }
+                applyMasterColor(hex, 'Màu tự do');
+            }
+
+            let isDragging = false;
+            canvas.onmousedown = function(e) { isDragging = true; layMauTuToaDo(e); };
+            window.addEventListener('mousemove', function(e) { if (isDragging) layMauTuToaDo(e); });
+            window.addEventListener('mouseup', function() { isDragging = false; });
+
+            canvas.ontouchstart = function(e) { isDragging = true; layMauTuToaDo(e); if (e.cancelable) e.preventDefault(); };
+            canvas.ontouchmove = function(e) { if (isDragging) { layMauTuToaDo(e); if (e.cancelable) e.preventDefault(); } };
+            canvas.ontouchend = function() { isDragging = false; };
         };
 
         function chonMauPhoiJersey(hex, name, strokeHex) {
@@ -5568,16 +5643,18 @@ Câu hỏi của khách: "${rawQ}"`;
             let svgBody = document.getElementById('jerseySvgBody');
             if (svgBody) {
                 svgBody.setAttribute('fill', jerseyStudioState.baseColorHex);
-                svgBody.setAttribute('stroke', 'none');
+                let isWhiteBase = (jerseyStudioState.baseColorHex.toLowerCase() === '#ffffff' || jerseyStudioState.baseColorHex.toLowerCase() === '#fff');
+                svgBody.setAttribute('stroke', isWhiteBase ? '#cbd5e1' : 'none');
+                svgBody.setAttribute('stroke-width', isWhiteBase ? '1.5' : '0');
                 let sideL = document.getElementById('jerseySvgSideLeft');
                 let sideR = document.getElementById('jerseySvgSideRight');
-                let trimHexSide = jerseyStudioState.trimColorHex || '#eab308';
+                let trimHexSide = jerseyStudioState.trimColorHex || '#111827';
                 if (sideL) sideL.setAttribute('stroke', trimHexSide);
                 if (sideR) sideR.setAttribute('stroke', trimHexSide);
                 let colEl = document.getElementById('jerseySvgCollar');
                 let armL = document.getElementById('jerseySvgArmLeft');
                 let armR = document.getElementById('jerseySvgArmRight');
-                let trimHex = jerseyStudioState.trimColorHex || '#eab308';
+                let trimHex = jerseyStudioState.trimColorHex || '#111827';
                 if (colEl) colEl.setAttribute('stroke', trimHex);
                 if (armL) armL.setAttribute('stroke', trimHex);
                 if (armR) armR.setAttribute('stroke', trimHex);
@@ -6368,6 +6445,7 @@ try {
     khoiTaoDualRangeEvents();
     capNhatNhanGiaLoc('max');
     taiSanPhamTuBackendAPI();
+    setTimeout(initStudioSpectrumCanvas, 300);
     if (currentCustomer && currentCustomer.loggedIn && currentCustomer.phone) {
         dongBoGioHangTuServer(currentCustomer.phone);
         dongBoDonHangTuBackend(currentCustomer.phone);

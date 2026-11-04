@@ -264,9 +264,11 @@
             padding: 10px 28px; 
             display: flex; 
             gap: 22px; 
-            overflow-x: auto; 
+            overflow: visible; 
             border-bottom: 2px solid rgba(255, 85, 0, 0.4); 
             scrollbar-width: none;
+            position: relative;
+            z-index: 100;
         }
         .sub-nav::-webkit-scrollbar { display: none; }
         .sub-nav a { 
@@ -2003,7 +2005,7 @@
 }
 
 /* ==========================================================
-   SUB-NAV DROPDOWN GROUPS
+   SUB-NAV DROPDOWN GROUPS (SỔ DỌC GỌN GÀNG, KHÔNG CHE MENU)
    ========================================================== */
 .nav-dropdown-group {
     position: relative;
@@ -2018,9 +2020,10 @@
     padding: 10px 14px;
     font-size: 13px;
     font-weight: 700;
-    color: #475569;
+    color: #94a3b8;
     text-decoration: none;
     transition: color 0.2s;
+    user-select: none;
 }
 .nav-dropdown-trigger:hover,
 .nav-dropdown-trigger.active {
@@ -2038,33 +2041,50 @@
     position: absolute;
     top: 100%;
     left: 0;
-    min-width: 210px;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-    padding: 6px 0;
+    z-index: 1000;
     display: none;
-    z-index: 999;
+    flex-direction: column !important;
+    background: #111827 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    min-width: 220px;
+    padding: 6px 0;
+    margin-top: 2px;
 }
 .nav-dropdown-group:hover .nav-dropdown-menu {
-    display: block;
+    display: flex !important;
+    flex-direction: column !important;
     animation: fadeInDown 0.2s ease-out;
 }
-.nav-dropdown-menu a {
-    display: block;
-    padding: 9px 16px;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: #334155;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+.sub-nav .nav-dropdown-menu a {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 10px 16px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #cbd5e1 !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    text-align: left !important;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: transparent !important;
+    transition: background 0.15s, color 0.15s !important;
 }
-.nav-dropdown-menu a:hover,
-.nav-dropdown-menu a.active {
-    background: #fff7ed;
-    color: var(--brand-orange, #ff5500);
+.sub-nav .nav-dropdown-menu a::after {
+    display: none !important;
+}
+.sub-nav .nav-dropdown-menu a:last-child {
+    border-bottom: none;
+}
+.sub-nav .nav-dropdown-menu a:hover,
+.sub-nav .nav-dropdown-menu a.active {
+    background: rgba(255, 85, 0, 0.18) !important;
+    color: var(--brand-orange, #ff5500) !important;
 }
 
 /* ==========================================================
@@ -2111,61 +2131,27 @@
     background: #ffffff;
     border: 1.5px solid #e2e8f0;
     border-radius: 14px;
-    padding: 18px;
+    padding: 16px;
     margin-bottom: 20px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
-.studio-color-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-.studio-color-card-title {
-    font-size: 13px;
-    font-weight: 800;
-    color: #0f172a;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-}
-.studio-color-active-label {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--brand-orange, #ff5500);
-    background: #fff7ed;
-    padding: 3px 10px;
-    border-radius: 999px;
-    border: 1px solid #fed7aa;
-}
-.studio-part-selector {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-}
-.studio-part-btn {
-    padding: 7px 14px;
-    border-radius: 8px;
-    border: 1px solid #cbd5e1;
+.studio-part-select {
+    width: 100%;
+    padding: 10px 14px;
     background: #f8fafc;
-    color: #475569;
-    font-size: 12px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 13.5px;
     font-weight: 700;
+    color: #0f172a;
     cursor: pointer;
-    transition: all 0.15s ease;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
     font-family: inherit;
 }
-.studio-part-btn:hover {
-    border-color: #94a3b8;
-    background: #f1f5f9;
-}
-.studio-part-btn.active {
-    background: var(--brand-orange, #ff5500);
+.studio-part-select:focus {
     border-color: var(--brand-orange, #ff5500);
-    color: #ffffff;
-    box-shadow: 0 3px 8px rgba(255, 85, 0, 0.3);
+    box-shadow: 0 0 0 3px rgba(255, 85, 0, 0.15);
 }
 .studio-color-panel {
     background: #f8fafc;
@@ -2173,56 +2159,27 @@
     border-radius: 10px;
     padding: 14px;
 }
-.studio-color-picker-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 14px;
-    padding-bottom: 12px;
-    border-bottom: 1px dashed #e2e8f0;
+.inline-color-picker-box {
+    margin-bottom: 8px;
 }
-.color-picker-custom-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
+.spectrum-canvas-container {
+    position: relative;
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1.5px solid #cbd5e1;
+    cursor: crosshair;
+    user-select: none;
+    -webkit-user-select: none;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
 }
-.color-picker-custom-label input[type="color"] {
-    display: none;
+.spectrum-canvas-container:hover {
+    border-color: var(--brand-orange, #ff5500);
 }
-.color-picker-disc {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 2px solid #ffffff;
-    box-shadow: 0 0 0 1.5px #cbd5e1, 0 2px 6px rgba(0,0,0,0.12);
-    display: inline-block;
-}
-.color-picker-text {
-    font-size: 12.5px;
-    font-weight: 700;
-    color: #1e293b;
-}
-.studio-hex-input-wrap {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #64748b;
-}
-.studio-hex-input-wrap input {
-    width: 85px;
-    padding: 5px 8px;
-    border-radius: 6px;
-    border: 1px solid #cbd5e1;
-    font-size: 12px;
-    font-family: monospace;
-    font-weight: 700;
-    color: #0f172a;
-    text-transform: uppercase;
+#studioSpectrumCanvas {
+    display: block;
+    width: 100%;
+    height: 50px;
 }
 .quick-palette-swatches {
     display: flex;
