@@ -667,6 +667,9 @@
             height: 40px; 
             overflow: hidden; 
             line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
             cursor: pointer;
             transition: color 0.15s;
         }
@@ -1887,4 +1890,410 @@
     .no-print {
         display: none !important;
     }
+}
+
+/* ==========================================================
+   REFRESHED ATHLETIC STREETWEAR UI (NIKE / GOAT INSPIRED)
+   USER PROFILE DROPDOWN & ADMIN SUBTLE BADGE
+   ========================================================== */
+.user-menu-wrapper {
+    position: relative;
+    display: inline-block;
+}
+.user-avatar-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--brand-orange, #ff5500);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    margin-right: 4px;
+}
+.dropdown-caret {
+    margin-left: 4px;
+    font-size: 11px;
+    color: #94a3b8;
+    transition: transform 0.2s;
+}
+.user-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 250px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+    padding: 8px 0;
+    display: none;
+    z-index: 1000;
+    animation: fadeInDown 0.2s ease-out;
+}
+.user-dropdown-menu.active {
+    display: block;
+}
+.user-dropdown-head {
+    padding: 10px 16px 8px 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.udh-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.udh-phone {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 2px;
+}
+.user-dropdown-divider {
+    height: 1px;
+    background: #f1f5f9;
+    margin: 6px 0;
+}
+.user-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.user-dropdown-item:hover {
+    background: #f8fafc;
+    color: var(--brand-orange, #ff5500);
+}
+.user-dropdown-item.item-danger {
+    color: #dc2626;
+}
+.user-dropdown-item.item-danger:hover {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+.admin-badge-subtle {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    color: #ff5500;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    border: 1px solid rgba(255, 85, 0, 0.4);
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+}
+.admin-badge-subtle:hover {
+    border-color: #ff5500;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 85, 0, 0.25);
+}
+
+/* ==========================================================
+   SUB-NAV DROPDOWN GROUPS
+   ========================================================== */
+.nav-dropdown-group {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+.nav-dropdown-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #475569;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+.nav-dropdown-trigger:hover,
+.nav-dropdown-trigger.active {
+    color: var(--brand-orange, #ff5500);
+}
+.nav-arrow {
+    font-size: 10px;
+    color: #94a3b8;
+    transition: transform 0.2s;
+}
+.nav-dropdown-group:hover .nav-arrow {
+    transform: rotate(180deg);
+}
+.nav-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 210px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    padding: 6px 0;
+    display: none;
+    z-index: 999;
+}
+.nav-dropdown-group:hover .nav-dropdown-menu {
+    display: block;
+    animation: fadeInDown 0.2s ease-out;
+}
+.nav-dropdown-menu a {
+    display: block;
+    padding: 9px 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #334155;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.nav-dropdown-menu a:hover,
+.nav-dropdown-menu a.active {
+    background: #fff7ed;
+    color: var(--brand-orange, #ff5500);
+}
+
+/* ==========================================================
+   CUSTOM STUDIO UNIFIED TABS BAR
+   ========================================================== */
+.custom-studio-tabs-bar {
+    display: flex;
+    gap: 8px;
+    padding: 6px;
+    background: #f1f5f9;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    border: 1px solid #e2e8f0;
+    max-width: 600px;
+}
+.cs-tab-btn {
+    flex: 1;
+    padding: 10px 14px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    text-align: center;
+}
+.cs-tab-btn:hover {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.5);
+}
+.cs-tab-btn.active {
+    background: #0f172a;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
+
+/* ==========================================================
+   STUDIO MASTER UNIFIED COLOR CARD
+   ========================================================== */
+.studio-unified-color-card {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+.studio-color-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.studio-color-card-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+.studio-color-active-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brand-orange, #ff5500);
+    background: #fff7ed;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid #fed7aa;
+}
+.studio-part-selector {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+.studio-part-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+}
+.studio-part-btn:hover {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+}
+.studio-part-btn.active {
+    background: var(--brand-orange, #ff5500);
+    border-color: var(--brand-orange, #ff5500);
+    color: #ffffff;
+    box-shadow: 0 3px 8px rgba(255, 85, 0, 0.3);
+}
+.studio-color-panel {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px;
+}
+.studio-color-picker-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed #e2e8f0;
+}
+.color-picker-custom-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+.color-picker-custom-label input[type="color"] {
+    display: none;
+}
+.color-picker-disc {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 0 1.5px #cbd5e1, 0 2px 6px rgba(0,0,0,0.12);
+    display: inline-block;
+}
+.color-picker-text {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #1e293b;
+}
+.studio-hex-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+.studio-hex-input-wrap input {
+    width: 85px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    font-size: 12px;
+    font-family: monospace;
+    font-weight: 700;
+    color: #0f172a;
+    text-transform: uppercase;
+}
+.quick-palette-swatches {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.quick-palette-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+.quick-swatches-grid {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.quick-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1.5px solid #cbd5e1;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.quick-swatch:hover {
+    transform: scale(1.2);
+    border-color: var(--brand-orange, #ff5500);
+}
+
+/* ==========================================================
+   ADMIN DASHBOARD SUB-TABS
+   ========================================================== */
+.admin-subtabs-nav {
+    display: flex;
+    gap: 8px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.admin-subtab-btn {
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+.admin-subtab-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+.admin-subtab-btn.active {
+    background: #0f172a;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
+.admin-tab-content {
+    animation: fadeIn 0.25s ease-out;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
 }

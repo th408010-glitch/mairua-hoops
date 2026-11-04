@@ -575,7 +575,7 @@
     "id": 22,
     "cat": "ao",
     "isJerseyBlank": true,
-    "name": "Phôi Áo Jersey Custom Teamwear (Đủ Màu Phôi)",
+    "name": "Phôi Áo Jersey Custom (Đủ Size S - 2XL)",
     "price": 200000,
     "hasSize": true,
     "sizes": [
@@ -587,46 +587,11 @@
     ],
     "variants": [
       {
-        "colorName": "Tím",
+        "colorName": "Phôi Tiêu Chuẩn",
         "hex": "#6d28d9",
-        "stock": 12,
-        "sold": 24,
+        "stock": 44,
+        "sold": 116,
         "img": "https://thumbs.dreamstime.com/b/blue-basketball-jersey-template-isolated-white-background-sport-team-club-uniform-features-front-back-views-sleeveless-tank-top-420728673.jpg"
-      },
-      {
-        "colorName": "Trắng",
-        "hex": "#f8fafc",
-        "stock": 10,
-        "sold": 15,
-        "img": "https://thumbs.dreamstime.com/b/blue-basketball-jersey-template-isolated-white-background-sport-team-club-uniform-features-front-back-views-sleeveless-tank-top-420728673.jpg"
-      },
-      {
-        "colorName": "Đen",
-        "hex": "#18181b",
-        "stock": 5,
-        "sold": 30,
-        "img": "https://i.pinimg.com/736x/f9/eb/df/f9ebdf7f2a1a8c348bc88006dd73ce2a.jpg"
-      },
-      {
-        "colorName": "Đỏ",
-        "hex": "#b91c1c",
-        "stock": 4,
-        "sold": 19,
-        "img": "https://m.media-amazon.com/images/I/41BzY7QxcTL._SL500_.jpg"
-      },
-      {
-        "colorName": "Xanh Navy",
-        "hex": "#1e3a8a",
-        "stock": 8,
-        "sold": 17,
-        "img": "https://thumbs.dreamstime.com/b/blue-basketball-jersey-template-isolated-white-background-sport-team-club-uniform-features-front-back-views-sleeveless-tank-top-420728673.jpg"
-      },
-      {
-        "colorName": "Xanh lá",
-        "hex": "#15803d",
-        "stock": 5,
-        "sold": 11,
-        "img": "https://tse3.mm.bing.net/th/id/OIP.Q-q0VD7TOh-DbTymk-3nIwHaFj?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
       }
     ]
   },

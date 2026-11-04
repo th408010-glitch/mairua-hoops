@@ -69,13 +69,8 @@
                 { colorName: 'Lệch Phải - Trắng', baseColor: 'Trắng', cutStyle: 'Lệch Phải', hex: '#ffffff', stock: 5, sold: 14, img: 'https://dothethao.net.vn/wp-content/uploads/2024/01/quan-trang-dai-phai-ngan-phai.jpg' },
                 { colorName: 'Lệch Trái - Trắng', baseColor: 'Trắng', cutStyle: 'Lệch Trái', hex: '#ffffff', stock: 4, sold: 3, img: 'https://dothethao.net.vn/wp-content/uploads/2024/01/quan-trang-dai-phai-ngan-phai.jpg' }
             ]},
-            { id: 22, cat: 'ao', isJerseyBlank: true, name: 'Phôi Áo Jersey Custom Teamwear (Đủ Màu Phôi)', price: 200000, hasSize: true, sizes: ['S', 'M', 'L', 'XL', '2XL'], variants: [
-                { colorName: 'Tím', hex: '#6d28d9', stock: 12, sold: 24, img: 'https://thumbs.dreamstime.com/b/blue-basketball-jersey-template-isolated-white-background-sport-team-club-uniform-features-front-back-views-sleeveless-tank-top-420728673.jpg' },
-                { colorName: 'Trắng', hex: '#f8fafc', stock: 10, sold: 15, img: 'https://thumbs.dreamstime.com/b/blue-basketball-jersey-template-isolated-white-background-sport-team-club-uniform-features-front-back-views-sleeveless-tank-top-420728673.jpg' },
-                { colorName: 'Đen', hex: '#18181b', stock: 5, sold: 30, img: 'https://i.pinimg.com/736x/f9/eb/df/f9ebdf7f2a1a8c348bc88006dd73ce2a.jpg' },
-                { colorName: 'Đỏ', hex: '#b91c1c', stock: 4, sold: 19, img: 'https://m.media-amazon.com/images/I/41BzY7QxcTL._SL500_.jpg' },
-                { colorName: 'Xanh Navy', hex: '#1e3a8a', stock: 8, sold: 17, img: 'https://thumbs.dreamstime.com/b/blue-basketball-jersey-template-isolated-white-background-sport-team-club-uniform-features-front-back-views-sleeveless-tank-top-420728673.jpg' },
-                { colorName: 'Xanh lá', hex: '#15803d', stock: 5, sold: 11, img: 'https://tse3.mm.bing.net/th/id/OIP.Q-q0VD7TOh-DbTymk-3nIwHaFj?r=0&rs=1&pid=ImgDetMain&o=7&rm=3' }
+            { id: 22, cat: 'ao', isJerseyBlank: true, name: 'Phôi Áo Jersey Custom (Đủ Size S - 2XL)', price: 200000, hasSize: true, sizes: ['S', 'M', 'L', 'XL', '2XL'], variants: [
+                { colorName: 'Phôi Tiêu Chuẩn', hex: '#6d28d9', stock: 44, sold: 116, img: 'https://thumbs.dreamstime.com/b/blue-basketball-jersey-template-isolated-white-background-sport-team-club-uniform-features-front-back-views-sleeveless-tank-top-420728673.jpg' }
             ]},
             // 6 MẪU QUẦN BÓNG RỔ GOM CHUNG VÀO MỤC ÁO JERSEY ('ao')
             { id: 23, cat: 'ao', isShorts: true, name: 'Quần Bóng Rổ Swingman USA Olympic 2024', price: 210000, hasSize: true, sizes: ['S', 'M', 'L', 'XL', '2XL'], variants: [
@@ -2851,24 +2846,91 @@
             }
         }
 
+        // BẬT / TẮT DROPDOWN USER GỌN GÀNG (TÍCH HỢP CHO CẢ KHÁCH VÀ ADMIN)
+        window.toggleUserDropdown = function(event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            if (!currentCustomer.loggedIn) {
+                moModal('loginModal');
+                return;
+            }
+            let menu = document.getElementById('userDropdownMenu');
+            if (menu) menu.classList.toggle('active');
+        };
+
+        window.dongUserDropdown = function() {
+            let menu = document.getElementById('userDropdownMenu');
+            if (menu) menu.classList.remove('active');
+        };
+
+        document.addEventListener('click', function(e) {
+            let wrapper = document.getElementById('userMenuWrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                dongUserDropdown();
+            }
+        });
+
+        // ĐIỀU HƯỚNG SUB-TABS TRANG ADMIN (ĐƠN HÀNG | TỒN KHO | BÁO CÁO)
+        window.chuyenSubTabAdmin = function(tabName) {
+            let tabs = ['orders', 'inventory', 'reports'];
+            tabs.forEach(t => {
+                let btn = document.getElementById(t === 'orders' ? 'btnAdminTabOrders' : (t === 'inventory' ? 'btnAdminTabInventory' : 'btnAdminTabReports'));
+                let content = document.getElementById(t === 'orders' ? 'adminTabContentOrders' : (t === 'inventory' ? 'adminTabContentInventory' : 'adminTabContentReports'));
+                if (btn) btn.classList.toggle('active', t === tabName);
+                if (content) content.style.display = (t === tabName) ? 'block' : 'none';
+            });
+        };
+
         function capNhatHeaderTaiKhoan() {
             let badgeContainer = document.getElementById('roleBadgeContainer');
             let headerCartBtn = document.getElementById('headerCartBtn');
             let btnRegisterHeader = document.getElementById('btnRegisterHeader');
+            let userLabel = document.getElementById('userLabel');
+            let avatarCircle = document.getElementById('userAvatarCircle');
+            let udName = document.getElementById('userDropdownName');
+            let udPhone = document.getElementById('userDropdownPhone');
+            let udiAdmin = document.getElementById('udi-admin');
+            let udiLogout = document.getElementById('udi-logout');
 
             if (currentCustomer.isAdmin) {
-                badgeContainer.innerHTML = `<div style="display:flex; align-items:center; gap:6px;"><div class="admin-badge">🛡️ ADMIN QUẢN TRỊ</div><button type="button" onclick="dangXuat()" style="background:#dc2626; color:#fff; border:none; padding:5px 10px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif;">🚪 Đăng xuất</button></div>`;
+                if (badgeContainer) badgeContainer.innerHTML = `<span class="admin-badge-subtle" onclick="chuyenTab('remoteOrder')" title="Mở trang Quản Trị">ADMIN</span>`;
                 if (headerCartBtn) headerCartBtn.style.display = 'none';
                 if (btnRegisterHeader) btnRegisterHeader.style.display = 'none';
                 appliedCoupon = null;
                 dongPopupKhuyenMai();
-            } else {
-                badgeContainer.innerHTML = ``;
+                if (userLabel) userLabel.innerText = "Quản trị";
+                if (avatarCircle) avatarCircle.innerText = "🛡️";
+                if (udName) udName.innerText = "Quản trị viên (Admin)";
+                if (udPhone) udPhone.innerText = currentCustomer.phone || "Admin System";
+                if (udiAdmin) udiAdmin.style.display = 'flex';
+                if (udiLogout) udiLogout.style.display = 'flex';
+            } else if (currentCustomer.loggedIn) {
+                if (badgeContainer) badgeContainer.innerHTML = ``;
                 if (headerCartBtn) headerCartBtn.style.display = 'flex';
-                if (btnRegisterHeader) btnRegisterHeader.style.display = currentCustomer.loggedIn ? 'none' : 'inline-block';
+                if (btnRegisterHeader) btnRegisterHeader.style.display = 'none';
+                let displayName = currentCustomer.name || "Tài khoản";
+                if (userLabel) userLabel.innerText = displayName;
+                let initial = (displayName.trim().charAt(0) || '👤').toUpperCase();
+                if (avatarCircle) avatarCircle.innerText = initial;
+                if (udName) udName.innerText = displayName;
+                if (udPhone) udPhone.innerText = currentCustomer.phone ? ('SĐT: ' + currentCustomer.phone) : 'Thành viên';
+                if (udiAdmin) udiAdmin.style.display = 'none';
+                if (udiLogout) udiLogout.style.display = 'flex';
+            } else {
+                if (badgeContainer) badgeContainer.innerHTML = ``;
+                if (headerCartBtn) headerCartBtn.style.display = 'flex';
+                if (btnRegisterHeader) btnRegisterHeader.style.display = 'inline-block';
+                if (userLabel) userLabel.innerText = "Đăng nhập";
+                if (avatarCircle) avatarCircle.innerText = "👤";
+                if (udName) udName.innerText = "Khách hàng";
+                if (udPhone) udPhone.innerText = "Chưa đăng nhập";
+                if (udiAdmin) udiAdmin.style.display = 'none';
+                if (udiLogout) udiLogout.style.display = 'none';
             }
-            document.getElementById('tokenHeaderCount').innerText = currentCustomer.tokens;
-            document.getElementById('userLabel').innerText = currentCustomer.loggedIn ? (currentCustomer.isAdmin ? "Quản trị Admin" : "Tài khoản") : "Đăng nhập";
+            let tokenEl = document.getElementById('tokenHeaderCount');
+            if (tokenEl) tokenEl.innerText = currentCustomer.tokens;
 
             let custOrderView = document.getElementById('customerOrderHistoryView');
             let adminSec = document.getElementById('adminDashboardSection');
@@ -2885,7 +2947,7 @@
             renderGiaoDienChuong();
             capNhatGioHang();
             capNhatTrangThaiNutCustom();
-            if (document.getElementById('view-home').classList.contains('active')) renderHomeProducts();
+            if (document.getElementById('view-home') && document.getElementById('view-home').classList.contains('active')) renderHomeProducts();
         }
 
         function renderCustomerOrderHistory() {
@@ -4095,18 +4157,21 @@ Câu hỏi của khách: "${rawQ}"`;
                 renderHomeProducts();
             } else if (tabName === 'customBalo') {
                 document.getElementById('view-customBalo').classList.add('active');
-                document.getElementById('nav-customBalo').classList.add('active');
+                let navB = document.getElementById('nav-customBalo');
+                if (navB) navB.classList.add('active');
                 updateBaloPreview();
                 capNhatTrangThaiNutCustom();
             } else if (tabName === 'customJersey') {
                 document.getElementById('view-customJersey').classList.add('active');
-                document.getElementById('nav-customJersey').classList.add('active');
+                let navJ = document.getElementById('nav-customJersey');
+                if (navJ) navJ.classList.add('active');
                 renderBangMauJerseyStudio();
                 updateJerseyPreview();
                 capNhatTrangThaiNutCustom();
             } else if (tabName === 'roster') {
                 document.getElementById('view-roster').classList.add('active');
-                document.getElementById('nav-roster').classList.add('active');
+                let navR = document.getElementById('nav-roster');
+                if (navR) navR.classList.add('active');
                 renderBangMauJerseyStudio();
                 capNhatGiaoDienRoster();
             } else if (tabName === 'cart') {
@@ -4117,13 +4182,15 @@ Câu hỏi của khách: "${rawQ}"`;
                 moTabTaiKhoan('orders');
             } else if (tabName === 'remoteOrder') {
                 document.getElementById('view-remoteOrder').classList.add('active');
-                document.getElementById('nav-remoteOrder').classList.add('active');
+                let navRo = document.getElementById('nav-remoteOrder');
+                if (navRo) navRo.classList.add('active');
                 if(currentCustomer.isAdmin) renderAdminDashboard();
                 else renderCustomerOrderHistory();
                 dongBoTuGoogleSheets(true);
             } else if (tabName === 'aiTryOn') {
                 document.getElementById('view-aiTryOn').classList.add('active');
-                document.getElementById('nav-aiTryOn').classList.add('active');
+                let navAi = document.getElementById('nav-aiTryOn');
+                if (navAi) navAi.classList.add('active');
             } else {
                 document.getElementById('view-products').classList.add('active');
                 let navCat = document.getElementById('nav-' + tabName);
@@ -4131,6 +4198,29 @@ Câu hỏi của khách: "${rawQ}"`;
                 document.getElementById('productSectionTitle').innerText = {'balo': 'Balo Nike Elite & Utility', 'bong': 'Bóng Rổ Chính Hãng', 'vo': 'Vớ tất chuyên dụng', 'ao': 'Áo Jersey & Quần Bóng Rổ', 'combat': 'Đồ Combat & Phụ Kiện'}[tabName];
                 renderProducts(tabName);
             }
+
+            // Cập nhật trạng thái dropdown nhóm menu
+            let grpProd = document.getElementById('navGroupProducts');
+            let grpStudio = document.getElementById('navGroupStudio');
+            if (grpProd) {
+                let isProd = ['balo', 'bong', 'vo', 'ao', 'combat'].includes(tabName);
+                let trig = grpProd.querySelector('.nav-dropdown-trigger');
+                if (trig) trig.classList.toggle('active', isProd);
+            }
+            if (grpStudio) {
+                let isStudio = ['customBalo', 'customJersey', 'roster'].includes(tabName);
+                let trig = grpStudio.querySelector('.nav-dropdown-trigger');
+                if (trig) trig.classList.toggle('active', isStudio);
+            }
+            // Cập nhật tab bar bên trong Custom Studio (Balo | Jersey | Roster)
+            document.querySelectorAll('.cs-tab-btn').forEach(btn => {
+                let oc = btn.getAttribute('onclick') || '';
+                let isThis = (tabName === 'customBalo' && oc.includes('customBalo')) ||
+                             (tabName === 'customJersey' && oc.includes('customJersey')) ||
+                             (tabName === 'roster' && oc.includes('roster'));
+                btn.classList.toggle('active', isThis);
+            });
+
             if (!preserveScroll) window.scrollTo(0, 0);
         }
 
@@ -5297,6 +5387,68 @@ Câu hỏi của khách: "${rawQ}"`;
             if (lbl) lbl.innerText = v + 'px';
             updateJerseyPreview();
         }
+
+        // BỘ CHỌN MÀU THIẾT KẾ ĐA NĂNG (GOM GỌN PHÔI, VIỀN, CHỮ, SỐ, QUẦN)
+        let currentStudioColorTarget = 'base';
+        const studioPartLabels = {
+            'base': 'Phôi áo',
+            'trim': 'Viền áo',
+            'fill': 'Màu chữ & số',
+            'stroke': 'Viền chữ & số',
+            'shorts': 'Quần',
+            'shortsTrim': 'Viền quần'
+        };
+
+        window.setStudioColorTarget = function(part) {
+            currentStudioColorTarget = part;
+            document.querySelectorAll('.studio-part-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-part') === part);
+            });
+            let label = document.getElementById('studioActivePartLabel');
+            if (label) label.innerText = `Đang chỉnh: ${studioPartLabels[part] || part}`;
+
+            let curHex = '#ffffff';
+            if (part === 'base') curHex = jerseyStudioState.baseColorHex || '#ffffff';
+            else if (part === 'trim') curHex = jerseyStudioState.trimColorHex || '#000000';
+            else if (part === 'fill') curHex = jerseyStudioState.fillColorHex || '#ffffff';
+            else if (part === 'stroke') curHex = jerseyStudioState.strokeColorHex || '#ff5500';
+            else if (part === 'shorts') curHex = jerseyStudioState.shortsColorHex || '#ffffff';
+            else if (part === 'shortsTrim') curHex = jerseyStudioState.shortsTrimHex || '#ff5500';
+
+            let picker = document.getElementById('studioMasterColorPicker');
+            let disc = document.getElementById('studioColorPickerDisc');
+            let hexInp = document.getElementById('studioMasterHexInput');
+            if (picker) picker.value = curHex;
+            if (disc) disc.style.backgroundColor = curHex;
+            if (hexInp) hexInp.value = curHex.toUpperCase();
+        };
+
+        window.applyMasterColor = function(hex, name) {
+            if (!hex) return;
+            if (!hex.startsWith('#')) hex = '#' + hex;
+
+            let disc = document.getElementById('studioColorPickerDisc');
+            let hexInp = document.getElementById('studioMasterHexInput');
+            let picker = document.getElementById('studioMasterColorPicker');
+            if (disc) disc.style.backgroundColor = hex;
+            if (hexInp && hexInp.value !== hex.toUpperCase()) hexInp.value = hex.toUpperCase();
+            if (picker && picker.value !== hex) picker.value = hex;
+
+            let colorName = name || 'Màu tùy chọn';
+            if (currentStudioColorTarget === 'base') {
+                chonMauPhoiJersey(hex, colorName);
+            } else if (currentStudioColorTarget === 'trim') {
+                chonMauVienAoJersey(hex, colorName);
+            } else if (currentStudioColorTarget === 'fill') {
+                chonMauChuJersey(hex, colorName);
+            } else if (currentStudioColorTarget === 'stroke') {
+                chonMauVienJersey(hex, colorName);
+            } else if (currentStudioColorTarget === 'shorts') {
+                chonMauPhoiQuan(hex, colorName);
+            } else if (currentStudioColorTarget === 'shortsTrim') {
+                chonMauLineQuan(hex, colorName);
+            }
+        };
 
         function chonMauPhoiJersey(hex, name, strokeHex) {
             jerseyStudioState.baseColorHex = hex; jerseyStudioState.baseColorName = name; jerseyStudioState.baseStrokeHex = strokeHex || '#333';
