@@ -513,6 +513,21 @@
                 <p>Một thiết kế chung, mỗi cầu thủ một tên/số. Tối thiểu 5 dòng · giảm 5% từ 5 áo, 10% từ 10, 15% từ 20.</p>
             </div>
 
+            <!-- CHỌN CHẾ ĐỘ ĐẶT ÁO HOẶC NGUYÊN BỘ (ÁO + QUẦN) -->
+            <div class="roster-mode-switch-wrap">
+                <div class="roster-mode-switch-title">
+                    <span>⚡ Chế độ đặt cho đội:</span>
+                </div>
+                <div class="roster-mode-switch-bar">
+                    <button type="button" class="roster-mode-btn active" id="btnRosterModeJersey" onclick="datCheDoRoster('jersey')">
+                        👕 Chỉ Đặt Áo Jersey (170k+)
+                    </button>
+                    <button type="button" class="roster-mode-btn" id="btnRosterModeSet" onclick="datCheDoRoster('set')">
+                        👕+🩳 Đặt Nguyên Bộ (Áo + Quần) (+80k/bộ)
+                    </button>
+                </div>
+            </div>
+
             <div class="roster-layout-grid">
                 <div class="roster-card-box">
                     <div class="studio-label-title" style="margin-top:0; color:#111; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">THIẾT KẾ CHUNG</div>
@@ -539,7 +554,7 @@
                 <div class="roster-card-box" style="overflow-x:auto;">
                     <table class="roster-table">
                         <thead>
-                            <tr><th style="width:36px;">#</th><th style="width:52px;">XEM</th><th>TÊN</th><th style="width:110px;">SỐ</th><th style="width:90px;">SIZE</th><th style="width:65px;">SL</th><th style="width:36px;"></th></tr>
+                            <tr id="rosterTheadRow"><th style="width:36px;">#</th><th style="width:52px;">XEM</th><th>TÊN</th><th style="width:100px;">SỐ</th><th style="width:90px;" id="rosterThSizeJersey">SIZE ÁO</th><th style="width:95px; display:none;" id="rosterThSizeShorts">SIZE QUẦN</th><th style="width:65px;">SL</th><th style="width:36px;"></th></tr>
                         </thead>
                         <tbody id="rosterTableBody"></tbody>
                     </table>
@@ -1087,78 +1102,32 @@
                         <input type="file" id="userPhotoUpload" accept="image/*" onchange="xuLyTaiAnh(event)">
                     </div>
                     <div class="form-group">
-                        <label style="font-weight:700; color:#1e293b; margin-bottom:10px; display:block;">Bước 2: Chọn sản phẩm muốn gộp lên ảnh:</label>
+                        <label style="font-weight:700; color:#1e293b; margin-bottom:8px; display:block;">Bước 2: Chọn sản phẩm muốn gộp lên ảnh (Thử 1 Áo, 1 Balo hoặc cả Combo):</label>
                         
-                        <select id="aiProductSelect" style="display:none;" onchange="gopAnhTuDong()">
-                            <option value="lakers">Áo Jersey Los Angeles Lakers Vàng</option>
-                            <option value="warriors_xanh">Áo Jersey Warriors Xanh Dương</option>
-                            <option value="bulls">Áo Jersey Chicago Bulls Đỏ Đen</option>
-                            <option value="v1_trang">Balo Nike Elite V1 (Trắng Đen)</option>
-                            <option value="v2_xanh">Balo Nike Elite V2 (Xanh Đen)</option>
-                            <option value="utility_reu">Balo Nike Utility Speed (Xanh Rêu)</option>
-                        </select>
+                        <select id="aiProductSelect" style="display:none;" onchange="gopAnhTuDong()"></select>
+
+                        <!-- Thanh tóm tắt Outfit Combo đang chọn -->
+                        <div class="ai-tryon-combo-bar" id="aiTryOnComboBar">
+                            <div class="ai-tryon-combo-summary">
+                                <span>Combo đang chọn:</span>
+                                <span id="aiComboJerseyTag" class="ai-combo-tag ai-combo-tag-empty">Chưa chọn Áo</span>
+                                <span>+</span>
+                                <span id="aiComboBaloTag" class="ai-combo-tag ai-combo-tag-empty">Chưa chọn Balo</span>
+                            </div>
+                            <span style="font-size:11.5px; color:#64748b; font-weight:600;">(Bấm để chọn, bấm lại để bỏ chọn)</span>
+                        </div>
 
                         <!-- Tab chọn danh mục Áo hoặc Balo -->
                         <div class="ai-tryon-cat-tabs">
-                            <button type="button" class="ai-cat-tab-btn active" onclick="chuyenNhomSanPhamAI('ao', this)">🎽 1. ÁO ĐẤU BASKETBALL</button>
-                            <button type="button" class="ai-cat-tab-btn" onclick="chuyenNhomSanPhamAI('balo', this)">🎒 2. BALO NIKE ELITE & UTILITY</button>
+                            <button type="button" class="ai-cat-tab-btn active" id="btnAiTabAo" onclick="chuyenNhomSanPhamAI('ao', this)">🎽 1. ÁO ĐẤU BASKETBALL</button>
+                            <button type="button" class="ai-cat-tab-btn" id="btnAiTabBalo" onclick="chuyenNhomSanPhamAI('balo', this)">🎒 2. BALO NIKE ELITE & UTILITY</button>
                         </div>
 
-                        <!-- Nhóm 1: Áo đấu -->
-                        <div id="aiGroupAo" class="ai-product-picker-grid">
-                            <div class="ai-product-card active" data-val="lakers" onclick="chonSanPhamVisualAI('lakers')">
-                                <img src="https://interdeportivo.com/cdn/shop/files/JerseyNikeLosAngelesLakersIconEdition_1_-PaginaWEB.png?v=1779056525&width=1024" alt="Lakers" class="ai-prod-thumb">
-                                <div class="ai-prod-info">
-                                    <div class="ai-prod-title">Áo Jersey LA Lakers</div>
-                                    <div class="ai-prod-tag" style="background:#fef08a; color:#854d0e;">Vàng Tím · No.23</div>
-                                </div>
-                                <span class="ai-prod-check">✓</span>
-                            </div>
-                            <div class="ai-product-card" data-val="warriors_xanh" onclick="chonSanPhamVisualAI('warriors_xanh')">
-                                <img src="https://images.footballfanatics.com/golden-state-warriors/golden-state-warriors-nike-icon-edition-swingman-jersey-stephen-curry-mens_ss4_p-12001552+u-115n5mow9i258s4h4b5w+v-142f1f4c7d0d4638a5fe4ad3d944c66e.png?_hv=2" alt="Warriors" class="ai-prod-thumb">
-                                <div class="ai-prod-info">
-                                    <div class="ai-prod-title">Áo Jersey GS Warriors</div>
-                                    <div class="ai-prod-tag" style="background:#dbeafe; color:#1d4ed8;">Xanh Dương · No.30</div>
-                                </div>
-                                <span class="ai-prod-check">✓</span>
-                            </div>
-                            <div class="ai-product-card" data-val="bulls" onclick="chonSanPhamVisualAI('bulls')">
-                                <img src="https://images.footballfanatics.com/chicago-bulls/chicago-bulls-nike-icon-swingman-jersey-custom-unisex_ss4_p-11931388+u-7puzf7d3i7k8n6d8200j+v-5b9ad1e4fce54ba3883a8b417b35f013.png?_hv=2" alt="Bulls" class="ai-prod-thumb">
-                                <div class="ai-prod-info">
-                                    <div class="ai-prod-title">Áo Jersey Chicago Bulls</div>
-                                    <div class="ai-prod-tag" style="background:#fee2e2; color:#b91c1c;">Đỏ Đen · No.23</div>
-                                </div>
-                                <span class="ai-prod-check">✓</span>
-                            </div>
-                        </div>
+                        <!-- Danh sách động Áo đấu (Load toàn bộ từ products) -->
+                        <div id="aiGroupAo" class="ai-product-picker-grid"></div>
 
-                        <!-- Nhóm 2: Balo -->
-                        <div id="aiGroupBalo" class="ai-product-picker-grid" style="display:none;">
-                            <div class="ai-product-card" data-val="v1_trang" onclick="chonSanPhamVisualAI('v1_trang')">
-                                <img src="https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/3db841f3-2384-4860-9d50-e8b3b723a10d/NK+HOOPS+ELITE+PRO+BKPK.png" alt="Balo V1" class="ai-prod-thumb">
-                                <div class="ai-prod-info">
-                                    <div class="ai-prod-title">Balo Nike Elite V1 Pro</div>
-                                    <div class="ai-prod-tag" style="background:#f1f5f9; color:#334155;">Trắng Đen · 32L</div>
-                                </div>
-                                <span class="ai-prod-check">✓</span>
-                            </div>
-                            <div class="ai-product-card" data-val="v2_xanh" onclick="chonSanPhamVisualAI('v2_xanh')">
-                                <img src="https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/8c72ca8c-7f51-4fa3-b68c-dbdc502fc823/NK+HOOPS+ELITE+PRO+BKPK.png" alt="Balo V2" class="ai-prod-thumb">
-                                <div class="ai-prod-info">
-                                    <div class="ai-prod-title">Balo Nike Elite V2 Pro</div>
-                                    <div class="ai-prod-tag" style="background:#e0e7ff; color:#3730a3;">Xanh Navy · 37L</div>
-                                </div>
-                                <span class="ai-prod-check">✓</span>
-                            </div>
-                            <div class="ai-product-card" data-val="utility_reu" onclick="chonSanPhamVisualAI('utility_reu')">
-                                <img src="https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/46dc627a-1b91-4ec9-a0a1-f007feba4a46/NK+UTILITY+ELITE+BKPK+-+2.0.png" alt="Utility Speed" class="ai-prod-thumb">
-                                <div class="ai-prod-info">
-                                    <div class="ai-prod-title">Nike Utility Speed Backpack</div>
-                                    <div class="ai-prod-tag" style="background:#ecfccb; color:#3f6212;">Xanh Rêu Camo · Pro</div>
-                                </div>
-                                <span class="ai-prod-check">✓</span>
-                            </div>
-                        </div>
+                        <!-- Danh sách động Balo (Load toàn bộ từ products) -->
+                        <div id="aiGroupBalo" class="ai-product-picker-grid" style="display:none;"></div>
                     </div>
                     <button class="btn-submit" style="background-color: #8e44ad; margin-top: 10px;" onclick="chayAIPhanTichGopAnh()">✨ Chạy AI Gộp Ảnh & Tư Vấn Thời Trang (-1 Token)</button>
                 </div>

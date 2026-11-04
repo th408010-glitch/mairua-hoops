@@ -55,7 +55,7 @@
                 { colorName: 'Xanh Dương', hex: '#1d428a', stock: 9, sold: 29, img: 'https://i.pinimg.com/736x/de/27/55/de2755cbf2e5392870db49b07efa5011.jpg' },
                 { colorName: 'Vàng', hex: '#ffc72c', stock: 7, sold: 16, img: 'https://i.pinimg.com/736x/d1/ab/74/d1ab74c7fe563d0ac1a19254ce811215.jpg' }
             ]},
-            { id: 17, cat: 'ao', name: 'Áo Jersey Bóng Rổ New York (NYC) City Edition', price: 250000, hasSize: true, sizes: ['S', 'M', 'L', 'XL', '2XL'], variants: [{ colorName: 'Trắng NYC', hex: '#ffffff', stock: 8, sold: 11, img: 'https://basketballjerseyarchive.com/static/news/2024/11/14/kHBQKiKDMtNpys2/all-2024-2025-nba-city-edition-jerseys-released.jpg' }] },
+            { id: 17, cat: 'ao', name: 'Áo Jersey Bóng Rổ New York (NYC) City Edition', price: 250000, hasSize: true, sizes: ['S', 'M', 'L', 'XL', '2XL'], variants: [{ colorName: 'Trắng NYC', hex: '#ffffff', stock: 8, sold: 11, img: 'https://images.footballfanatics.com/boston-celtics/boston-celtics-nike-association-edition-swingman-jersey-white-jayson-tatum-youth_ss4_p-11931393+u-11333w24j4d5r2n46x6v+v-7c83bb4129e74218b0cbfeb14ca38497.png?_hv=2' }] },
             { id: 18, cat: 'ao', name: 'Áo Jersey Bóng Rổ Đội Tuyển Việt Nam', price: 230000, hasSize: true, sizes: ['S', 'M', 'L', 'XL', '2XL'], variants: [{ colorName: 'Đỏ Sao Vàng', hex: '#da251d', stock: 12, sold: 26, img: 'https://tse4.mm.bing.net/th/id/OIP.YzrHuPXz_QEltXT6kkcYGwAAAA?r=0&rs=1&pid=ImgDetMain&o=7&rm=3' }] },
             { id: 19, cat: 'combat', name: 'Áo Combat Bóng Rổ Ngắn Tay Giữ Nhiệt', price: 180000, hasSize: true, sizes: ['S', 'M', 'L', 'XL', '2XL'], variants: [{ colorName: 'Đen', hex: '#111111', stock: 10, sold: 13, img: 'https://tse1.mm.bing.net/th/id/OIP.MLJg0yWWOg4V9xOk6QKNCQHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3' }] },
             { id: 20, cat: 'combat', name: 'Áo Combat Bóng Rổ Ba Lỗ Chuyên Dụng', price: 165000, hasSize: true, sizes: ['S', 'M', 'L', 'XL', '2XL'], variants: [{ colorName: 'Đen', hex: '#111111', stock: 10, sold: 8, img: 'https://tse1.mm.bing.net/th/id/OIP.rKAsReQCPMnmtPg6uDtfswHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3' }] },
@@ -645,14 +645,26 @@
         const SET_SHORTS_PART_PRICE = 80000;     // Phần phôi quần trong bộ (170k + 80k = 250k)
         const SHORTS_NUM_FEE = 30000;            // Phí in số bên trái phía trước quần
 
+        let rosterMode = 'jersey'; // 'jersey' hoặc 'set'
         let rosterPlayers = [
-            { name: 'NGUYEN', number: '23', size: 'L', qty: 1 },
-            { name: 'TRAN', number: '7', size: 'M', qty: 1 },
-            { name: 'LE', number: '11', size: 'XL', qty: 1 },
-            { name: 'PHAM', number: '0', size: 'M', qty: 1 },
-            { name: 'VU', number: '00', size: '2XL', qty: 1 },
-            { name: 'DANG', number: '5', size: 'S', qty: 1 }
+            { name: 'NGUYEN', number: '23', size: 'L', shortsSize: 'L', qty: 1 },
+            { name: 'TRAN', number: '7', size: 'M', shortsSize: 'M', qty: 1 },
+            { name: 'LE', number: '11', size: 'XL', shortsSize: 'XL', qty: 1 },
+            { name: 'PHAM', number: '0', size: 'S', shortsSize: 'S', qty: 1 },
+            { name: 'VU', number: '00', size: '2XL', shortsSize: '2XL', qty: 1 },
+            { name: 'DANG', number: '5', size: 'S', shortsSize: 'S', qty: 1 }
         ];
+
+        function datCheDoRoster(mode) {
+            rosterMode = mode;
+            let btnJersey = document.getElementById('btnRosterModeJersey');
+            let btnSet = document.getElementById('btnRosterModeSet');
+            let thShorts = document.getElementById('rosterThSizeShorts');
+            if (btnJersey) btnJersey.classList.toggle('active', mode === 'jersey');
+            if (btnSet) btnSet.classList.toggle('active', mode === 'set');
+            if (thShorts) thShorts.style.display = (mode === 'set') ? '' : 'none';
+            capNhatGiaoDienRoster();
+        }
 
         let autoFakeOrderEnabled = true;
         let fomoPopupTimeout = null;
@@ -3369,14 +3381,52 @@
             reader.readAsDataURL(file);
         }
 
-        const productImagesMap = {
-            'lakers': 'https://interdeportivo.com/cdn/shop/files/JerseyNikeLosAngelesLakersIconEdition_1_-PaginaWEB.png?v=1779056525&width=1024',
-            'warriors_xanh': 'https://images.footballfanatics.com/golden-state-warriors/golden-state-warriors-nike-icon-edition-swingman-jersey-stephen-curry-mens_ss4_p-12001552+u-115n5mow9i258s4h4b5w+v-142f1f4c7d0d4638a5fe4ad3d944c66e.png?_hv=2',
-            'bulls': 'https://images.footballfanatics.com/chicago-bulls/chicago-bulls-nike-icon-swingman-jersey-custom-unisex_ss4_p-11931388+u-7puzf7d3i7k8n6d8200j+v-5b9ad1e4fce54ba3883a8b417b35f013.png?_hv=2',
-            'v1_trang': 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/3db841f3-2384-4860-9d50-e8b3b723a10d/NK+HOOPS+ELITE+PRO+BKPK.png',
-            'v2_xanh': 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/8c72ca8c-7f51-4fa3-b68c-dbdc502fc823/NK+HOOPS+ELITE+PRO+BKPK.png',
-            'utility_reu': 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/46dc627a-1b91-4ec9-a0a1-f007feba4a46/NK+UTILITY+ELITE+BKPK+-+2.0.png'
+        let aiTryOnSelection = {
+            jersey: {
+                id: 14,
+                name: 'Áo Jersey Los Angeles Lakers Edition',
+                img: 'https://interdeportivo.com/cdn/shop/files/JerseyNikeLosAngelesLakersIconEdition_1_-PaginaWEB.png?v=1779056525&width=1024',
+                colorName: 'Vàng Gold'
+            },
+            balo: null
         };
+
+        function renderDanhSachSanPhamAI() {
+            let grpAo = document.getElementById('aiGroupAo');
+            let grpBalo = document.getElementById('aiGroupBalo');
+            if (!grpAo || !grpBalo) return;
+
+            let aoList = products.filter(p => p.cat === 'ao' && !p.isShorts && !p.isJerseyBlank);
+            let baloList = products.filter(p => p.cat === 'balo');
+
+            grpAo.innerHTML = aoList.map(p => {
+                let v = (p.variants && p.variants[0]) || {};
+                let imgUrl = v.img || 'https://interdeportivo.com/cdn/shop/files/JerseyNikeLosAngelesLakersIconEdition_1_-PaginaWEB.png?v=1779056525&width=1024';
+                let isSel = aiTryOnSelection.jersey && aiTryOnSelection.jersey.id === p.id;
+                return `<div class="ai-product-card ${isSel ? 'active' : ''}" data-type="jersey" data-id="${p.id}" onclick="chonSanPhamVisualAI('jersey', ${p.id})">
+                    <img src="${imgUrl}" alt="${p.name}" class="ai-product-card-thumb" onerror="this.onerror=null; this.src='https://interdeportivo.com/cdn/shop/files/JerseyNikeLosAngelesLakersIconEdition_1_-PaginaWEB.png?v=1779056525&width=1024';">
+                    <div class="ai-product-card-info">
+                        <div class="ai-product-card-title">${p.name}</div>
+                        <div class="ai-product-card-tag">Áo đấu · ${v.colorName || 'Tiêu chuẩn'}</div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            grpBalo.innerHTML = baloList.map(p => {
+                let v = (p.variants && p.variants[0]) || {};
+                let imgUrl = v.img || 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/3db841f3-2384-4860-9d50-e8b3b723a10d/NK+HOOPS+ELITE+PRO+BKPK.png';
+                let isSel = aiTryOnSelection.balo && aiTryOnSelection.balo.id === p.id;
+                return `<div class="ai-product-card ${isSel ? 'active' : ''}" data-type="balo" data-id="${p.id}" onclick="chonSanPhamVisualAI('balo', ${p.id})">
+                    <img src="${imgUrl}" alt="${p.name}" class="ai-product-card-thumb" onerror="this.onerror=null; this.src='https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/3db841f3-2384-4860-9d50-e8b3b723a10d/NK+HOOPS+ELITE+PRO+BKPK.png';">
+                    <div class="ai-product-card-info">
+                        <div class="ai-product-card-title">${p.name}</div>
+                        <div class="ai-product-card-tag">Balo · ${v.colorName || 'Chính hãng'}</div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            capNhatGiaoDienChonAI();
+        }
 
         function chuyenNhomSanPhamAI(group, btnEl) {
             document.querySelectorAll('.ai-cat-tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -3392,107 +3442,144 @@
             }
         }
 
-        function chonSanPhamVisualAI(val) {
-            document.querySelectorAll('.ai-product-card').forEach(c => c.classList.remove('active'));
-            let selected = document.querySelector(`.ai-product-card[data-val="${val}"]`);
-            if (selected) selected.classList.add('active');
-            
-            let selectEl = document.getElementById('aiProductSelect');
-            if (selectEl) {
-                selectEl.value = val;
+        function chonSanPhamVisualAI(type, prodId) {
+            if (aiTryOnSelection[type] && aiTryOnSelection[type].id === prodId) {
+                aiTryOnSelection[type] = null;
+            } else {
+                let p = products.find(item => item.id === prodId);
+                if (p) {
+                    let v = (p.variants && p.variants[0]) || {};
+                    aiTryOnSelection[type] = {
+                        id: p.id,
+                        name: p.name,
+                        img: v.img || '',
+                        colorName: v.colorName || ''
+                    };
+                }
             }
+            capNhatGiaoDienChonAI();
             gopAnhTuDong();
+        }
+
+        function capNhatGiaoDienChonAI() {
+            document.querySelectorAll('.ai-product-card').forEach(card => {
+                let cardType = card.getAttribute('data-type');
+                let cardId = parseInt(card.getAttribute('data-id'));
+                let isSelected = aiTryOnSelection[cardType] && aiTryOnSelection[cardType].id === cardId;
+                card.classList.toggle('active', isSelected);
+            });
+
+            let jerseyTag = document.getElementById('aiComboJerseyTag');
+            let baloTag = document.getElementById('aiComboBaloTag');
+
+            if (jerseyTag) {
+                if (aiTryOnSelection.jersey) {
+                    jerseyTag.className = 'ai-combo-tag ai-combo-tag-jersey';
+                    let shortName = aiTryOnSelection.jersey.name.replace('Áo Jersey ', '').replace('Bóng Rổ ', '');
+                    jerseyTag.innerHTML = `👕 ${shortName} <button type="button" class="ai-combo-remove-btn" title="Bỏ chọn" onclick="event.stopPropagation(); chonSanPhamVisualAI('jersey', ${aiTryOnSelection.jersey.id})">&times;</button>`;
+                } else {
+                    jerseyTag.className = 'ai-combo-tag ai-combo-tag-empty';
+                    jerseyTag.innerHTML = 'Chưa chọn Áo';
+                }
+            }
+
+            if (baloTag) {
+                if (aiTryOnSelection.balo) {
+                    baloTag.className = 'ai-combo-tag ai-combo-tag-balo';
+                    let shortName = aiTryOnSelection.balo.name.replace('Nike ', '').replace('Basketball ', '');
+                    baloTag.innerHTML = `🎒 ${shortName} <button type="button" class="ai-combo-remove-btn" title="Bỏ chọn" onclick="event.stopPropagation(); chonSanPhamVisualAI('balo', ${aiTryOnSelection.balo.id})">&times;</button>`;
+                } else {
+                    baloTag.className = 'ai-combo-tag ai-combo-tag-empty';
+                    baloTag.innerHTML = 'Chưa chọn Balo';
+                }
+            }
         }
 
         function gopAnhTuDong() {
             if (!uploadedFileObj) return;
-            let productSelectEl = document.getElementById('aiProductSelect');
-            let selectedVal = productSelectEl ? productSelectEl.value : 'lakers';
-            let productImgSrc = productImagesMap[selectedVal] || productImagesMap['lakers'];
 
             let reader = new FileReader();
             reader.onload = function(event) {
                 let userImg = new Image();
                 userImg.onload = function() {
-                    let productImg = new Image();
-                    productImg.crossOrigin = "anonymous";
-                    productImg.onload = function() {
-                        let canvas = document.getElementById('mergeCanvas');
-                        let ctx = canvas.getContext('2d');
-                        let uW = userImg.width;
-                        let uH = userImg.height;
-                        canvas.width = uW;
-                        canvas.height = uH;
+                    let canvas = document.getElementById('mergeCanvas');
+                    let ctx = canvas.getContext('2d');
+                    let uW = userImg.width;
+                    let uH = userImg.height;
+                    canvas.width = uW;
+                    canvas.height = uH;
 
-                        // 1. Vẽ ảnh gốc của người dùng
-                        ctx.drawImage(userImg, 0, 0);
+                    // 1. Vẽ ảnh gốc người dùng
+                    ctx.drawImage(userImg, 0, 0);
 
-                        // 2. Tách nền trắng nếu có trên offscreen canvas
-                        let pCanvas = document.createElement('canvas');
-                        let pNatW = productImg.naturalWidth || productImg.width || 300;
-                        let pNatH = productImg.naturalHeight || productImg.height || 300;
-                        pCanvas.width = pNatW;
-                        pCanvas.height = pNatH;
-                        let pCtx = pCanvas.getContext('2d');
-                        pCtx.drawImage(productImg, 0, 0);
+                    // Helper vẽ từng item
+                    function veSanPhamLenCanvas(imgSrc, isJersey, callback) {
+                        if (!imgSrc) { callback(); return; }
+                        let prodImg = new Image();
+                        prodImg.crossOrigin = "anonymous";
+                        prodImg.onload = function() {
+                            let pNatW = prodImg.naturalWidth || prodImg.width || 300;
+                            let pNatH = prodImg.naturalHeight || prodImg.height || 300;
 
-                        try {
-                            let pImgData = pCtx.getImageData(0, 0, pNatW, pNatH);
-                            let d = pImgData.data;
-                            for (let i = 0; i < d.length; i += 4) {
-                                let r = d[i], g = d[i+1], b = d[i+2];
-                                if (r > 236 && g > 236 && b > 236) {
-                                    d[i+3] = 0; // Trong suốt hoàn toàn
-                                } else if (r > 218 && g > 218 && b > 218) {
-                                    d[i+3] = Math.max(0, 255 - ((r + g + b) / 3 - 218) * 8);
+                            let pCanvas = document.createElement('canvas');
+                            pCanvas.width = pNatW;
+                            pCanvas.height = pNatH;
+                            let pCtx = pCanvas.getContext('2d');
+                            pCtx.drawImage(prodImg, 0, 0);
+
+                            try {
+                                let pImgData = pCtx.getImageData(0, 0, pNatW, pNatH);
+                                let d = pImgData.data;
+                                for (let i = 0; i < d.length; i += 4) {
+                                    let r = d[i], g = d[i+1], b = d[i+2];
+                                    if (r > 236 && g > 236 && b > 236) {
+                                        d[i+3] = 0; // Tách nền trắng
+                                    } else if (r > 218 && g > 218 && b > 218) {
+                                        d[i+3] = Math.max(0, 255 - ((r + g + b) / 3 - 218) * 8);
+                                    }
                                 }
+                                pCtx.putImageData(pImgData, 0, 0);
+                            } catch (corsErr) {}
+
+                            let pWidth, pHeight, pX, pY;
+                            if (isJersey) {
+                                pWidth = uW * 0.46;
+                                pHeight = (pNatH / pNatW) * pWidth;
+                                pX = (uW - pWidth) / 2;
+                                pY = uH * 0.52;
+                                if (pY + pHeight > uH) pY = Math.max(uH * 0.45, uH - pHeight);
+                            } else {
+                                pWidth = uW * 0.38;
+                                pHeight = (pNatH / pNatW) * pWidth;
+                                pX = uW * 0.56;
+                                pY = uH * 0.44;
+                                if (pY + pHeight > uH) pY = uH - pHeight - (uH * 0.03);
+                                if (pX + pWidth > uW) pX = uW - pWidth - (uW * 0.03);
                             }
-                            pCtx.putImageData(pImgData, 0, 0);
-                        } catch (corsErr) {
-                            // Cross-origin fallback
-                        }
 
-                        // 3. Tính toán vị trí thông minh: TUYỆT ĐỐI KHÔNG ĐÈ LÊN MẶT
-                        let isJersey = ['lakers', 'warriors_xanh', 'bulls'].includes(selectedVal);
-                        let pWidth, pHeight, pX, pY;
+                            ctx.save();
+                            ctx.shadowColor = 'rgba(0, 0, 0, 0.42)';
+                            ctx.shadowBlur = Math.max(10, Math.round(uW * 0.018));
+                            ctx.shadowOffsetX = Math.round(uW * 0.008);
+                            ctx.shadowOffsetY = Math.round(uH * 0.012);
+                            ctx.drawImage(pCanvas, pX, pY, pWidth, pHeight);
+                            ctx.restore();
 
-                        if (isJersey) {
-                            // Áo đấu: đặt ở vị trí thân dưới / ngực dưới (từ 52% chiều cao trở xuống)
-                            pWidth = uW * 0.46;
-                            pHeight = (pNatH / pNatW) * pWidth;
-                            pX = (uW - pWidth) / 2;
-                            pY = uH * 0.52;
-                            if (pY + pHeight > uH) {
-                                pY = Math.max(uH * 0.45, uH - pHeight);
-                            }
-                        } else {
-                            // Balo: đặt lệch góc vai / bên hông người dùng
-                            pWidth = uW * 0.38;
-                            pHeight = (pNatH / pNatW) * pWidth;
-                            pX = uW * 0.56;
-                            pY = uH * 0.44;
-                            if (pY + pHeight > uH) {
-                                pY = uH - pHeight - (uH * 0.03);
-                            }
-                            if (pX + pWidth > uW) {
-                                pX = uW - pWidth - (uW * 0.03);
-                            }
-                        }
+                            callback();
+                        };
+                        prodImg.onerror = function() { callback(); };
+                        prodImg.src = imgSrc;
+                    }
 
-                        // 4. Vẽ bóng đổ nhẹ (drop shadow) mềm mại tự nhiên
-                        ctx.save();
-                        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-                        ctx.shadowBlur = Math.max(10, Math.round(uW * 0.018));
-                        ctx.shadowOffsetX = Math.round(uW * 0.008);
-                        ctx.shadowOffsetY = Math.round(uH * 0.012);
+                    let jerseyImgSrc = aiTryOnSelection.jersey ? aiTryOnSelection.jersey.img : null;
+                    let baloImgSrc = aiTryOnSelection.balo ? aiTryOnSelection.balo.img : null;
 
-                        // Vẽ sản phẩm đã tách nền
-                        ctx.drawImage(pCanvas, pX, pY, pWidth, pHeight);
-                        ctx.restore();
-
-                        document.getElementById('mergedResultImg').src = canvas.toDataURL('image/jpeg', 0.95);
-                    };
-                    productImg.src = productImgSrc;
+                    veSanPhamLenCanvas(jerseyImgSrc, true, function() {
+                        veSanPhamLenCanvas(baloImgSrc, false, function() {
+                            let resultImg = document.getElementById('mergedResultImg');
+                            if (resultImg) resultImg.src = canvas.toDataURL('image/jpeg', 0.95);
+                        });
+                    });
                 };
                 userImg.src = event.target.result;
             };
@@ -3501,27 +3588,41 @@
 
         async function chayAIPhanTichGopAnh() {
             if (!uploadedBase64Data) { alert("⚠️ Vui lòng tải ảnh chân dung lên trước!"); return; }
+            if (!aiTryOnSelection.jersey && !aiTryOnSelection.balo) {
+                alert("⚠️ Vui lòng chọn ít nhất 1 Áo hoặc 1 Balo để thử đồ!");
+                return;
+            }
             if (currentCustomer.tokens <= 0) { alert("⚠️ Bạn đã dùng hết Token AI!"); return; }
             currentCustomer.tokens--;
             capNhatHeaderTaiKhoan();
             gopAnhTuDong();
+
+            let outfitName = '';
+            if (aiTryOnSelection.jersey && aiTryOnSelection.balo) {
+                outfitName = `Combo [${aiTryOnSelection.jersey.name}] cùng [${aiTryOnSelection.balo.name}]`;
+            } else if (aiTryOnSelection.jersey) {
+                outfitName = aiTryOnSelection.jersey.name;
+            } else {
+                outfitName = aiTryOnSelection.balo.name;
+            }
+
             const outBox = document.getElementById('aiAnalysisText');
-            outBox.innerHTML = "⏳ <b>Gemini AI Stylist đang phân tích vóc dáng...</b>";
+            outBox.innerHTML = `⏳ <b>Gemini AI Stylist đang phân tích vóc dáng với outfit "${outfitName}"...</b>`;
             try {
                 const response = await fetch('/api/ai/try-on', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         userPhotoBase64: uploadedBase64Data,
-                        productName: "Áo bóng rổ Mairua Custom",
-                        promptExtra: "Nhận xét ngắn gọn 3 câu về vóc dáng khi phối đồ bóng rổ"
+                        productName: outfitName,
+                        promptExtra: "Nhận xét ngắn gọn 3 câu về cách phối màu và phong cách outfit bóng rổ này với người mặc"
                     })
                 });
                 const resData = await response.json();
                 const adviceText = resData.advice || (resData.candidates && resData.candidates[0].content.parts[0].text) || 'Stylist AI đã phân tích xong!';
                 outBox.innerHTML = `✨ <b>Gemini AI Stylist:</b><br>${adviceText.replace(/\n/g, '<br>')}`;
             } catch (err) {
-                outBox.innerHTML = `✨ <b>Gộp ảnh thành công!</b> Phong cách bóng rổ rất năng động!`;
+                outBox.innerHTML = `✨ <b>Gộp ảnh thành công!</b> Outfit <b>${outfitName}</b> rất thể thao và nổi bật!`;
             }
         }
 
@@ -4287,6 +4388,7 @@ Câu hỏi của khách: "${rawQ}"`;
                 document.getElementById('view-aiTryOn').classList.add('active');
                 let navAi = document.getElementById('nav-aiTryOn');
                 if (navAi) navAi.classList.add('active');
+                renderDanhSachSanPhamAI();
             } else {
                 document.getElementById('view-products').classList.add('active');
                 let navCat = document.getElementById('nav-' + tabName);
@@ -5129,7 +5231,7 @@ Câu hỏi của khách: "${rawQ}"`;
                 ${bestSellerBadge}
                 <div>
                     <div class="card-image-wrap" onclick="moChiTietSanPham(${p.id})">
-                        <img id="card-img-${prefix}-${p.id}" src="${p.variants[0].img}" class="product-img" alt="${p.name}">
+                        <img id="card-img-${prefix}-${p.id}" src="${p.variants[0].img}" class="product-img" alt="${p.name}" onerror="this.onerror=null; this.src='https://interdeportivo.com/cdn/shop/files/JerseyNikeLosAngelesLakersIconEdition_1_-PaginaWEB.png?v=1779056525&width=1024';">
                         <div class="btn-quick-preview">Xem nhanh</div>
                     </div>
                     ${swatchesHtml}
@@ -5977,6 +6079,9 @@ Câu hỏi của khách: "${rawQ}"`;
         function capNhatGiaoDienRoster() {
             let tbody = document.getElementById('rosterTableBody');
             if (!tbody) return;
+            let thShorts = document.getElementById('rosterThSizeShorts');
+            if (thShorts) thShorts.style.display = (rosterMode === 'set') ? '' : 'none';
+
             let numCounts = demSoAoBiTrung(rosterPlayers);
             let dupNumbersList = Object.keys(numCounts).filter(k => numCounts[k] > 1);
 
@@ -5984,6 +6089,7 @@ Câu hỏi của khách: "${rawQ}"`;
                 let isDup = numCounts[String(p.number).trim()] > 1;
                 let dupHtml = isDup ? `<div class="dup-warning-tag">⚠ Trùng số</div>` : '';
                 let strokeCss = jerseyStudioState.strokeColorHex ? `-webkit-text-stroke: 0.45px ${jerseyStudioState.strokeColorHex};` : '';
+                let shortsSizeTd = rosterMode === 'set' ? `<td><select class="roster-input-clean" onchange="capNhatDongRoster(${idx}, 'shortsSize', this.value)" style="cursor:pointer;">${['S','M','L','XL','2XL'].map(sz => `<option value="${sz}" ${(p.shortsSize || p.size)===sz?'selected':''}>${sz}</option>`).join('')}</select></td>` : '';
 
                 return `<tr>
                     <td style="color:#666; font-weight:600;">${idx + 1}</td>
@@ -5996,6 +6102,7 @@ Câu hỏi của khách: "${rawQ}"`;
                     <td><input type="text" class="roster-input-clean" value="${p.name}" oninput="capNhatDongRoster(${idx}, 'name', this.value)" placeholder="Tên in lưng..."></td>
                     <td><input type="text" class="roster-input-clean" value="${p.number}" oninput="capNhatDongRoster(${idx}, 'number', this.value)" style="width:65px; font-weight:700;">${dupHtml}</td>
                     <td><select class="roster-input-clean" onchange="capNhatDongRoster(${idx}, 'size', this.value)" style="cursor:pointer;">${['S','M','L','XL','2XL'].map(sz => `<option value="${sz}" ${p.size===sz?'selected':''}>${sz}</option>`).join('')}</select></td>
+                    ${shortsSizeTd}
                     <td><input type="number" min="1" max="50" class="roster-input-clean" value="${p.qty}" onchange="capNhatDongRoster(${idx}, 'qty', this.value)" style="width:52px;"></td>
                     <td style="text-align:center;"><button type="button" onclick="xoaDongCauThuRoster(${idx})" style="background:none; border:none; color:#888; font-size:16px; cursor:pointer;">&times;</button></td>
                 </tr>`;
@@ -6018,7 +6125,7 @@ Câu hỏi của khách: "${rawQ}"`;
         }
 
         function themDongCauThuRoster() {
-            rosterPlayers.push({ name: 'PLAYER', number: String(Math.floor(Math.random() * 90) + 1), size: 'L', qty: 1 });
+            rosterPlayers.push({ name: 'PLAYER', number: String(Math.floor(Math.random() * 90) + 1), size: 'L', shortsSize: 'L', qty: 1 });
             capNhatGiaoDienRoster();
         }
         function xoaDongCauThuRoster(idx) {
@@ -6027,8 +6134,12 @@ Câu hỏi của khách: "${rawQ}"`;
             capNhatGiaoDienRoster();
         }
         function taiFileMauCSVRoster() {
-            let csvContent = "STT,TEN_CAU_THU,SO_AO,SIZE,SO_LUONG\n" + rosterPlayers.map((p, i) => `${i + 1},${p.name},${p.number},${p.size},${p.qty}`).join("\n");
-            let blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+            let header = rosterMode === 'set' ? "STT,TEN_CAU_THU,SO_AO,SIZE_AO,SIZE_QUAN,SO_LUONG\n" : "STT,TEN_CAU_THU,SO_AO,SIZE_AO,SO_LUONG\n";
+            let rows = rosterPlayers.map((p, i) => {
+                if (rosterMode === 'set') return `${i + 1},${p.name},${p.number},${p.size},${p.shortsSize || p.size},${p.qty}`;
+                return `${i + 1},${p.name},${p.number},${p.size},${p.qty}`;
+            }).join("\n");
+            let blob = new Blob(["\uFEFF" + header + rows], { type: 'text/csv;charset=utf-8;' });
             let a = document.createElement('a');
             a.href = URL.createObjectURL(blob); a.download = "roster_mau_mairua.csv";
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -6038,24 +6149,42 @@ Câu hỏi của khách: "${rawQ}"`;
             let teamTitle = (document.getElementById('rosterTeamTitleInput') ? document.getElementById('rosterTeamTitleInput').value.trim() : 'MVP Saigon Owls') || 'MVP Saigon Owls';
             let totalJerseys = rosterPlayers.reduce((s, p) => s + (parseInt(p.qty) || 1), 0);
             let priceObj = tinhDonGiaMotAoJersey();
-            let rawSubtotal = totalJerseys * priceObj.unitTotal;
+            let unitTotal = priceObj.unitTotal + (rosterMode === 'set' ? SET_SHORTS_PART_PRICE : 0);
+            let rawSubtotal = totalJerseys * unitTotal;
 
             let discountPercent = totalJerseys >= 20 ? 15 : (totalJerseys >= 10 ? 10 : (totalJerseys >= 5 ? 5 : 0));
             let discountAmt = Math.round(rawSubtotal * (discountPercent / 100));
             let finalRosterTotal = rawSubtotal - discountAmt;
 
-            document.getElementById('rosterSummaryHeading').innerText = `ROSTER ${teamTitle.toUpperCase()} – ${totalJerseys} JERSEY`;
-            document.getElementById('rosterSummarySpecs').innerText = `${jerseyStudioState.baseColorName} (Viền áo ${jerseyStudioState.trimColorName || 'Vàng gold'}) · ${jerseyStudioState.fontLabel} · ${jerseyStudioState.fillColorName}/${jerseyStudioState.strokeColorName || 'Không viền'}`;
-            document.getElementById('rosterCalcLineLabel').innerText = `${totalJerseys} × ${priceObj.unitTotal.toLocaleString('vi-VN')}đ`;
-            document.getElementById('rosterSubtotalText').innerText = rawSubtotal.toLocaleString('vi-VN') + 'đ';
-            document.getElementById('rosterDiscountLabel').innerText = `Giảm theo SL (${discountPercent}%)`;
-            document.getElementById('rosterDiscountAmountText').innerText = `-${discountAmt.toLocaleString('vi-VN')}đ`;
-            document.getElementById('rosterFinalTotalText').innerText = finalRosterTotal.toLocaleString('vi-VN') + 'đ';
+            let modeLabel = rosterMode === 'set' ? 'BỘ (ÁO+QUẦN)' : 'JERSEY';
+            let headingEl = document.getElementById('rosterSummaryHeading');
+            if (headingEl) headingEl.innerText = `ROSTER ${teamTitle.toUpperCase()} – ${totalJerseys} ${modeLabel}`;
+
+            let specsEl = document.getElementById('rosterSummarySpecs');
+            let specsText = `${jerseyStudioState.baseColorName} (Viền áo ${jerseyStudioState.trimColorName || 'Vàng gold'}) · ${jerseyStudioState.fontLabel} · ${jerseyStudioState.fillColorName}/${jerseyStudioState.strokeColorName || 'Không viền'}`;
+            if (rosterMode === 'set') specsText += ' · Kèm Quần Đấu (+80k/bộ)';
+            if (specsEl) specsEl.innerText = specsText;
+
+            let calcLineEl = document.getElementById('rosterCalcLineLabel');
+            if (calcLineEl) calcLineEl.innerText = `${totalJerseys} × ${unitTotal.toLocaleString('vi-VN')}đ ${rosterMode === 'set' ? '(Nguyên bộ)' : ''}`;
+
+            let subtotalEl = document.getElementById('rosterSubtotalText');
+            if (subtotalEl) subtotalEl.innerText = rawSubtotal.toLocaleString('vi-VN') + 'đ';
+
+            let discLabelEl = document.getElementById('rosterDiscountLabel');
+            if (discLabelEl) discLabelEl.innerText = `Giảm theo SL (${discountPercent}%)`;
+
+            let discAmtEl = document.getElementById('rosterDiscountAmountText');
+            if (discAmtEl) discAmtEl.innerText = `-${discountAmt.toLocaleString('vi-VN')}đ`;
+
+            let finalEl = document.getElementById('rosterFinalTotalText');
+            if (finalEl) finalEl.innerText = finalRosterTotal.toLocaleString('vi-VN') + 'đ';
 
             let dupBox = document.getElementById('rosterDuplicateAlertBox');
             if (dupBox) {
                 dupBox.style.display = dupCount > 0 ? 'block' : 'none';
-                document.getElementById('rosterDupCountSpan').innerText = dupCount;
+                let cntSpan = document.getElementById('rosterDupCountSpan');
+                if (cntSpan) cntSpan.innerText = dupCount;
             }
         }
 
@@ -6064,7 +6193,8 @@ Câu hỏi của khách: "${rawQ}"`;
             let teamTitle = (document.getElementById('rosterTeamTitleInput').value.trim() || 'MVP Saigon Owls');
             let totalJerseys = rosterPlayers.reduce((s, p) => s + (parseInt(p.qty) || 1), 0);
             let priceObj = tinhDonGiaMotAoJersey();
-            let specsText = `${jerseyStudioState.baseColorName} (Viền áo ${jerseyStudioState.trimColorName || 'Vàng gold'}) · ${jerseyStudioState.fontLabel} · ${jerseyStudioState.fillColorName}/${jerseyStudioState.strokeColorName || 'Không viền'}`;
+            let unitTotal = priceObj.unitTotal + (rosterMode === 'set' ? SET_SHORTS_PART_PRICE : 0);
+            let specsText = `${jerseyStudioState.baseColorName} (Viền áo ${jerseyStudioState.trimColorName || 'Vàng gold'}) · ${jerseyStudioState.fontLabel} · ${jerseyStudioState.fillColorName}/${jerseyStudioState.strokeColorName || 'Không viền'}` + (rosterMode === 'set' ? ' · Kèm Quần Đấu (+80k/bộ)' : '');
 
             let prod = products.find(p => p.id === 22);
             let vIdx = timVariantIndexPhoiJerseyTheoTenMau(jerseyStudioState.baseColorName);
@@ -6079,11 +6209,12 @@ Câu hỏi của khách: "${rawQ}"`;
                 productId: 22, variantIndex: vIdx,
                 isCustom: true, isCustomJersey: true, isRoster: true, showRosterTable: true,
                 teamTitle,
-                name: `Roster ${teamTitle} — ${totalJerseys} Jersey`,
+                rosterMode,
+                name: rosterMode === 'set' ? `Roster ${teamTitle} — ${totalJerseys} Bộ (Áo + Quần)` : `Roster ${teamTitle} — ${totalJerseys} Jersey`,
                 subInfo: specsText,
                 swatchHex: jerseyStudioState.baseColorHex,
                 rosterList: JSON.parse(JSON.stringify(rosterPlayers)),
-                basePrice: priceObj.unitTotal, price: priceObj.unitTotal, qty: totalJerseys
+                basePrice: unitTotal, price: unitTotal, qty: totalJerseys
             };
 
             if (existingIdx !== -1) cart[existingIdx] = rosterCartItem;
@@ -6404,6 +6535,7 @@ Câu hỏi của khách: "${rawQ}"`;
         renderBangMauJerseyStudio();
         updateJerseyPreview();
         capNhatGiaoDienRoster();
+        renderDanhSachSanPhamAI();
         capNhatHeaderTaiKhoan();
         capNhatGioHang();
         dongBoTuGoogleSheets().then(() => {
