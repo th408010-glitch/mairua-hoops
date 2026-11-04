@@ -6,7 +6,7 @@
     <title>Mairua.com - Sàn TMĐT Bóng Rổ & Custom Studio</title>
     <link rel="icon" type="image/png" href="logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Oswald:wght@600;700&family=Poppins:wght@300;400;500;600;700;800;900&family=Teko:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=6.5">
 </head>
 <body>
 
@@ -107,10 +107,15 @@
                 <div style="font-weight: 700; font-size: 14px; color: #2c3e50;">💰 Lọc theo tầm giá (0đ - 1.000.000đ):</div>
                 <div class="price-slider-wrap">
                     <span style="font-size: 12px; color: #666; font-weight: 600;">0đ</span>
-                    <input type="range" id="homePriceSlider" min="0" max="1000000" step="10000" value="1000000" oninput="capNhatNhanGiaLoc(this.value)">
+                    <div class="dual-range" id="homeDualRange">
+                        <div class="dual-range-track"></div>
+                        <div class="dual-range-fill" id="homePriceFill"></div>
+                        <input type="range" id="homePriceMinSlider" min="0" max="1000000" step="10000" value="0" oninput="capNhatNhanGiaLoc('min'); locSanPhamTheoGia();" onchange="locSanPhamTheoGia()">
+                        <input type="range" id="homePriceSlider" min="0" max="1000000" step="10000" value="1000000" oninput="capNhatNhanGiaLoc('max'); locSanPhamTheoGia();" onchange="locSanPhamTheoGia()">
+                    </div>
                     <span style="font-size: 12px; color: #666; font-weight: 600;">1.000.000đ</span>
                 </div>
-                <div class="price-badge-val" id="homePriceValueLabel">Tối đa: 1.000.000đ</div>
+                <div class="price-badge-val" id="homePriceValueLabel">0đ - 1.000.000đ</div>
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <button class="btn-submit" style="width: auto; padding: 8px 22px; background: #ff5500;" onclick="locSanPhamTheoGia()">🔍 Lọc</button>
                     <button class="btn-submit" style="width: auto; padding: 8px 16px; background: #333;" onclick="datLaiLocGia()">Đặt lại</button>
@@ -1018,6 +1023,7 @@
                 <div>👤 Khách hàng: <b id="succModalCustName">---</b></div>
                 <div>📞 Số điện thoại: <b id="succModalCustPhone">---</b></div>
                 <div>💰 Tổng thanh toán: <b id="succModalTotal" style="color: #16a34a; font-size: 15px;">---</b></div>
+                <div id="succModalMCoinWrap" style="color: #ea580c; font-weight: 600;">🪙 Hoàn M-Coin: <b id="succModalEarnedMCoin">+0</b> (<span id="succModalTierName">Thành viên</span>)</div>
                 <div>🛒 Giỏ hàng: <span style="color: #15803d; font-weight: 700;">Đã dọn sạch trống 100%</span></div>
             </div>
             <div style="display: flex; gap: 10px; justify-content: center;">
@@ -1222,6 +1228,6 @@
         </div>
     </footer>
 
-    <script src="app.js?v=6.0"></script>
+    <script src="app.js?v=6.5"></script>
 </body>
 </html>

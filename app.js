@@ -238,6 +238,13 @@
             }
         }
 
+        function phanTichTienSo(val) {
+            if (typeof val === 'number') return val;
+            if (!val) return 0;
+            let clean = String(val).replace(/[^\d]/g, '');
+            return parseInt(clean, 10) || 0;
+        }
+
         // HÀM ĐỒNG BỘ TÀI KHOẢN VÀ ĐƠN HÀNG TỪ GOOGLE SHEETS QUA PROXY BACKEND
         async function dongBoTuGoogleSheets(hienThongBao = false) {
             let syncBtn = document.getElementById('cloudSyncStatusBtn');
@@ -349,28 +356,16 @@
                         let isCancelled = (stepIdxFromSheet === -1);
                         let isConfirmedBySheet = (stepIdxFromSheet > 0 || isCompleted);
 
-                        // Khớp đơn theo mã đơn + số điện thoại hoặc tên hoặc thời gian (tránh trường hợp 2 máy khác nhau vô tình tạo trùng mã đơn)
+                        // Khớp đơn theo mã đơn
                         let localIdx = remoteOrdersList.findIndex(o => {
                             if (!o) return false;
-                            let matchCode = (o.orderCode === sheetOrd.orderCode || o.originalOrderCode === sheetOrd.orderCode);
-                            if (!matchCode) return false;
-                            let samePhone = (o.phone && sheetOrd.phone && String(o.phone).trim() === String(sheetOrd.phone).trim());
-                            let sameName = (o.name && sheetOrd.name && o.name.trim().toLowerCase() === sheetOrd.name.trim().toLowerCase());
-                            let closeTime = (o.startTime && parsedStartTime && Math.abs(o.startTime - parsedStartTime) < 15 * 60 * 1000);
-                            return samePhone || sameName || closeTime;
+                            return (o.orderCode === sheetOrd.orderCode || o.originalOrderCode === sheetOrd.orderCode);
                         });
+
+                        let parsedPrice = phanTichTienSo(sheetOrd.finalTotal);
 
                         if (localIdx === -1) {
                             let finalCode = sheetOrd.orderCode;
-                            if (remoteOrdersList.some(o => o && o.orderCode === finalCode)) {
-                                let suffix = (sheetOrd.phone || 'KH').slice(-4);
-                                finalCode = `${sheetOrd.orderCode}-${suffix}`;
-                                let counter = 1;
-                                while (remoteOrdersList.some(o => o && o.orderCode === finalCode)) {
-                                    finalCode = `${sheetOrd.orderCode}-${suffix}-${counter++}`;
-                                }
-                            }
-
                             let newOrd = {
                                 orderCode: finalCode,
                                 originalOrderCode: sheetOrd.orderCode,
@@ -382,8 +377,8 @@
                                 addr: sheetOrd.addr || '',
                                 itemsList: Array.isArray(sheetOrd.itemsList) ? sheetOrd.itemsList : [String(sheetOrd.itemsList || '')],
                                 itemsCount: Array.isArray(sheetOrd.itemsList) ? sheetOrd.itemsList.length : 1,
-                                finalTotal: Number(sheetOrd.finalTotal) || 0,
-                                subtotal: Number(sheetOrd.finalTotal) || 0,
+                                finalTotal: parsedPrice,
+                                subtotal: parsedPrice,
                                 hasCustomJersey: isJerseyOrder,
                                 startTime: parsedStartTime,
                                 confirmedAt: isConfirmedBySheet ? parsedStartTime : null,
@@ -563,6 +558,7 @@
         let selectedBaloStudioVariantIdx = 0;
         let selectedCustomJerseySize = 'M';
         let currentFilteredMaxPrice = 1000000;
+        let currentFilteredMinPrice = 0;
         let selectedCheckoutAddrIdx = 0;
 
         const jerseyBasePalette = [
@@ -1293,7 +1289,13 @@
                         let code = srvOrd.orderCode || srvOrd.order_code;
                         if (!code) return;
                         let exists = remoteOrdersList.find(o => o && (o.orderCode === code || o.originalOrderCode === code));
-                        if (!exists) {
+                        if (exists) {
+                            if (srvOrd.status && exists.status !== srvOrd.status) {
+                                exists.status = srvOrd.status;
+                                if (srvOrd.status === 'Đã hủy') exists.isCancelled = true;
+                                hasNew = true;
+                            }
+                        } else {
                             let ordObj = {
                                 orderCode: code,
                                 originalOrderCode: code,
@@ -1301,8 +1303,8 @@
                                 phone: srvOrd.phone || srvOrd.customer_phone || phone,
                                 accountPhone: srvOrd.accountPhone || srvOrd.account_phone || phone,
                                 addr: srvOrd.addr || srvOrd.customer_address || '',
-                                finalTotal: Number(srvOrd.finalTotal || srvOrd.final_amount) || 0,
-                                subtotal: Number(srvOrd.subtotal) || 0,
+                                finalTotal: phanTichTienSo(srvOrd.finalTotal || srvOrd.final_amount),
+                                subtotal: phanTichTienSo(srvOrd.subtotal || srvOrd.finalTotal || srvOrd.final_amount),
                                 status: srvOrd.status || 'Chờ xác nhận',
                                 itemsList: Array.isArray(srvOrd.itemsList) ? srvOrd.itemsList : ['Sản phẩm Mairua Hoops'],
                                 itemsCount: srvOrd.itemsCount || 1,
@@ -1310,6 +1312,7 @@
                                 isRealCustomerOrder: true,
                                 adminConfirmed: false
                             };
+                            if (srvOrd.status === 'Đã hủy') ordObj.isCancelled = true;
                             remoteOrdersList.unshift(ordObj);
                             hasNew = true;
                         }
@@ -3103,6 +3106,7 @@
             localStorage.setItem('mairua_stockLedgerV2', JSON.stringify(stockLedger));
             dongBoBackupDonKhachThat(newOrder);
             dongBoTaiKhoanHienTaiVaoDB();
+            luuDuLieuLenDamMay();
             let roundedFinalTotal = Math.round((newOrder.finalTotal || 0) / 1000) * 1000;
             let formattedSheetTotal = roundedFinalTotal.toLocaleString('vi-VN') + ' đ';
 
@@ -3168,10 +3172,14 @@
             let modalName = document.getElementById('succModalCustName');
             let modalPhone = document.getElementById('succModalCustPhone');
             let modalTotal = document.getElementById('succModalTotal');
+            let modalMCoin = document.getElementById('succModalEarnedMCoin');
+            let modalTier = document.getElementById('succModalTierName');
             if (modalCode) modalCode.innerText = newOrder.orderCode;
             if (modalName) modalName.innerText = newOrder.name;
             if (modalPhone) modalPhone.innerText = newOrder.phone;
             if (modalTotal) modalTotal.innerText = formattedSheetTotal;
+            if (modalMCoin) modalMCoin.innerText = `+${earnedMCoin.toLocaleString('vi-VN')}`;
+            if (modalTier) modalTier.innerText = tierBefore.tierName;
             moModal('orderSuccessModal');
 
             if (firstCartItem) hienPopupDonAoFomo(name, phone, addr, firstCartItem.name, "Đơn mới", firstCartItem.img || "", firstCartItem.qty);
@@ -3194,10 +3202,6 @@
             let newRealIdx = remoteOrdersList.length - 1;
             moTabTaiKhoan('orders');
             xemChiTietDonTaiKhoan(newRealIdx);
-            let tierAfter = layThongTinHangThanhVien(currentCustomer.phone);
-            let tierUpgradeNote = tierAfter.tierKey !== tierBefore.tierKey ? `\n🏆 Chúc mừng bạn đã thăng hạng lên ${tierAfter.tierName} (Hoàn ${tierAfter.ratePercent}% M-Coin cho các đơn tiếp theo)!` : '';
-            let stockSummary = deductedVariants.map(dv => { let p = products.find(x => x.id === dv.prodId); let v = p && p.variants[dv.vIdx]; return p && v ? `\n• Đã trừ kho: -${dv.qty} ${p.name} (${v.colorName}) → Tồn còn: ${v.stock}` : ''; }).join('');
-            alert(`🎉 Đặt đơn ${orderCode} thành công!\n• Trạng thái hiện tại: Chờ xác nhận (Vui lòng đợi shop duyệt đơn)${stockSummary}\n• Hoàn +${earnedMCoin.toLocaleString('vi-VN')} M-Coin (${tierBefore.ratePercent}% theo ${tierBefore.tierName})\n• Tặng +1 Token AI${tierUpgradeNote}`);
         }
 
         let uploadedFileObj = null, uploadedBase64Data = null, uploadedMimeType = "image/jpeg";
@@ -4042,17 +4046,68 @@ Câu hỏi của khách: "${rawQ}"`;
             if (!preserveScroll) window.scrollTo(0, 0);
         }
 
-        function capNhatNhanGiaLoc(val) {
-            document.getElementById('homePriceValueLabel').innerText = `0đ - ${(parseInt(val) || 0).toLocaleString('vi-VN')}đ`;
+        // THANH LỌC GIÁ 2 ĐẦU (kéo được cả mức giá thấp nhất và cao nhất)
+        const PRICE_GAP_MIN = 30000;
+        function capNhatNhanGiaLoc(which) {
+            let minEl = document.getElementById('homePriceMinSlider');
+            let maxEl = document.getElementById('homePriceSlider');
+            if (!minEl || !maxEl) return;
+            let minV = parseInt(minEl.value) || 0;
+            let maxV = parseInt(maxEl.value) || 0;
+            let maxRange = parseInt(maxEl.max) || 1000000;
+            // Không cho 2 đầu vượt qua nhau
+            if (maxV - minV < PRICE_GAP_MIN) {
+                if (which === 'min') { minV = Math.max(0, maxV - PRICE_GAP_MIN); minEl.value = minV; }
+                else { maxV = Math.min(maxRange, minV + PRICE_GAP_MIN); maxEl.value = maxV; }
+            }
+            // Đầu nào đang kéo thì nổi lên trên để dễ chạm (quan trọng trên điện thoại)
+            minEl.style.zIndex = which === 'min' ? 6 : 4;
+            maxEl.style.zIndex = which === 'min' ? 4 : 6;
+            let fill = document.getElementById('homePriceFill');
+            if (fill) {
+                fill.style.left = (minV / maxRange * 100) + '%';
+                fill.style.right = (100 - maxV / maxRange * 100) + '%';
+            }
+            let label = document.getElementById('homePriceValueLabel');
+            if (label) {
+                label.innerText = `${minV.toLocaleString('vi-VN')} đ - ${maxV.toLocaleString('vi-VN')} đ`;
+            }
+        }
+        function khoiTaoDualRangeEvents() {
+            let wrap = document.getElementById('homeDualRange');
+            let minEl = document.getElementById('homePriceMinSlider');
+            let maxEl = document.getElementById('homePriceSlider');
+            if (!wrap || !minEl || !maxEl) return;
+            wrap.addEventListener('pointerdown', (e) => {
+                let rect = wrap.getBoundingClientRect();
+                let pct = (e.clientX - rect.left) / rect.width;
+                let val = pct * 1000000;
+                let distMin = Math.abs(val - (parseInt(minEl.value) || 0));
+                let distMax = Math.abs(val - (parseInt(maxEl.value) || 1000000));
+                if (distMin < distMax) {
+                    minEl.style.zIndex = '6';
+                    maxEl.style.zIndex = '4';
+                } else {
+                    maxEl.style.zIndex = '6';
+                    minEl.style.zIndex = '4';
+                }
+            });
         }
         function locSanPhamTheoGia() {
-            currentFilteredMaxPrice = parseInt(document.getElementById('homePriceSlider').value) || 0;
+            let minEl = document.getElementById('homePriceMinSlider');
+            let maxEl = document.getElementById('homePriceSlider');
+            currentFilteredMinPrice = minEl ? (parseInt(minEl.value) || 0) : 0;
+            currentFilteredMaxPrice = maxEl ? (parseInt(maxEl.value) || 1000000) : 1000000;
             renderAllHomeGridFiltered();
         }
         function datLaiLocGia() {
+            currentFilteredMinPrice = 0;
             currentFilteredMaxPrice = 1000000;
-            document.getElementById('homePriceSlider').value = 1000000;
-            document.getElementById('homePriceValueLabel').innerText = `Tối đa: 1.000.000đ`;
+            let minEl = document.getElementById('homePriceMinSlider');
+            if (minEl) minEl.value = 0;
+            let maxEl = document.getElementById('homePriceSlider');
+            if (maxEl) maxEl.value = 1000000;
+            capNhatNhanGiaLoc('max');
             renderAllHomeGridFiltered();
         }
 
@@ -4064,6 +4119,7 @@ Câu hỏi của khách: "${rawQ}"`;
                 topGrid.innerHTML = '';
                 [...products].filter(p => !p.isJerseyBlank).sort((a, b) => (b.sold || 0) - (a.sold || 0)).slice(0, 3).forEach(p => renderCard(p, topGrid, 'top', true));
             }
+            capNhatNhanGiaLoc('max');
             renderAllHomeGridFiltered();
         }
 
@@ -4078,7 +4134,7 @@ Câu hỏi của khách: "${rawQ}"`;
             if (!homeGrid) return;
             homeGrid.innerHTML = '';
             let top3Ids = [...products].filter(p => !p.isJerseyBlank).sort((a, b) => (b.sold || 0) - (a.sold || 0)).slice(0, 3).map(p => p.id);
-            let filteredList = products.filter(p => !p.isJerseyBlank && p.price <= currentFilteredMaxPrice);
+            let filteredList = products.filter(p => !p.isJerseyBlank && p.price >= currentFilteredMinPrice && p.price <= currentFilteredMaxPrice);
             
             // Sắp xếp theo chế độ lựa chọn
             if (currentSortMode === 'price_asc') {
@@ -4090,7 +4146,7 @@ Câu hỏi của khách: "${rawQ}"`;
             }
 
             if (filteredList.length === 0) {
-                homeGrid.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color:#777; padding: 25px 0;">Không có sản phẩm nào trong tầm giá dưới ${currentFilteredMaxPrice.toLocaleString('vi-VN')}đ.</p>`;
+                homeGrid.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color:#777; padding: 25px 0;">Không có sản phẩm nào trong tầm giá ${currentFilteredMinPrice.toLocaleString('vi-VN')}đ - ${currentFilteredMaxPrice.toLocaleString('vi-VN')}đ.</p>`;
                 return;
             }
             filteredList.forEach(p => renderCard(p, homeGrid, 'home', top3Ids.includes(p.id)));
@@ -6049,6 +6105,8 @@ function khoiTaoTimKiemRealtime() {
 // Kích hoạt tự động khi tải trang
 try {
     khoiTaoTimKiemRealtime();
+    khoiTaoDualRangeEvents();
+    capNhatNhanGiaLoc('max');
     taiSanPhamTuBackendAPI();
     if (currentCustomer && currentCustomer.loggedIn && currentCustomer.phone) {
         dongBoGioHangTuServer(currentCustomer.phone);

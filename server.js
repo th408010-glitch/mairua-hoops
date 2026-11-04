@@ -291,6 +291,9 @@ app.post('/api/admin/restock', async (req, res) => {
                     prod.stock = prod.variants.reduce((s, vr) => s + (vr.stock || 0), 0);
                 }
             });
+            try {
+                fs.writeFileSync('./products_seed.json', JSON.stringify(fallbackProducts, null, 2));
+            } catch(e) {}
         }
 
         res.json({

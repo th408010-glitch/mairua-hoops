@@ -51,8 +51,22 @@
 
         .price-filter-bar { background: white; padding: 18px 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; border: 1px solid #eee; }
         .price-slider-wrap { display: flex; align-items: center; gap: 15px; flex: 1; min-width: 280px; }
-        .price-slider-wrap input[type="range"] { flex: 1; accent-color: #ff5500; cursor: pointer; height: 6px; }
-        .price-badge-val { background: #fff8f5; border: 1px solid #ff5500; color: #ff5500; font-weight: 700; padding: 6px 14px; border-radius: 6px; font-size: 14px; min-width: 150px; text-align: center; }
+        .dual-range { position: relative; flex: 1; height: 36px; min-width: 180px; }
+        .dual-range-track { position: absolute; top: 50%; left: 0; right: 0; height: 6px; transform: translateY(-50%); background: #2c3e50; border-radius: 4px; }
+        .dual-range-fill { position: absolute; top: 50%; height: 6px; transform: translateY(-50%); background: #ff5500; border-radius: 4px; left: 0; right: 0; }
+        .dual-range input[type="range"] { position: absolute; left: 0; top: 0; width: 100%; height: 36px; margin: 0; background: transparent; pointer-events: none; -webkit-appearance: none; appearance: none; touch-action: pan-x; }
+        .dual-range input[type="range"]::-webkit-slider-runnable-track { background: transparent; height: 6px; }
+        .dual-range input[type="range"]::-moz-range-track { background: transparent; height: 6px; }
+        .dual-range input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; pointer-events: auto; width: 24px; height: 24px; border-radius: 50%; background: #ff5500; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.35); cursor: grab; margin-top: -9px; position: relative; z-index: 3; }
+        .dual-range input[type="range"]::-moz-range-thumb { pointer-events: auto; width: 20px; height: 20px; border-radius: 50%; background: #ff5500; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.35); cursor: grab; }
+        .dual-range input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.25); }
+        .price-badge-val { background: #fff8f5; border: 1.5px solid #ff5500; color: #ff5500; font-weight: 700; padding: 7px 16px; border-radius: 8px; font-size: 14px; min-width: 170px; text-align: center; }
+
+        @media (max-width: 768px) {
+            .price-filter-bar { padding: 14px 16px; flex-direction: column; align-items: stretch; gap: 14px; }
+            .price-slider-wrap { width: 100%; min-width: unset; }
+            .price-badge-val { width: 100%; text-align: center; }
+        }
 
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); gap: 22px; margin-bottom: 40px; }
         .product-card { 
