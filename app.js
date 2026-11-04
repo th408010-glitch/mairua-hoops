@@ -245,6 +245,31 @@
             return parseInt(clean, 10) || 0;
         }
 
+        function layTongTienDonHangChuan(ord) {
+            if (!ord) return 0;
+            let total = phanTichTienSo(ord.finalTotal) || phanTichTienSo(ord.subtotal);
+            if (total > 0) {
+                ord.finalTotal = total;
+                if (!ord.subtotal) ord.subtotal = total;
+                return total;
+            }
+            if (Array.isArray(ord.itemsList)) {
+                let sum = 0;
+                ord.itemsList.forEach(itemStr => {
+                    let m = String(itemStr).match(/-\s*([\d.,]+)\s*[đd₫]/i);
+                    if (m && m[1]) {
+                        sum += phanTichTienSo(m[1]);
+                    }
+                });
+                if (sum > 0) {
+                    ord.finalTotal = sum;
+                    ord.subtotal = sum;
+                    return sum;
+                }
+            }
+            return 0;
+        }
+
         // HÀM ĐỒNG BỘ TÀI KHOẢN VÀ ĐƠN HÀNG TỪ GOOGLE SHEETS QUA PROXY BACKEND
         async function dongBoTuGoogleSheets(hienThongBao = false) {
             let syncBtn = document.getElementById('cloudSyncStatusBtn');
@@ -396,6 +421,11 @@
                             hasOrderUpdate = true;
                         } else {
                             let existingOrd = remoteOrdersList[localIdx];
+                            if (parsedPrice > 0 && (!existingOrd.finalTotal || existingOrd.finalTotal === 0)) {
+                                existingOrd.finalTotal = parsedPrice;
+                                existingOrd.subtotal = parsedPrice;
+                                hasOrderUpdate = true;
+                            }
                             if (sheetOrd.status && sheetOrd.status !== existingOrd.lastSyncedSheetStatus) {
                                 existingOrd.lastSyncedSheetStatus = sheetOrd.status;
                                 if (isCompleted) {
@@ -767,6 +797,7 @@
 
         function layThongTinTienTrinhDon(ord) {
             if (!ord) return { steps: [], currentIdx: 0, isCancelled: false, cancelledAtStep: null, currentLabel: 'Chờ xác nhận', badgeClass: 'badge-orange', printingSubText: '' };
+            layTongTienDonHangChuan(ord);
 
             let isJerseyOrder = kiemTraDonCoAoJerseyThietKe(ord);
             let jerseyQty = laySoLuongAoJerseyTrongDon(ord);
@@ -777,7 +808,7 @@
                 durationsMin = [0, 30, Math.max(1, jerseyQty) * 10, 20, 20, 20, 30];
             } else {
                 steps = ["Chờ xác nhận", "Chờ lấy hàng", "Đang giao", "Đã giao", "Hoàn tất"];
-                durationsMin = [0, 20, 20, 20, 30];
+                durationsMin = [0, 20, 20, 30];
             }
 
             let isConfirmed = kiemTraDonDaDuocDuyet(ord);
@@ -792,7 +823,7 @@
                 for (let i = 1; i < durationsMin.length; i++) {
                     if (elapsedMin >= accMin + durationsMin[i]) {
                         accMin += durationsMin[i];
-                        calcIdx = i + 1;
+                        calcIdx = Math.min(steps.length - 1, i + 1);
                     } else {
                         if (isJerseyOrder && i === 2) {
                             let minInPrinting = elapsedMin - accMin;
@@ -804,7 +835,7 @@
                 }
 
                 if (typeof ord.manualStepIdx === 'number') {
-                    calcIdx = Math.max(calcIdx, Math.min(steps.length - 1, ord.manualStepIdx));
+                    calcIdx = Math.min(steps.length - 1, Math.max(calcIdx, ord.manualStepIdx));
                     if (calcIdx === steps.length - 2) {
                         if (!ord.deliveredAt) ord.deliveredAt = Date.now();
                         if ((Date.now() - ord.deliveredAt) >= 30 * MIN_MS) calcIdx = steps.length - 1;
@@ -815,12 +846,14 @@
                 }
             }
 
+            calcIdx = Math.min(steps.length - 1, Math.max(0, calcIdx));
+
             if (ord.isCancelled) {
-                let stopIdx = typeof ord.cancelledAtStep === 'number' ? ord.cancelledAtStep : calcIdx;
+                let stopIdx = typeof ord.cancelledAtStep === 'number' ? Math.min(steps.length - 1, ord.cancelledAtStep) : calcIdx;
                 return { steps, isJerseyOrder, jerseyQty, currentIdx: stopIdx, isCancelled: true, cancelledAtStep: stopIdx, currentLabel: 'ĐÃ HỦY', badgeClass: 'badge-red', printingSubText: '' };
             }
 
-            let currentLabel = steps[calcIdx] || steps[0];
+            let currentLabel = steps[calcIdx] || steps[steps.length - 1];
             let badgeClass = 'badge-orange';
             if (calcIdx === steps.length - 1 || currentLabel === 'Đã giao' || currentLabel === 'Đã nhận' || currentLabel === 'Hoàn tất' || currentLabel === 'Hoàn thành') badgeClass = 'badge-green';
             else if (currentLabel === 'Đang giao') badgeClass = 'badge-blue';
@@ -968,8 +1001,7 @@
         // TỰ ĐỘNG ĐỒNG BỘ TRẠNG THÁI ĐƠN HÀNG LÊN GOOGLE SHEETS KHI ĐƠN TIẾN TRIỂN THEO THỜI GIAN
         let daDongBoTrangThaiSheet = {};
         function dongBoTrangThaiDonHangLenSheet() {
-            if (!GOOGLE_SHEETS_API_URL) return;
-            let ordersToCheck = (remoteOrdersList || []).filter(o => o && o.orderCode && o.phone);
+            let ordersToCheck = (remoteOrdersList || []).filter(o => o && o.isRealCustomerOrder && o.orderCode && o.phone);
             ordersToCheck.forEach(ord => {
                 let info = layThongTinTienTrinhDon(ord);
                 let currentStatus = info.isCancelled ? 'Đã hủy' : (info.currentLabel || 'Chờ xác nhận');
