@@ -6,7 +6,7 @@
     <title>Mairua.com - Sàn TMĐT Bóng Rổ & Custom Studio</title>
     <link rel="icon" type="image/png" href="logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Oswald:wght@600;700&family=Poppins:wght@300;400;500;600;700;800;900&family=Teko:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=6.5">
+    <link rel="stylesheet" href="style.css?v=7.0">
 </head>
 <body>
 
@@ -40,24 +40,24 @@
                 </div>
             </div>
 
-            <button class="btn-header" onclick="nhanNutTaiKhoanHeader()">👤 <span id="userLabel">Đăng nhập</span></button>
-            <button class="btn-header" style="background:#e67e22;" id="btnRegisterHeader" onclick="moModal('registerModal')">📝 Đăng ký</button>
-            <div class="cart-btn" id="headerCartBtn" onclick="moGioHang()">🛒 Giỏ hàng (<span id="cartCount">0</span>)</div>
+            <button class="btn-header" onclick="nhanNutTaiKhoanHeader()"><span id="userLabel">Đăng nhập</span></button>
+            <button class="btn-header btn-header-register" id="btnRegisterHeader" onclick="moModal('registerModal')">Đăng ký</button>
+            <div class="cart-btn" id="headerCartBtn" onclick="moGioHang()">Giỏ hàng (<span id="cartCount">0</span>)</div>
         </div>
     </header>
 
     <nav class="sub-nav">
-        <a onclick="chuyenTab('home')" class="active" id="nav-home">🏠 Trang chủ</a>
-        <a onclick="chuyenTab('balo')" id="nav-balo">🎒 Balo Nike Elite & Utility</a>
-        <a onclick="chuyenTab('bong')" id="nav-bong">🏀 Bóng Rổ Chính Hãng</a>
-        <a onclick="chuyenTab('vo')" id="nav-vo">🧦 Vớ tất chuyên dụng</a>
-        <a onclick="chuyenTab('ao')" id="nav-ao">🎽 Áo Jersey & Quần Bóng Rổ</a>
-        <a onclick="chuyenTab('combat')" id="nav-combat">🛡️ Đồ Combat & Phụ Kiện</a>
-        <a onclick="chuyenTab('customBalo')" id="nav-customBalo">✨ In tên lên Balo</a>
-        <a onclick="chuyenTab('customJersey')" id="nav-customJersey">🔥 Thiết kế Jersey Teamwear</a>
-        <a onclick="chuyenTab('roster')" id="nav-roster">👥 Đặt cho cả đội (Roster)</a>
-        <a onclick="chuyenTab('remoteOrder')" id="nav-remoteOrder" style="color: #ffcc00;">📦 Quản Lý & Theo Dõi Đơn</a>
-        <a onclick="chuyenTab('aiTryOn')" id="nav-aiTryOn">🤖 AI Gộp Ảnh & Tư Vấn</a>
+        <a onclick="chuyenTab('home')" class="active" id="nav-home">Trang chủ</a>
+        <a onclick="chuyenTab('balo')" id="nav-balo">Balo Nike Elite</a>
+        <a onclick="chuyenTab('bong')" id="nav-bong">Bóng Rổ Chính Hãng</a>
+        <a onclick="chuyenTab('vo')" id="nav-vo">Vớ Tất Chuyên Dụng</a>
+        <a onclick="chuyenTab('ao')" id="nav-ao">Jersey & Quần Đấu</a>
+        <a onclick="chuyenTab('combat')" id="nav-combat">Combat & Phụ Kiện</a>
+        <a onclick="chuyenTab('customBalo')" id="nav-customBalo">In Tên Balo</a>
+        <a onclick="chuyenTab('customJersey')" id="nav-customJersey">Custom Jersey</a>
+        <a onclick="chuyenTab('roster')" id="nav-roster">Roster Đội Bóng</a>
+        <a onclick="chuyenTab('remoteOrder')" id="nav-remoteOrder">Theo Dõi Đơn Hàng</a>
+        <a onclick="chuyenTab('aiTryOn')" id="nav-aiTryOn">AI Studio & Tư Vấn</a>
     </nav>
 
     <div class="fomo-order-popup" id="fomoOrderPopup">
@@ -90,21 +90,25 @@
                 <h1>Balo Elite & Phụ Kiện Bóng Rổ Đỉnh Cao</h1>
                 <p>Khẳng định chất riêng trên sân đấu với công nghệ cá nhân hóa tên số trực quan, thiết kế áo đấu chuẩn teamwear và AI gộp ảnh trực tuyến.</p>
                 <div class="hero-btns">
-                    <button class="btn-action-1" onclick="chuyenTab('customBalo')">✨ Tùy chỉnh tên trên Balo</button>
-                    <button class="btn-action-2" onclick="chuyenTab('customJersey')">🔥 Thiết kế Jersey Teamwear</button>
-                    <button class="btn-action-1" style="background:#ffcc00; color:#111;" onclick="nhanNutTaiKhoanHeader()">📦 Xem tiến trình đơn hàng</button>
+                    <button class="btn-action-1" onclick="chuyenTab('customBalo')">Tùy chỉnh tên Balo</button>
+                    <button class="btn-action-2" onclick="chuyenTab('customJersey')">Thiết kế Jersey Đội</button>
+                    <button class="btn-action-3" onclick="nhanNutTaiKhoanHeader()">Tra cứu đơn hàng</button>
                 </div>
             </div>
-            <div style="font-size: 100px; padding-right: 20px;">🎒🏀</div>
+            <div class="hero-visual-card">
+                <div class="hero-card-tag">MAIRUA HOOPS STUDIO</div>
+                <div class="hero-card-title">ELITE PERFORMANCE</div>
+                <div class="hero-card-sub">PRO HOOPS & CUSTOM GEAR</div>
+            </div>
         </section>
 
         <div class="main-container">
-            <h2 class="section-title">🔥 Top 3 Sản Phẩm Bán Chạy Nhất</h2>
+            <h2 class="section-title">Top 3 Sản Phẩm Bán Chạy</h2>
             <div class="product-grid" id="topSellingProductGrid"></div>
 
-            <h2 class="section-title">🛍️ Tất Cả Sản Phẩm & Lọc Tầm Giá</h2>
+            <h2 class="section-title">Tất Cả Sản Phẩm & Lọc Tầm Giá</h2>
             <div class="price-filter-bar">
-                <div style="font-weight: 700; font-size: 14px; color: #2c3e50;">💰 Lọc theo tầm giá (0đ - 1.000.000đ):</div>
+                <div style="font-weight: 700; font-size: 13.5px; color: #111; letter-spacing: 0.3px; text-transform: uppercase;">Khoảng giá mong muốn:</div>
                 <div class="price-slider-wrap">
                     <span style="font-size: 12px; color: #666; font-weight: 600;">0đ</span>
                     <div class="dual-range" id="homeDualRange">
@@ -117,15 +121,15 @@
                 </div>
                 <div class="price-badge-val" id="homePriceValueLabel">0đ - 1.000.000đ</div>
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <button class="btn-submit" style="width: auto; padding: 8px 22px; background: #ff5500;" onclick="locSanPhamTheoGia()">🔍 Lọc</button>
-                    <button class="btn-submit" style="width: auto; padding: 8px 16px; background: #333;" onclick="datLaiLocGia()">Đặt lại</button>
+                    <button class="btn-submit" style="width: auto; padding: 8px 22px; background: #ff5500;" onclick="locSanPhamTheoGia()">Lọc giá</button>
+                    <button class="btn-submit" style="width: auto; padding: 8px 16px; background: #111;" onclick="datLaiLocGia()">Đặt lại</button>
                     <div style="display: flex; align-items: center; gap: 6px; margin-left: 8px;">
-                        <span style="font-size: 13px; font-weight: 700; color: #334155;">⚡ Sắp xếp:</span>
+                        <span style="font-size: 13px; font-weight: 700; color: #111;">Sắp xếp:</span>
                         <select id="homeSortSelect" onchange="sapXepSanPhamHome(this.value)" style="padding: 7px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 13px; font-weight: 600; font-family: 'Poppins', sans-serif; outline: none; cursor: pointer; background: #fff;">
                             <option value="default">Mặc định</option>
-                            <option value="price_asc">Giá: Thấp đến Cao ⬆️</option>
-                            <option value="price_desc">Giá: Cao đến Thấp ⬇️</option>
-                            <option value="popular">Bán chạy nhất 🔥</option>
+                            <option value="price_asc">Giá: Thấp đến Cao</option>
+                            <option value="price_desc">Giá: Cao đến Thấp</option>
+                            <option value="popular">Bán chạy nhất</option>
                         </select>
                     </div>
                 </div>
@@ -1228,6 +1232,6 @@
         </div>
     </footer>
 
-    <script src="app.js?v=6.5"></script>
+    <script src="app.js?v=7.0"></script>
 </body>
 </html>

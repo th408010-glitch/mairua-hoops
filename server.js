@@ -730,11 +730,16 @@ app.get('/api/orders', async (req, res) => {
 app.put('/api/orders/:orderCode/status', async (req, res) => {
     try {
         const { orderCode } = req.params;
-        const { stepIdx, adminConfirmed } = req.body;
+        const { stepIdx, adminConfirmed, status } = req.body;
 
         if (dbConnected && pool) {
             let sql = 'UPDATE orders SET status_step_idx = ?';
             const params = [stepIdx];
+
+            if (status) {
+                sql += ', status = ?';
+                params.push(status);
+            }
 
             if (adminConfirmed !== undefined) {
                 sql += ', admin_confirmed = ?';
@@ -754,10 +759,25 @@ app.put('/api/orders/:orderCode/status', async (req, res) => {
             params.push(orderCode);
 
             await pool.query(sql, params);
-            return res.json({ success: true, message: `Đã cập nhật tiến trình đơn ${orderCode} sang bước ${stepIdx}` });
         }
 
-        res.json({ success: true, message: 'Đã cập nhật trạng thái (Fallback)' });
+        // Cập nhật ngay trong fallbackOrders trên bộ nhớ máy chủ (hỗ trợ sync đa thiết bị tức thì)
+        const fbOrd = fallbackOrders.find(o => o.orderCode === orderCode || o.order_code === orderCode);
+        if (fbOrd) {
+            if (typeof stepIdx === 'number') {
+                fbOrd.status_step_idx = stepIdx;
+                fbOrd.manualStepIdx = stepIdx;
+            }
+            if (status) fbOrd.status = status;
+            if (adminConfirmed !== undefined) {
+                fbOrd.admin_confirmed = !!adminConfirmed;
+                fbOrd.adminConfirmed = !!adminConfirmed;
+                if (adminConfirmed && !fbOrd.confirmedAt) fbOrd.confirmedAt = Date.now();
+            }
+            if (stepIdx === 4 && !fbOrd.deliveredAt) fbOrd.deliveredAt = Date.now();
+        }
+
+        return res.json({ success: true, message: `Đã cập nhật tiến trình đơn ${orderCode} sang bước ${stepIdx}` });
     } catch (err) {
         console.error('Lỗi PUT /api/orders/:orderCode/status:', err);
         res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái', error: err.message });

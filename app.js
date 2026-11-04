@@ -570,10 +570,24 @@
 
         let rawLocalOrders = JSON.parse(localStorage.getItem('mairua_remoteOrdersList')) || [];
         let customerRealOrdersBackup = JSON.parse(localStorage.getItem('mairua_customerRealOrdersBackup')) || [];
-        let remoteOrdersList = rawLocalOrders.filter(o => o && o.phone && o.name !== "Don hang mau");
-        customerRealOrdersBackup.forEach(ro => {
-            if (ro && ro.phone && !remoteOrdersList.some(o => o && ((o.orderCode && o.orderCode === ro.orderCode && o.startTime === ro.startTime) || (o.phone === ro.phone && o.startTime === ro.startTime)))) {
-                remoteOrdersList.push(ro);
+        let remoteOrdersList = [];
+        // Gộp và loại bỏ hoàn toàn trùng lặp mã đơn hàng
+        [...customerRealOrdersBackup, ...rawLocalOrders].forEach(o => {
+            if (!o || !o.phone || o.name === "Don hang mau") return;
+            let code = o.orderCode || o.originalOrderCode;
+            if (!code) return;
+            let existing = remoteOrdersList.find(x => x.orderCode === code || x.originalOrderCode === code);
+            if (!existing) {
+                remoteOrdersList.push({ ...o });
+            } else {
+                if (o.adminConfirmed) existing.adminConfirmed = true;
+                if (typeof o.manualStepIdx === 'number' && (existing.manualStepIdx === undefined || o.manualStepIdx > existing.manualStepIdx)) {
+                    existing.manualStepIdx = o.manualStepIdx;
+                }
+                if (o.confirmedAt && !existing.confirmedAt) existing.confirmedAt = o.confirmedAt;
+                if (o.deliveredAt && !existing.deliveredAt) existing.deliveredAt = o.deliveredAt;
+                if (o.lastSyncedSheetStatus && o.lastSyncedSheetStatus !== 'Chờ xác nhận') existing.lastSyncedSheetStatus = o.lastSyncedSheetStatus;
+                if (o.status && o.status !== 'Chờ xác nhận') existing.status = o.status;
             }
         });
         remoteOrdersList.sort((a, b) => (a.startTime || 0) - (b.startTime || 0));
@@ -816,6 +830,9 @@
 
             // Nếu đơn CHƯA được Admin duyệt thì giữ nguyên ở bước 0 ("Chờ xác nhận"), KHÔNG tự động nhảy theo thời gian
             if (isConfirmed) {
+                if (ord.isRealCustomerOrder && !ord.confirmedAt) {
+                    ord.confirmedAt = Date.now();
+                }
                 calcIdx = 1;
                 let baseTime = ord.confirmedAt || ord.startTime || Date.now();
                 let elapsedMin = Math.max(0, (Date.now() - baseTime) / MIN_MS);
@@ -835,7 +852,11 @@
                 }
 
                 if (typeof ord.manualStepIdx === 'number') {
-                    calcIdx = Math.min(steps.length - 1, Math.max(calcIdx, ord.manualStepIdx));
+                    if (ord.manualStepIdx === 99) {
+                        calcIdx = steps.length - 1;
+                    } else {
+                        calcIdx = Math.min(steps.length - 1, Math.max(calcIdx, ord.manualStepIdx));
+                    }
                     if (calcIdx === steps.length - 2) {
                         if (!ord.deliveredAt) ord.deliveredAt = Date.now();
                         if ((Date.now() - ord.deliveredAt) >= 30 * MIN_MS) calcIdx = steps.length - 1;
@@ -1206,10 +1227,16 @@
             let newInfo = layThongTinTienTrinhDon(ord);
             let newStatus = newInfo.currentLabel || newInfo.steps[1] || 'Chờ lấy hàng';
             ord.lastSyncedSheetStatus = newStatus;
+            ord.status = newStatus;
             let targetCode = ord.originalOrderCode || ord.orderCode;
             daDongBoTrangThaiSheet[ord.orderCode] = newStatus;
             daDongBoTrangThaiSheet[targetCode] = newStatus;
             guiDuLieuGoogleSheets('updateOrderStatus', { orderCode: targetCode, status: newStatus, phone: ord.phone });
+            fetch('/api/orders/' + encodeURIComponent(targetCode) + '/status', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stepIdx: 1, adminConfirmed: true, status: newStatus })
+            }).catch(() => {});
             dongBoBackupDonKhachThat(ord);
             luuDuLieuLenDamMay();
             capNhatGiaoDienTheoDuLieuMoi();
@@ -1268,10 +1295,16 @@
             if (ord.manualStepIdx === info.steps.length - 2) ord.deliveredAt = Date.now();
             let newStatus = info.steps[ord.manualStepIdx] || 'Hoàn tất';
             ord.lastSyncedSheetStatus = newStatus;
+            ord.status = newStatus;
             let targetCode = ord.originalOrderCode || ord.orderCode;
             daDongBoTrangThaiSheet[ord.orderCode] = newStatus;
             daDongBoTrangThaiSheet[targetCode] = newStatus;
             guiDuLieuGoogleSheets('updateOrderStatus', { orderCode: targetCode, status: newStatus, phone: ord.phone });
+            fetch('/api/orders/' + encodeURIComponent(targetCode) + '/status', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stepIdx: ord.manualStepIdx, adminConfirmed: true, status: newStatus })
+            }).catch(() => {});
             dongBoBackupDonKhachThat(ord);
             luuDuLieuLenDamMay();
             capNhatGiaoDienTheoDuLieuMoi();
@@ -1290,9 +1323,15 @@
             ord.manualStepIdx = info.steps.length - 1;
             let targetCode = ord.originalOrderCode || ord.orderCode;
             ord.lastSyncedSheetStatus = 'Hoàn tất';
+            ord.status = 'Hoàn tất';
             daDongBoTrangThaiSheet[ord.orderCode] = 'Hoàn tất';
             daDongBoTrangThaiSheet[targetCode] = 'Hoàn tất';
             guiDuLieuGoogleSheets('updateOrderStatus', { orderCode: targetCode, status: 'Hoàn tất', phone: ord.phone });
+            fetch('/api/orders/' + encodeURIComponent(targetCode) + '/status', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stepIdx: info.steps.length - 1, adminConfirmed: true, status: 'Hoàn tất' })
+            }).catch(() => {});
             dongBoBackupDonKhachThat(ord);
             luuDuLieuLenDamMay();
             capNhatGiaoDienTheoDuLieuMoi();
@@ -1321,10 +1360,23 @@
                         let code = srvOrd.orderCode || srvOrd.order_code;
                         if (!code) return;
                         let exists = remoteOrdersList.find(o => o && (o.orderCode === code || o.originalOrderCode === code));
+                        let srvAdminConfirmed = !!(srvOrd.admin_confirmed || srvOrd.adminConfirmed);
+                        let srvStepIdx = (typeof srvOrd.status_step_idx === 'number') ? srvOrd.status_step_idx : ((typeof srvOrd.manualStepIdx === 'number') ? srvOrd.manualStepIdx : null);
+
                         if (exists) {
                             if (srvOrd.status && exists.status !== srvOrd.status) {
                                 exists.status = srvOrd.status;
+                                exists.lastSyncedSheetStatus = srvOrd.status;
                                 if (srvOrd.status === 'Đã hủy') exists.isCancelled = true;
+                                hasNew = true;
+                            }
+                            if (srvAdminConfirmed && !exists.adminConfirmed) {
+                                exists.adminConfirmed = true;
+                                if (!exists.confirmedAt) exists.confirmedAt = srvOrd.confirmed_at || srvOrd.confirmedAt || Date.now();
+                                hasNew = true;
+                            }
+                            if (srvStepIdx !== null && exists.manualStepIdx !== srvStepIdx) {
+                                exists.manualStepIdx = srvStepIdx;
                                 hasNew = true;
                             }
                         } else {
@@ -1338,11 +1390,15 @@
                                 finalTotal: phanTichTienSo(srvOrd.finalTotal || srvOrd.final_amount),
                                 subtotal: phanTichTienSo(srvOrd.subtotal || srvOrd.finalTotal || srvOrd.final_amount),
                                 status: srvOrd.status || 'Chờ xác nhận',
+                                lastSyncedSheetStatus: srvOrd.status || 'Chờ xác nhận',
                                 itemsList: Array.isArray(srvOrd.itemsList) ? srvOrd.itemsList : ['Sản phẩm Mairua Hoops'],
                                 itemsCount: srvOrd.itemsCount || 1,
                                 startTime: srvOrd.startTime || srvOrd.start_time || Date.now(),
                                 isRealCustomerOrder: true,
-                                adminConfirmed: false
+                                adminConfirmed: srvAdminConfirmed,
+                                manualStepIdx: srvStepIdx !== null ? srvStepIdx : 0,
+                                confirmedAt: srvOrd.confirmed_at || srvOrd.confirmedAt || null,
+                                deliveredAt: srvOrd.delivered_at || srvOrd.deliveredAt || null
                             };
                             if (srvOrd.status === 'Đã hủy') ordObj.isCancelled = true;
                             remoteOrdersList.unshift(ordObj);
@@ -4873,17 +4929,37 @@ Câu hỏi của khách: "${rawQ}"`;
         }
 
         function renderCard(p, grid, prefix = 'grid', isBestSeller = false) {
-            let bestSellerBadge = isBestSeller ? `<div class="bestseller-badge-card">🔥 BÁN CHẠY</div>` : '';
+            let bestSellerBadge = isBestSeller ? `<div class="bestseller-badge-card">BESTSELLER</div>` : '';
             let swatchesHtml = (p.variants && p.variants.length > 1)
-                ? `<div class="card-swatches">` + p.variants.map((v, idx) => `<span class="card-swatch-dot ${idx===0?'active':''}" style="background-color:${v.hex};" title="${v.colorName}" onclick="event.stopPropagation(); doiMauTrenCard(${p.id}, ${idx}, this, '${prefix}')"></span>`).join('') + `<span style="font-size:11px; color:#777; margin-left:4px;">(${p.variants.length} phân loại)</span></div>`
-                : `<div class="card-swatches"><span style="font-size:11px; color:#888;">Màu: ${p.variants[0].colorName}</span></div>`;
+                ? `<div class="card-swatches">` + p.variants.map((v, idx) => `<span class="card-swatch-dot ${idx===0?'active':''}" style="background-color:${v.hex};" title="${v.colorName}" onclick="event.stopPropagation(); doiMauTrenCard(${p.id}, ${idx}, this, '${prefix}')"></span>`).join('') + `<span class="card-variant-count">(${p.variants.length} màu)</span></div>`
+                : `<div class="card-swatches"><span class="card-variant-count">Màu: ${p.variants[0].colorName}</span></div>`;
 
             let actionButtons = currentCustomer.isAdmin 
-                ? `<button class="btn-view-detail" onclick="moChiTietSanPham(${p.id})">👁️ Xem thông tin SP</button>`
-                : `<button class="btn-view-detail" onclick="moChiTietSanPham(${p.id})">👁️ Xem</button><button class="btn-add-cart ${p.stock <= 0 ? 'btn-disabled' : ''}" onclick="moChiTietSanPham(${p.id})">${p.stock <= 0 ? 'Hết hàng' : 'Chọn màu / Mua'}</button>`;
+                ? `<button class="btn-view-detail" onclick="moChiTietSanPham(${p.id})">Quản lý SP</button>`
+                : `<button class="btn-view-detail" onclick="moChiTietSanPham(${p.id})">Chi tiết</button><button class="btn-add-cart ${p.stock <= 0 ? 'btn-disabled' : ''}" onclick="moChiTietSanPham(${p.id})">${p.stock <= 0 ? 'Hết hàng' : 'Chọn mua'}</button>`;
 
             let revStat = layThongKeDanhGiaSanPham(p.id);
-            grid.innerHTML += `<div class="product-card">${bestSellerBadge}<div><img id="card-img-${prefix}-${p.id}" src="${p.variants[0].img}" class="product-img" onclick="moChiTietSanPham(${p.id})" style="cursor:pointer;">${swatchesHtml}<div class="product-name">${p.name}</div><div style="font-size:12.5px; color:#64748b; margin:2px 0 6px 0; font-weight:500;"><span style="color:#ff5500;">★</span> ${revStat.ratingStr} · ${revStat.totalCount} đánh giá</div></div><div><div class="product-price">${p.price.toLocaleString('vi-VN')}đ</div><div class="card-btn-group">${actionButtons}</div></div></div>`;
+            grid.innerHTML += `<div class="product-card">
+                ${bestSellerBadge}
+                <div>
+                    <div class="card-image-wrap" onclick="moChiTietSanPham(${p.id})">
+                        <img id="card-img-${prefix}-${p.id}" src="${p.variants[0].img}" class="product-img" alt="${p.name}">
+                        <div class="btn-quick-preview">Xem nhanh</div>
+                    </div>
+                    ${swatchesHtml}
+                    <div class="product-name" onclick="moChiTietSanPham(${p.id})" title="${p.name}">${p.name}</div>
+                    <div class="product-rating-row">
+                        <span class="rating-star">★</span>
+                        <span class="rating-val">${revStat.ratingStr}</span>
+                        <span class="sold-dot">•</span>
+                        <span class="sold-num">Đã bán ${p.sold || 0}</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="product-price">${p.price.toLocaleString('vi-VN')}đ</div>
+                    <div class="card-btn-group">${actionButtons}</div>
+                </div>
+            </div>`;
         }
 
         let currentSelectedVariantIndex = 0, currentSelectedSize = '', currentQty = 1;
