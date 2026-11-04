@@ -3370,17 +3370,46 @@
         }
 
         const productImagesMap = {
-            'v1_trang': 'https://tse3.mm.bing.net/th/id/OIP.KAJ_f9qd6ZGbo6KwGWC8lQHaGg?r=0&rs=1&pid=ImgDetMain&o=7&rm=3',
-            'v2_xanh': 'https://m.media-amazon.com/images/I/81tqai0YQeL._AC_UY1000_.jpg',
-            'utility_reu': 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/46dc627a-1b91-4ec9-a0a1-f007feba4a46/NK+UTILITY+ELITE+BKPK+-+2.0.png',
             'lakers': 'https://interdeportivo.com/cdn/shop/files/JerseyNikeLosAngelesLakersIconEdition_1_-PaginaWEB.png?v=1779056525&width=1024',
-            'warriors_xanh': 'https://i.pinimg.com/736x/de/27/55/de2755cbf2e5392870db49b07efa5011.jpg',
-            'bulls': 'https://tse4.mm.bing.net/th/id/OIP.6-RiWcKD1bUfc75viJksuQHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3'
+            'warriors_xanh': 'https://images.footballfanatics.com/golden-state-warriors/golden-state-warriors-nike-icon-edition-swingman-jersey-stephen-curry-mens_ss4_p-12001552+u-115n5mow9i258s4h4b5w+v-142f1f4c7d0d4638a5fe4ad3d944c66e.png?_hv=2',
+            'bulls': 'https://images.footballfanatics.com/chicago-bulls/chicago-bulls-nike-icon-swingman-jersey-custom-unisex_ss4_p-11931388+u-7puzf7d3i7k8n6d8200j+v-5b9ad1e4fce54ba3883a8b417b35f013.png?_hv=2',
+            'v1_trang': 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/3db841f3-2384-4860-9d50-e8b3b723a10d/NK+HOOPS+ELITE+PRO+BKPK.png',
+            'v2_xanh': 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/8c72ca8c-7f51-4fa3-b68c-dbdc502fc823/NK+HOOPS+ELITE+PRO+BKPK.png',
+            'utility_reu': 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/46dc627a-1b91-4ec9-a0a1-f007feba4a46/NK+UTILITY+ELITE+BKPK+-+2.0.png'
         };
+
+        function chuyenNhomSanPhamAI(group, btnEl) {
+            document.querySelectorAll('.ai-cat-tab-btn').forEach(btn => btn.classList.remove('active'));
+            if (btnEl) btnEl.classList.add('active');
+            let grpAo = document.getElementById('aiGroupAo');
+            let grpBalo = document.getElementById('aiGroupBalo');
+            if (group === 'ao') {
+                if (grpAo) grpAo.style.display = 'grid';
+                if (grpBalo) grpBalo.style.display = 'none';
+            } else {
+                if (grpAo) grpAo.style.display = 'none';
+                if (grpBalo) grpBalo.style.display = 'grid';
+            }
+        }
+
+        function chonSanPhamVisualAI(val) {
+            document.querySelectorAll('.ai-product-card').forEach(c => c.classList.remove('active'));
+            let selected = document.querySelector(`.ai-product-card[data-val="${val}"]`);
+            if (selected) selected.classList.add('active');
+            
+            let selectEl = document.getElementById('aiProductSelect');
+            if (selectEl) {
+                selectEl.value = val;
+            }
+            gopAnhTuDong();
+        }
 
         function gopAnhTuDong() {
             if (!uploadedFileObj) return;
-            let productImgSrc = productImagesMap[document.getElementById('aiProductSelect').value];
+            let productSelectEl = document.getElementById('aiProductSelect');
+            let selectedVal = productSelectEl ? productSelectEl.value : 'lakers';
+            let productImgSrc = productImagesMap[selectedVal] || productImagesMap['lakers'];
+
             let reader = new FileReader();
             reader.onload = function(event) {
                 let userImg = new Image();
@@ -3390,12 +3419,78 @@
                     productImg.onload = function() {
                         let canvas = document.getElementById('mergeCanvas');
                         let ctx = canvas.getContext('2d');
-                        canvas.width = userImg.width; canvas.height = userImg.height;
+                        let uW = userImg.width;
+                        let uH = userImg.height;
+                        canvas.width = uW;
+                        canvas.height = uH;
+
+                        // 1. Vẽ ảnh gốc của người dùng
                         ctx.drawImage(userImg, 0, 0);
-                        let pWidth = userImg.width * 0.35;
-                        let pHeight = (productImg.height / productImg.width) * pWidth;
-                        ctx.drawImage(productImg, (userImg.width - pWidth) / 2, userImg.height * 0.48, pWidth, pHeight);
-                        document.getElementById('mergedResultImg').src = canvas.toDataURL('image/jpeg');
+
+                        // 2. Tách nền trắng nếu có trên offscreen canvas
+                        let pCanvas = document.createElement('canvas');
+                        let pNatW = productImg.naturalWidth || productImg.width || 300;
+                        let pNatH = productImg.naturalHeight || productImg.height || 300;
+                        pCanvas.width = pNatW;
+                        pCanvas.height = pNatH;
+                        let pCtx = pCanvas.getContext('2d');
+                        pCtx.drawImage(productImg, 0, 0);
+
+                        try {
+                            let pImgData = pCtx.getImageData(0, 0, pNatW, pNatH);
+                            let d = pImgData.data;
+                            for (let i = 0; i < d.length; i += 4) {
+                                let r = d[i], g = d[i+1], b = d[i+2];
+                                if (r > 236 && g > 236 && b > 236) {
+                                    d[i+3] = 0; // Trong suốt hoàn toàn
+                                } else if (r > 218 && g > 218 && b > 218) {
+                                    d[i+3] = Math.max(0, 255 - ((r + g + b) / 3 - 218) * 8);
+                                }
+                            }
+                            pCtx.putImageData(pImgData, 0, 0);
+                        } catch (corsErr) {
+                            // Cross-origin fallback
+                        }
+
+                        // 3. Tính toán vị trí thông minh: TUYỆT ĐỐI KHÔNG ĐÈ LÊN MẶT
+                        let isJersey = ['lakers', 'warriors_xanh', 'bulls'].includes(selectedVal);
+                        let pWidth, pHeight, pX, pY;
+
+                        if (isJersey) {
+                            // Áo đấu: đặt ở vị trí thân dưới / ngực dưới (từ 52% chiều cao trở xuống)
+                            pWidth = uW * 0.46;
+                            pHeight = (pNatH / pNatW) * pWidth;
+                            pX = (uW - pWidth) / 2;
+                            pY = uH * 0.52;
+                            if (pY + pHeight > uH) {
+                                pY = Math.max(uH * 0.45, uH - pHeight);
+                            }
+                        } else {
+                            // Balo: đặt lệch góc vai / bên hông người dùng
+                            pWidth = uW * 0.38;
+                            pHeight = (pNatH / pNatW) * pWidth;
+                            pX = uW * 0.56;
+                            pY = uH * 0.44;
+                            if (pY + pHeight > uH) {
+                                pY = uH - pHeight - (uH * 0.03);
+                            }
+                            if (pX + pWidth > uW) {
+                                pX = uW - pWidth - (uW * 0.03);
+                            }
+                        }
+
+                        // 4. Vẽ bóng đổ nhẹ (drop shadow) mềm mại tự nhiên
+                        ctx.save();
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+                        ctx.shadowBlur = Math.max(10, Math.round(uW * 0.018));
+                        ctx.shadowOffsetX = Math.round(uW * 0.008);
+                        ctx.shadowOffsetY = Math.round(uH * 0.012);
+
+                        // Vẽ sản phẩm đã tách nền
+                        ctx.drawImage(pCanvas, pX, pY, pWidth, pHeight);
+                        ctx.restore();
+
+                        document.getElementById('mergedResultImg').src = canvas.toDataURL('image/jpeg', 0.95);
                     };
                     productImg.src = productImgSrc;
                 };

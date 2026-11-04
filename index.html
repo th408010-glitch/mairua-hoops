@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mairua.com - Sàn TMĐT Bóng Rổ & Custom Studio</title>
     <link rel="icon" type="image/png" href="logo.png">
-    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Oswald:wght@600;700&family=Poppins:wght@300;400;500;600;700;800;900&family=Teko:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Montserrat:wght@600;700;800;900&family=Oswald:wght@500;600;700&family=Poppins:wght@300;400;500;600;700;800;900&family=Teko:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=7.0">
 </head>
 <body>
@@ -513,29 +515,19 @@
 
             <div class="roster-layout-grid">
                 <div class="roster-card-box">
-                    <div class="studio-label-title" style="margin-top:0; color:#111; font-size:13px;">THIẾT KẾ CHUNG</div>
+                    <div class="studio-label-title" style="margin-top:0; color:#111; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">THIẾT KẾ CHUNG</div>
+                    <label style="display:block; font-size:12px; color:#666; font-weight:600; margin-top:8px; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;" for="rosterTeamTitleInput">Tên đội bóng</label>
                     <input type="text" id="rosterTeamTitleInput" class="form-control" value="MVP Saigon Owls" oninput="capNhatGiaoDienRoster()" placeholder="Nhập tên đội bóng...">
 
-                    <div style="font-size:12px; color:#666; margin-bottom:6px; font-weight:600; margin-top:6px;">Phôi</div>
-                    <div style="display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px;" id="rosterBaseSwatches"></div>
-
-                    <div style="font-size:12px; color:#666; margin-bottom:6px; font-weight:600;">Viền áo (Cổ, 2 tay & 2 sườn)</div>
-                    <div style="display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px;" id="rosterTrimSwatches"></div>
-
-                    <div style="font-size:12px; color:#666; margin-bottom:6px; font-weight:600;">Chữ</div>
-                    <div style="display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px;" id="rosterFillSwatches"></div>
-
-                    <div style="font-size:12px; color:#666; margin-bottom:6px; font-weight:600;">Viền chữ / số</div>
-                    <div style="display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin-bottom:14px;" id="rosterStrokeSwatches"></div>
-
-                    <div style="font-size:12px; color:#666; margin-bottom:6px; font-weight:600;">Font</div>
-                    <div class="studio-font-grid-4" id="rosterFontCardsBox" style="margin-bottom:14px;">
+                    <div style="font-size:12px; color:#666; margin-bottom:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Font Chữ</div>
+                    <div class="studio-font-grid-4" id="rosterFontCardsBox" style="margin-bottom:18px;">
                         <button type="button" class="studio-font-card active" data-font="'Bebas Neue', sans-serif" style="font-family:'Bebas Neue', sans-serif; letter-spacing:0.8px;" onclick="thayDoiFontJerseyStudio(`'Bebas Neue', sans-serif`)">BEBAS NEUE</button>
                         <button type="button" class="studio-font-card" data-font="'Anton', sans-serif" style="font-family:'Anton', sans-serif; letter-spacing:0.5px;" onclick="thayDoiFontJerseyStudio(`'Anton', sans-serif`)">Anton</button>
                         <button type="button" class="studio-font-card" data-font="'Oswald', sans-serif" style="font-family:'Oswald', sans-serif; font-weight:700;" onclick="thayDoiFontJerseyStudio(`'Oswald', sans-serif`)">Oswald</button>
                         <button type="button" class="studio-font-card" data-font="'Teko', sans-serif" style="font-family:'Teko', sans-serif; font-size:19px; font-weight:700;" onclick="thayDoiFontJerseyStudio(`'Teko', sans-serif`)">Teko</button>
                     </div>
 
+                    <div style="font-size:12px; color:#666; margin-bottom:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Vùng in</div>
                     <div class="print-zone-list">
                         <label class="print-zone-row"><span><input type="checkbox" id="rosterChkBackName" checked onchange="dongBoVungInTuRoster()"> Tên sau lưng</span><span class="print-zone-fee">+30.000đ</span></label>
                         <label class="print-zone-row"><span><input type="checkbox" id="rosterChkBackNum" checked onchange="dongBoVungInTuRoster()"> Số sau lưng</span><span class="print-zone-fee">+30.000đ</span></label>
@@ -1095,15 +1087,78 @@
                         <input type="file" id="userPhotoUpload" accept="image/*" onchange="xuLyTaiAnh(event)">
                     </div>
                     <div class="form-group">
-                        <label>Bước 2: Chọn sản phẩm muốn gộp:</label>
-                        <select id="aiProductSelect" onchange="gopAnhTuDong()">
-                            <option value="v1_trang">Balo Nike Elite V1 (Trắng Đen)</option>
-                            <option value="v2_xanh">Balo Nike Elite V2 (Xanh Đen)</option>
-                            <option value="utility_reu">Balo Nike Utility Speed (Xanh Rêu)</option>
+                        <label style="font-weight:700; color:#1e293b; margin-bottom:10px; display:block;">Bước 2: Chọn sản phẩm muốn gộp lên ảnh:</label>
+                        
+                        <select id="aiProductSelect" style="display:none;" onchange="gopAnhTuDong()">
                             <option value="lakers">Áo Jersey Los Angeles Lakers Vàng</option>
                             <option value="warriors_xanh">Áo Jersey Warriors Xanh Dương</option>
                             <option value="bulls">Áo Jersey Chicago Bulls Đỏ Đen</option>
+                            <option value="v1_trang">Balo Nike Elite V1 (Trắng Đen)</option>
+                            <option value="v2_xanh">Balo Nike Elite V2 (Xanh Đen)</option>
+                            <option value="utility_reu">Balo Nike Utility Speed (Xanh Rêu)</option>
                         </select>
+
+                        <!-- Tab chọn danh mục Áo hoặc Balo -->
+                        <div class="ai-tryon-cat-tabs">
+                            <button type="button" class="ai-cat-tab-btn active" onclick="chuyenNhomSanPhamAI('ao', this)">🎽 1. ÁO ĐẤU BASKETBALL</button>
+                            <button type="button" class="ai-cat-tab-btn" onclick="chuyenNhomSanPhamAI('balo', this)">🎒 2. BALO NIKE ELITE & UTILITY</button>
+                        </div>
+
+                        <!-- Nhóm 1: Áo đấu -->
+                        <div id="aiGroupAo" class="ai-product-picker-grid">
+                            <div class="ai-product-card active" data-val="lakers" onclick="chonSanPhamVisualAI('lakers')">
+                                <img src="https://interdeportivo.com/cdn/shop/files/JerseyNikeLosAngelesLakersIconEdition_1_-PaginaWEB.png?v=1779056525&width=1024" alt="Lakers" class="ai-prod-thumb">
+                                <div class="ai-prod-info">
+                                    <div class="ai-prod-title">Áo Jersey LA Lakers</div>
+                                    <div class="ai-prod-tag" style="background:#fef08a; color:#854d0e;">Vàng Tím · No.23</div>
+                                </div>
+                                <span class="ai-prod-check">✓</span>
+                            </div>
+                            <div class="ai-product-card" data-val="warriors_xanh" onclick="chonSanPhamVisualAI('warriors_xanh')">
+                                <img src="https://images.footballfanatics.com/golden-state-warriors/golden-state-warriors-nike-icon-edition-swingman-jersey-stephen-curry-mens_ss4_p-12001552+u-115n5mow9i258s4h4b5w+v-142f1f4c7d0d4638a5fe4ad3d944c66e.png?_hv=2" alt="Warriors" class="ai-prod-thumb">
+                                <div class="ai-prod-info">
+                                    <div class="ai-prod-title">Áo Jersey GS Warriors</div>
+                                    <div class="ai-prod-tag" style="background:#dbeafe; color:#1d4ed8;">Xanh Dương · No.30</div>
+                                </div>
+                                <span class="ai-prod-check">✓</span>
+                            </div>
+                            <div class="ai-product-card" data-val="bulls" onclick="chonSanPhamVisualAI('bulls')">
+                                <img src="https://images.footballfanatics.com/chicago-bulls/chicago-bulls-nike-icon-swingman-jersey-custom-unisex_ss4_p-11931388+u-7puzf7d3i7k8n6d8200j+v-5b9ad1e4fce54ba3883a8b417b35f013.png?_hv=2" alt="Bulls" class="ai-prod-thumb">
+                                <div class="ai-prod-info">
+                                    <div class="ai-prod-title">Áo Jersey Chicago Bulls</div>
+                                    <div class="ai-prod-tag" style="background:#fee2e2; color:#b91c1c;">Đỏ Đen · No.23</div>
+                                </div>
+                                <span class="ai-prod-check">✓</span>
+                            </div>
+                        </div>
+
+                        <!-- Nhóm 2: Balo -->
+                        <div id="aiGroupBalo" class="ai-product-picker-grid" style="display:none;">
+                            <div class="ai-product-card" data-val="v1_trang" onclick="chonSanPhamVisualAI('v1_trang')">
+                                <img src="https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/3db841f3-2384-4860-9d50-e8b3b723a10d/NK+HOOPS+ELITE+PRO+BKPK.png" alt="Balo V1" class="ai-prod-thumb">
+                                <div class="ai-prod-info">
+                                    <div class="ai-prod-title">Balo Nike Elite V1 Pro</div>
+                                    <div class="ai-prod-tag" style="background:#f1f5f9; color:#334155;">Trắng Đen · 32L</div>
+                                </div>
+                                <span class="ai-prod-check">✓</span>
+                            </div>
+                            <div class="ai-product-card" data-val="v2_xanh" onclick="chonSanPhamVisualAI('v2_xanh')">
+                                <img src="https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/8c72ca8c-7f51-4fa3-b68c-dbdc502fc823/NK+HOOPS+ELITE+PRO+BKPK.png" alt="Balo V2" class="ai-prod-thumb">
+                                <div class="ai-prod-info">
+                                    <div class="ai-prod-title">Balo Nike Elite V2 Pro</div>
+                                    <div class="ai-prod-tag" style="background:#e0e7ff; color:#3730a3;">Xanh Navy · 37L</div>
+                                </div>
+                                <span class="ai-prod-check">✓</span>
+                            </div>
+                            <div class="ai-product-card" data-val="utility_reu" onclick="chonSanPhamVisualAI('utility_reu')">
+                                <img src="https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/46dc627a-1b91-4ec9-a0a1-f007feba4a46/NK+UTILITY+ELITE+BKPK+-+2.0.png" alt="Utility Speed" class="ai-prod-thumb">
+                                <div class="ai-prod-info">
+                                    <div class="ai-prod-title">Nike Utility Speed Backpack</div>
+                                    <div class="ai-prod-tag" style="background:#ecfccb; color:#3f6212;">Xanh Rêu Camo · Pro</div>
+                                </div>
+                                <span class="ai-prod-check">✓</span>
+                            </div>
+                        </div>
                     </div>
                     <button class="btn-submit" style="background-color: #8e44ad; margin-top: 10px;" onclick="chayAIPhanTichGopAnh()">✨ Chạy AI Gộp Ảnh & Tư Vấn Thời Trang (-1 Token)</button>
                 </div>
