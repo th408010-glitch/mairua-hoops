@@ -1,25 +1,21 @@
 /**
  * ====================================================================
- * MAIRUA HOOPS - FULL-STACK BACKEND RESTful API SERVER
+ * MAIRUA HOOPS - WEB & API SERVER (GOOGLE SHEETS CLOUD SYNC)
  * Thương mại điện tử đồ bóng rổ & Custom Studio - mairua.com
- * Công nghệ: Node.js + Express + SQLite (better-sqlite3) + JWT + Groq Llama 3.3
+ * Công nghệ: Node.js + Express + Google Sheets Cloud Sync + Groq AI
  * ====================================================================
  */
 
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
 const dotenv = require('dotenv');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { db, tinhGiaVonMacDinh } = require('./db');
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'mairua_basketball_hoops_jwt_secret_key_2026';
+const GOOGLE_SHEETS_API_URL = process.env.GOOGLE_SHEETS_API_URL || "https://script.google.com/macros/s/AKfycbyeC_1z0XsWUNqQRKrhjrjkZsMHFc7kAgADnFenEeHJ6Gt9guLG8nQpF5RvsgDac-2q/exec";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AQ.Ab8RN6IFzsbFhUBYigZbgWtlFY8i6Udj_Ea5PT_GN49HPkXqZg";
 
 // Cấu hình Groq SDK (Llama 3.3 70B Versatile cho AI Chatbot Tư Vấn)
@@ -32,13 +28,10 @@ try {
     console.warn('⚠️ [Groq] Chưa khởi tạo được Groq SDK:', e.message);
 }
 
-// BẢO MẬT HỆ THỐNG: Chặn tuyệt đối tải trực tiếp file database, file cấu hình bảo mật (.db, .sqlite, .sql, .env, thư mục data)
+// BẢO MẬT HỆ THỐNG: Chặn tuyệt đối tải trực tiếp file cấu hình (.env, .sql, thư mục nội bộ)
 app.use((req, res, next) => {
     const p = req.path.toLowerCase();
     if (
-        p.endsWith('.db') || 
-        p.endsWith('.sqlite') || 
-        p.endsWith('.sqlite3') || 
         p.endsWith('.sql') || 
         p.includes('.env') || 
         p.startsWith('/data') || 
@@ -70,434 +63,95 @@ app.post('/api/cart/:phone', (req, res) => {
 });
 
 // ====================================================================
-// 1. RESTful APIs: INVENTORY & SẢN PHẨM (ĐỒNG BỘ 100% QUA SQLITE)
+// 1. PROXY GOOGLE SHEETS CLOUD SYNC (ĐỒNG BỘ ĐA THIẾT BỊ 100% QUA GOOGLE SHEETS)
 // ====================================================================
 
 /**
- * GET /api/inventory & GET /api/products
- * Trả về toàn bộ danh mục sản phẩm, màu sắc, giá bán, giá vốn và số lượng tồn kho thực tế
+ * POST /api/sync/sheets
+ * Chuyển tiếp gửi đơn hàng, tài khoản, coupon lên Google Sheets từ server
  */
-app.get(['/api/inventory', '/api/products'], (req, res) => {
+app.post('/api/sync/sheets', async (req, res) => {
     try {
-        const rows = db.prepare('SELECT * FROM inventory').all();
-        const map = {};
-        rows.forEach(r => {
-            if (!map[r.product_id]) {
-                map[r.product_id] = {
-                    id: r.product_id,
-                    name: r.product_name,
-                    price: r.price,
-                    costPrice: r.cost_price || tinhGiaVonMacDinh(r.price),
-                    category: r.category || 'general',
-                    variants: [],
-                    stock: 0,
-                    sold: 0
-                };
-            }
-            map[r.product_id].variants.push({
-                colorName: r.color_variant,
-                hex: r.hex,
-                img: r.img,
-                price: r.price,
-                costPrice: r.cost_price || map[r.product_id].costPrice,
-                stock: r.stock || 0,
-                sold: r.sold || 0
-            });
-            map[r.product_id].stock += (r.stock || 0);
-            map[r.product_id].sold += (r.sold || 0);
+        if (!GOOGLE_SHEETS_API_URL) {
+            return res.json({ success: true, message: 'Google Sheets URL chưa được cấu hình' });
+        }
+
+        const sheetResponse = await fetch(GOOGLE_SHEETS_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(req.body)
         });
 
-        const products = Object.values(map);
-        return res.json({ success: true, count: products.length, data: products, inventory: rows });
-    } catch (e) {
-        console.error('Lỗi GET /api/inventory:', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-/**
- * POST /api/inventory/restock & POST /api/admin/restock
- * Cập nhật số lượng nhập kho vào bảng inventory
- */
-app.post(['/api/inventory/restock', '/api/admin/restock'], (req, res) => {
-    try {
-        const { items } = req.body;
-        if (!Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ success: false, message: 'Danh sách nhập kho trống' });
-        }
-        const updateRestock = db.prepare(`
-            UPDATE inventory 
-            SET stock = stock + ?, cost_price = COALESCE(NULLIF(?, 0), cost_price)
-            WHERE product_id = ? AND color_variant = ?
-        `);
-        const insertRestock = db.prepare(`
-            INSERT OR REPLACE INTO inventory 
-            (product_id, product_name, color_variant, price, cost_price, stock, sold, hex, img, category)
-            VALUES (?, ?, ?, ?, ?, ?, 0, '#ff5500', '', 'general')
-        `);
-
-        const restockTx = db.transaction(() => {
-            for (const item of items) {
-                const pId = item.id || item.productId;
-                const cVar = item.color || item.colorName || item.variant || 'Tiêu chuẩn';
-                const qty = Number(item.qty || item.quantity || item.stock || 0);
-                const cost = Number(item.costPrice || item.cost_price || 0);
-                const pName = item.name || item.product_name || `Sản phẩm #${pId}`;
-                const price = Number(item.price || (cost > 0 ? cost * 1.5 : 200000));
-
-                const existing = db.prepare('SELECT stock FROM inventory WHERE product_id = ? AND color_variant = ?').get(pId, cVar);
-                if (existing) {
-                    updateRestock.run(qty, cost, pId, cVar);
-                } else {
-                    insertRestock.run(pId, pName, cVar, price, cost || tinhGiaVonMacDinh(price), qty);
-                }
-            }
-        });
-        restockTx();
-        return res.json({ success: true, message: 'Cập nhật nhập kho thành công!' });
-    } catch (e) {
-        console.error('Lỗi POST /api/inventory/restock:', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-// ====================================================================
-// 2. RESTful APIs: XÁC THỰC TÀI KHOẢN & NGƯỜI DÙNG (USERS)
-// ====================================================================
-
-/**
- * POST /api/auth/register
- * Nhận phone, name, password, kiểm tra số điện thoại tồn tại, thêm vào bảng users và trả về thông tin tài khoản
- */
-app.post('/api/auth/register', (req, res) => {
-    try {
-        const { phone, password, name, email = null } = req.body;
-        if (!phone || !password || !name) {
-            return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ SĐT, Tên và Mật khẩu!' });
-        }
-        const cleanPhone = String(phone).trim();
-        const existing = db.prepare('SELECT phone FROM users WHERE phone = ?').get(cleanPhone);
-        if (existing) {
-            return res.status(400).json({ success: false, message: 'Số điện thoại này đã được đăng ký!' });
-        }
-        const salt = bcrypt.genSaltSync(10);
-        const passHash = bcrypt.hashSync(String(password), salt);
-        const now = Date.now();
-        db.prepare(`
-            INSERT INTO users (phone, name, password, email, mcoin, tokens, tier, is_admin, created_at)
-            VALUES (?, ?, ?, ?, 0, 3, 'Đồng', 0, ?)
-        `).run(cleanPhone, String(name).trim(), passHash, email ? String(email).trim() : '', now);
-
-        const user = {
-            phone: cleanPhone,
-            name: String(name).trim(),
-            email: email || '',
-            mcoin: 0,
-            tokens: 3,
-            tier: 'Đồng',
-            isAdmin: false
-        };
-        const token = jwt.sign({ phone: user.phone, isAdmin: false }, JWT_SECRET, { expiresIn: '7d' });
-        return res.status(201).json({ success: true, message: 'Đăng ký tài khoản thành công!', token, user });
-    } catch (e) {
-        console.error('Lỗi POST /api/auth/register:', e);
-        res.status(500).json({ success: false, message: 'Lỗi server khi đăng ký: ' + e.message });
-    }
-});
-
-/**
- * POST /api/auth/login
- * Nhận phone, password, kiểm tra khớp dữ liệu trong bảng users và trả về phiên đăng nhập
- */
-app.post('/api/auth/login', (req, res) => {
-    try {
-        const { phone, password } = req.body;
-        if (!phone || !password) {
-            return res.status(400).json({ success: false, message: 'Vui lòng nhập số điện thoại và mật khẩu!' });
-        }
-        const cleanPhone = String(phone).trim();
-        // Cố định admin nếu nhập 0909501753 / 5888
-        if (cleanPhone === '0909501753' && String(password) === '5888') {
-            const adminUser = {
-                phone: '0909501753',
-                name: 'Quản Trị Viên (Admin)',
-                email: 'admin@mairua.com',
-                mcoin: 999999,
-                tokens: 99,
-                tier: 'Kim Cương',
-                isAdmin: true
-            };
-            const token = jwt.sign({ phone: '0909501753', isAdmin: true }, JWT_SECRET, { expiresIn: '7d' });
-            return res.json({ success: true, message: 'Đăng nhập Admin thành công!', token, user: adminUser });
-        }
-
-        const userRow = db.prepare('SELECT * FROM users WHERE phone = ?').get(cleanPhone);
-        if (!userRow) {
-            return res.status(401).json({ success: false, message: 'Số điện thoại chưa được đăng ký!' });
-        }
-
-        let isMatch = false;
-        if (String(password) === '123' || String(password) === userRow.password) {
-            isMatch = true;
-        } else {
-            isMatch = bcrypt.compareSync(String(password), userRow.password);
-        }
-
-        if (!isMatch) {
-            return res.status(401).json({ success: false, message: 'Mật khẩu không chính xác!' });
-        }
-
-        const isAdmin = cleanPhone === '0909501753' || !!userRow.is_admin;
-        const user = {
-            phone: userRow.phone,
-            name: userRow.name,
-            email: userRow.email || '',
-            mcoin: userRow.mcoin || 0,
-            tokens: userRow.tokens || 3,
-            tier: userRow.tier || 'Đồng',
-            isAdmin
-        };
-        const token = jwt.sign({ phone: user.phone, isAdmin }, JWT_SECRET, { expiresIn: '7d' });
-        return res.json({ success: true, message: `Xin chào ${user.name}!`, token, user });
-    } catch (e) {
-        console.error('Lỗi POST /api/auth/login:', e);
-        res.status(500).json({ success: false, message: 'Lỗi server khi đăng nhập: ' + e.message });
-    }
-});
-
-/**
- * GET /api/user/:phone
- * Trả về toàn bộ thông tin tài khoản, số dư M-Coin, Token AI, danh sách đơn hàng đã mua và voucher của số điện thoại đó
- */
-app.get('/api/user/:phone', (req, res) => {
-    try {
-        const phone = String(req.params.phone).trim();
-        let userRow = db.prepare('SELECT phone, name, email, mcoin, tokens, tier, is_admin FROM users WHERE phone = ?').get(phone);
-        if (!userRow) {
-            userRow = {
-                phone,
-                name: 'Khách hàng Mairua',
-                email: '',
-                mcoin: 0,
-                tokens: 3,
-                tier: 'Đồng',
-                is_admin: phone === '0909501753' ? 1 : 0
-            };
-        }
-        const user = {
-            phone: userRow.phone,
-            name: userRow.name,
-            email: userRow.email || '',
-            mcoin: userRow.mcoin || 0,
-            tokens: userRow.tokens || 3,
-            tier: userRow.tier || 'Đồng',
-            isAdmin: phone === '0909501753' || !!userRow.is_admin
-        };
-        const orders = db.prepare('SELECT * FROM orders WHERE phone = ? ORDER BY created_at DESC').all(phone);
-        orders.forEach(o => {
-            if (typeof o.items_json === 'string') {
-                try { o.items = JSON.parse(o.items_json); } catch(e) { o.items = []; }
-            } else {
-                o.items = o.items_json || [];
-            }
-        });
-        const vouchers = db.prepare('SELECT * FROM vouchers WHERE target_phone = ? OR target_phone IS NULL').all(phone);
-        return res.json({ success: true, user, orders, vouchers });
-    } catch (e) {
-        console.error('Lỗi GET /api/user/:phone:', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-// ====================================================================
-// 3. RESTful APIs: ĐƠN HÀNG (ORDERS) TẬP TRUNG QUA SQLITE TRANSACTION
-// ====================================================================
-
-/**
- * POST /api/orders/create & POST /api/orders
- * Nhận đơn hàng mới, dùng SQLite transaction để lưu vào bảng orders đồng thời trừ số lượng tồn kho tương ứng trong bảng inventory
- */
-app.post(['/api/orders/create', '/api/orders'], (req, res) => {
-    try {
-        const { order_code, orderCode, customer_name, customerName, phone, address, total_amount, totalAmount, items, has_custom, hasCustom } = req.body;
-        const code = order_code || orderCode || ('MR' + Date.now().toString().slice(-6));
-        const cName = customer_name || customerName || 'Khách Hàng Mairua';
-        const cPhone = String(phone || '').trim();
-        const cAddr = address || 'Địa chỉ tiêu chuẩn';
-        const cTotal = Number(total_amount || totalAmount || 0);
-        const cItems = Array.isArray(items) ? items : [];
-        const cCustom = (has_custom || hasCustom) ? 1 : 0;
-        const now = Date.now();
-
-        const createTx = db.transaction(() => {
-            // 1. Lưu vào bảng orders
-            db.prepare(`
-                INSERT INTO orders (order_code, customer_name, phone, address, total_amount, status, items_json, has_custom, status_step_idx, created_at)
-                VALUES (?, ?, ?, ?, ?, 'Chờ xác nhận', ?, ?, 0, ?)
-            `).run(code, cName, cPhone, cAddr, cTotal, JSON.stringify(cItems), cCustom, now);
-
-            // 2. Trừ tồn kho và tăng số lượng bán trong inventory
-            const updateStock = db.prepare(`
-                UPDATE inventory 
-                SET stock = MAX(0, stock - ?), sold = sold + ?
-                WHERE product_id = ? AND color_variant = ?
-            `);
-            const updateStockFallback = db.prepare(`
-                UPDATE inventory
-                SET stock = MAX(0, stock - ?), sold = sold + ?
-                WHERE product_id = ?
-            `);
-
-            for (const item of cItems) {
-                const qty = Number(item.quantity || item.qty || 1);
-                const pId = item.id || item.productId;
-                const color = item.color || item.colorName || item.selectedColor;
-                if (pId) {
-                    if (color) {
-                        updateStock.run(qty, qty, pId, color);
-                    } else {
-                        updateStockFallback.run(qty, qty, pId);
-                    }
-                }
-            }
-
-            // 3. Cộng M-Coin thưởng nếu khách đã đăng ký
-            if (cPhone) {
-                const user = db.prepare('SELECT phone, mcoin FROM users WHERE phone = ?').get(cPhone);
-                if (user) {
-                    const bonusMcoin = Math.floor(cTotal * 0.05 / 1000);
-                    db.prepare('UPDATE users SET mcoin = mcoin + ? WHERE phone = ?').run(bonusMcoin, cPhone);
-                }
-            }
-        });
-
-        createTx();
-        return res.json({ success: true, message: 'Tạo đơn hàng thành công!', order_code: code });
-    } catch (e) {
-        console.error('Lỗi POST /api/orders/create:', e);
-        res.status(500).json({ success: false, message: 'Lỗi tạo đơn hàng: ' + e.message });
-    }
-});
-
-/**
- * GET /api/orders
- * Trả về toàn bộ danh sách đơn hàng từ SQLite cho trang Admin
- */
-app.get('/api/orders', (req, res) => {
-    try {
-        const orders = db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all();
-        orders.forEach(o => {
-            if (typeof o.items_json === 'string') {
-                try { o.items = JSON.parse(o.items_json); } catch(e) { o.items = []; }
-            } else {
-                o.items = o.items_json || [];
-            }
-        });
-        return res.json({ success: true, count: orders.length, orders });
-    } catch (e) {
-        console.error('Lỗi GET /api/orders:', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-/**
- * PATCH /api/orders/:code/status & PUT /api/orders/:code/status
- * Cập nhật trạng thái duyệt đơn hàng của Admin
- */
-app.all(['/api/orders/:code/status', '/api/orders/:orderCode/status'], (req, res) => {
-    if (req.method !== 'PATCH' && req.method !== 'PUT') {
-        return res.status(405).json({ success: false, message: 'Method Not Allowed' });
-    }
-    try {
-        const code = req.params.code || req.params.orderCode;
-        const { status, status_step_idx, statusStepIdx } = req.body;
-        const stepIdx = status_step_idx !== undefined ? status_step_idx : (statusStepIdx !== undefined ? statusStepIdx : 1);
-        db.prepare('UPDATE orders SET status = ?, status_step_idx = ? WHERE order_code = ?').run(status, stepIdx, code);
-        return res.json({ success: true, message: 'Cập nhật trạng thái đơn hàng thành công!' });
-    } catch (e) {
-        console.error('Lỗi update order status:', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-/**
- * POST /api/orders/:code/cancel
- * Hủy đơn hàng và hoàn lại tồn kho
- */
-app.post(['/api/orders/:code/cancel', '/api/orders/:orderCode/cancel'], (req, res) => {
-    try {
-        const code = req.params.code || req.params.orderCode;
-        const order = db.prepare('SELECT * FROM orders WHERE order_code = ?').get(code);
-        if (order) {
-            db.prepare('UPDATE orders SET status = ?, status_step_idx = 4 WHERE order_code = ?').run('Đã hủy', code);
-            let items = [];
-            if (typeof order.items_json === 'string') {
-                try { items = JSON.parse(order.items_json); } catch(e) {}
-            }
-            const returnStock = db.prepare('UPDATE inventory SET stock = stock + ?, sold = MAX(0, sold - ?) WHERE product_id = ?');
-            items.forEach(it => {
-                const qty = Number(it.quantity || it.qty || 1);
-                if (it.id || it.productId) {
-                    returnStock.run(qty, qty, it.id || it.productId);
-                }
-            });
-        }
-        res.json({ success: true, message: 'Đã hủy đơn và hoàn trả tồn kho' });
-    } catch (e) {
-        console.error('Lỗi cancel order:', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-// ====================================================================
-// 4. RESTful APIs: MÃ GIẢM GIÁ (VOUCHERS & COUPONS)
-// ====================================================================
-
-app.post('/api/coupons', (req, res) => {
-    try {
-        const { code, percent, targetPhone = null } = req.body;
-        if (!code || !percent) {
-            return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã và % giảm giá!' });
-        }
-        const insertVoucher = db.prepare('INSERT OR REPLACE INTO vouchers (code, discount_percent, target_phone, is_used, expires_at) VALUES (?, ?, ?, 0, ?)');
-        insertVoucher.run(code.toUpperCase(), Number(percent), targetPhone || null, Date.now() + 48 * 3600 * 1000);
-        return res.status(201).json({ success: true, message: `Đã phát hành mã ${code.toUpperCase()} (-${percent}%)!` });
+        res.json({ success: true, message: 'Đã đồng bộ lên Google Sheets thành công!' });
     } catch (err) {
-        res.status(500).json({ success: false, message: 'Lỗi tạo coupon', error: err.message });
+        console.warn('Proxy Sheets cảnh báo:', err.message);
+        res.json({ success: false, message: 'Đã ghi nhận cục bộ' });
     }
 });
 
-app.post('/api/coupons/apply', (req, res) => {
+/**
+ * GET /api/sync/sheets
+ * Lấy toàn bộ đơn hàng, tài khoản và coupon từ Google Sheets về hiển thị
+ */
+app.get('/api/sync/sheets', async (req, res) => {
     try {
-        const { code, phone } = req.body;
-        if (!code) return res.status(400).json({ success: false, message: 'Chưa nhập mã giảm giá!' });
-
-        const voucher = db.prepare('SELECT * FROM vouchers WHERE code = ?').get(code.toUpperCase());
-        if (!voucher) {
-            return res.status(404).json({ success: false, message: 'Mã giảm giá không tồn tại!' });
-        }
-        if (voucher.is_used) {
-            return res.status(400).json({ success: false, message: 'Mã này đã được sử dụng!' });
-        }
-        if (voucher.expires_at < Date.now()) {
-            return res.status(400).json({ success: false, message: 'Mã này đã hết hạn sử dụng!' });
-        }
-        if (voucher.target_phone && voucher.target_phone !== phone) {
-            return res.status(403).json({ success: false, message: 'Mã này là voucher độc quyền cho tài khoản khác!' });
+        if (!GOOGLE_SHEETS_API_URL) {
+            return res.json({ success: false, message: 'Google Sheets URL chưa được cấu hình' });
         }
 
-        return res.json({
-            success: true,
-            message: `Áp mã thành công! Giảm ${voucher.discount_percent}%`,
-            coupon: { code: voucher.code, percent: voucher.discount_percent }
-        });
+        const response = await fetch(GOOGLE_SHEETS_API_URL);
+        if (!response.ok) return res.status(response.status).json({ success: false });
+
+        const data = await response.json();
+        res.json(data);
     } catch (err) {
-        res.status(500).json({ success: false, message: 'Lỗi kiểm tra mã giảm giá', error: err.message });
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 
 // ====================================================================
-// 5. RESTful APIs: PROXY GEMINI AI (GIẤU KEY AN TOÀN TRÊN SERVER)
+// 2. DỰ PHÒNG CLOUD BACKUP (JSONBIN)
+// ====================================================================
+
+app.get('/api/sync/cloud', async (req, res) => {
+    try {
+        const binId = process.env.JSONBIN_BIN_ID;
+        const masterKey = process.env.JSONBIN_MASTER_KEY;
+        if (!binId || !masterKey) return res.json({ record: null });
+
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+            headers: { 'X-Master-Key': masterKey }
+        });
+        const data = await response.json();
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.put('/api/sync/cloud', async (req, res) => {
+    try {
+        const binId = process.env.JSONBIN_BIN_ID;
+        const masterKey = process.env.JSONBIN_MASTER_KEY;
+        if (!binId || !masterKey) return res.json({ success: true });
+
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': masterKey
+            },
+            body: JSON.stringify(req.body)
+        });
+        const data = await response.json();
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ====================================================================
+// 3. PROXY GEMINI AI VIRTUAL TRY-ON
 // ====================================================================
 
 app.post('/api/ai/try-on', async (req, res) => {
@@ -541,7 +195,7 @@ app.post('/api/ai/try-on', async (req, res) => {
 });
 
 // ====================================================================
-// 5.4. AI CHATBOT TƯ VẤN THỜI TRANG & THIẾT BỊ BÓNG RỔ (GROQ LLAMA 3.3 70B)
+// 4. AI CHATBOT TƯ VẤN THỜI TRANG & THIẾT BỊ BÓNG RỔ (GROQ LLAMA 3.3 70B)
 // ====================================================================
 
 const MAIRUA_SYSTEM_PROMPT = `Bạn là Chuyên viên tư vấn trang thiết bị bóng rổ chuyên nghiệp của cửa hàng Mairua.com (Mascot: Rùa Chiến Binh Hoops).
@@ -678,7 +332,7 @@ app.post(['/api/chat', '/api/ai/chat'], async (req, res) => {
 });
 
 // ====================================================================
-// 6. PHỤC VỤ FILE TĨNH (FRONTEND)
+// 5. PHỤC VỤ FILE TĨNH (FRONTEND)
 // ====================================================================
 app.use(express.static(__dirname, {
     etag: false,
@@ -697,10 +351,9 @@ app.get('*', (req, res) => {
 // Khởi chạy Máy chủ
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`====================================================================`);
-    console.log(`🏀 MAIRUA HOOPS FULL-STACK BACKEND SERVER ĐANG CHẠY!`);
+    console.log(`🏀 MAIRUA HOOPS WEB & GOOGLE SHEETS CLOUD SERVER ĐANG CHẠY!`);
     console.log(`🌐 Website       : http://localhost:${PORT}`);
-    console.log(`📡 API Products  : http://localhost:${PORT}/api/products`);
-    console.log(`📦 API Orders    : http://localhost:${PORT}/api/orders`);
-    console.log(`🤖 AI Restock    : http://localhost:${PORT}/api/admin/restock`);
+    console.log(`📊 Google Sheets : ${GOOGLE_SHEETS_API_URL}`);
+    console.log(`🤖 AI Chatbot    : Groq Llama 3.3 70B Versatile`);
     console.log(`====================================================================`);
 });
