@@ -12,8 +12,14 @@ const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
 const mysql = require('mysql2/promise');
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
+let sqlite3 = null;
+let sqliteOpen = null;
+try {
+    sqlite3 = require('sqlite3');
+    sqliteOpen = require('sqlite').open;
+} catch (e) {
+    console.warn('⚠️ [SQLite] Chưa tải được native sqlite3 (GLIBC/Platform):', e.message);
+}
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -135,12 +141,16 @@ async function initDatabase() {
 
     // MẶC ĐỊNH & KHUYẾN NGHỊ: Khởi tạo SQLite tự động (Zero-config, chạy ngay không cần cài đặt thêm server)
     try {
+        if (!sqlite3 || !sqliteOpen) {
+            console.warn('💡 [Database] Môi trường không hỗ trợ native sqlite3 binary, tự động chạy chế độ In-Memory & Cloud Fallback an toàn.');
+            return;
+        }
         const dataDir = path.join(__dirname, 'data');
         if (!fs.existsSync(dataDir)) {
             fs.mkdirSync(dataDir, { recursive: true });
         }
         const dbPath = path.join(dataDir, 'mairua.db');
-        const sqliteDb = await open({
+        const sqliteDb = await sqliteOpen({
             filename: dbPath,
             driver: sqlite3.Database
         });
