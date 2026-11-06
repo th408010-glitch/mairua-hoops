@@ -442,8 +442,8 @@
                                         hasOrderUpdate = true;
                                     }
                                 } else if (stepIdxFromSheet === 0) {
-                                    // Sheet là "Chờ xác nhận": nếu admin chưa bấm duyệt local thì giữ 0
-                                    if (!existingOrd.adminConfirmed && existingOrd.manualStepIdx !== 0) {
+                                    // Sheet là "Chờ xác nhận": chỉ reset nếu chưa từng duyệt và trạng thái cục bộ chưa tiến triển
+                                    if (!existingOrd.adminConfirmed && existingOrd.manualStepIdx !== 0 && (!existingOrd.status || existingOrd.status === 'Chờ xác nhận')) {
                                         existingOrd.manualStepIdx = 0;
                                         hasOrderUpdate = true;
                                     }
@@ -599,6 +599,63 @@
         let currentFilteredMaxPrice = 1000000;
         let currentFilteredMinPrice = 0;
         let selectedCheckoutAddrIdx = 0;
+
+        // TÍNH GIÁ VỐN MẶC ĐỊNH & LẤY GIÁ VỐN SẢN PHẨM
+        function tinhGiaVonMacDinh(price) {
+            price = Number(price) || 0;
+            if (price >= 800000) return Math.max(50000, price - 200000);
+            if (price >= 400000) return Math.max(50000, price - 150000);
+            if (price >= 150000) return Math.max(30000, price - 100000);
+            return Math.max(20000, Math.round(price * 0.6));
+        }
+
+        function layGiaVonSanPham(prod, vIdx = 0) {
+            if (!prod) return 0;
+            let v = (prod.variants && prod.variants[vIdx]) ? prod.variants[vIdx] : null;
+            if (v && (typeof v.costPrice === 'number' || typeof v.cost_price === 'number')) {
+                let cp = v.costPrice !== undefined ? v.costPrice : v.cost_price;
+                if (cp > 0) return cp;
+            }
+            if (typeof prod.costPrice === 'number' && prod.costPrice > 0) return prod.costPrice;
+            if (typeof prod.cost_price === 'number' && prod.cost_price > 0) return prod.cost_price;
+            return tinhGiaVonMacDinh(prod.price);
+        }
+
+        let daBietDonThatCode = {};
+        function phatChuongBaoDonHangThat() {
+            try {
+                let AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                let ctx = new AudioCtx();
+                let now = ctx.currentTime;
+
+                let o1 = ctx.createOscillator();
+                let g1 = ctx.createGain();
+                o1.type = 'sine';
+                o1.frequency.setValueAtTime(880, now);
+                o1.frequency.exponentialRampToValueAtTime(1320, now + 0.15);
+                g1.gain.setValueAtTime(0.35, now);
+                g1.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                o1.connect(g1);
+                g1.connect(ctx.destination);
+                o1.start(now);
+                o1.stop(now + 0.35);
+
+                let o2 = ctx.createOscillator();
+                let g2 = ctx.createGain();
+                o2.type = 'triangle';
+                o2.frequency.setValueAtTime(1320, now + 0.16);
+                o2.frequency.exponentialRampToValueAtTime(1760, now + 0.4);
+                g2.gain.setValueAtTime(0.28, now + 0.16);
+                g2.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
+                o2.connect(g2);
+                g2.connect(ctx.destination);
+                o2.start(now + 0.16);
+                o2.stop(now + 0.65);
+            } catch(e) {
+                console.warn('Web Audio error:', e);
+            }
+        }
 
         const jerseyBasePalette = [
             { key: 'trang', name: 'Trắng', hex: '#f8fafc', stroke: '#cbd5e1' },
@@ -783,22 +840,25 @@
 
         function layStepIndexTuTenTrangThai(statusName, isJerseyOrder) {
             if (!statusName) return 0;
-            let s = String(statusName).trim().toLowerCase();
-            if (s === 'đã hủy' || s === 'da huy') return -1;
-            if (s === 'hoàn tất' || s === 'hoàn thành' || s === 'hoan tat' || s === 'hoan thanh') return 99;
+            let raw = String(statusName).trim().toLowerCase();
+            let s = boDauTiengViet(raw);
+            if (s === 'da huy') return -1;
+            if (s === 'hoan tat' || s === 'hoan thanh' || s === 'da hoan tat' || s === 'thanh cong') return 99;
             if (isJerseyOrder) {
-                if (s.includes('chờ xác nhận')) return 0;
-                if (s.includes('xuất file')) return 1;
-                if (s.includes('in') || s.includes('ép')) return 2;
+                if (s.includes('cho xac nhan')) return 0;
+                if (s.includes('xuat file')) return 1;
+                if (s.includes('in') || s.includes('ep')) return 2;
                 if (s.includes('qc')) return 3;
-                if (s.includes('chờ lấy') || s.includes('lấy hàng')) return 4;
-                if (s.includes('đang giao')) return 5;
-                if (s.includes('đã giao') || s.includes('đã nhận')) return 6;
+                if (s.includes('cho lay') || s.includes('lay hang')) return 4;
+                if (s.includes('dang giao')) return 5;
+                if (s.includes('da giao') || s.includes('da nhan') || s.includes('giao thanh cong')) return 6;
+                if (s.includes('hoan tat') || s.includes('hoan thanh')) return 7;
             } else {
-                if (s.includes('chờ xác nhận')) return 0;
-                if (s.includes('chờ lấy') || s.includes('lấy hàng')) return 1;
-                if (s.includes('đang giao')) return 2;
-                if (s.includes('đã giao') || s.includes('đã nhận')) return 3;
+                if (s.includes('cho xac nhan')) return 0;
+                if (s.includes('cho lay') || s.includes('lay hang')) return 1;
+                if (s.includes('dang giao')) return 2;
+                if (s.includes('da giao') || s.includes('da nhan') || s.includes('giao thanh cong')) return 3;
+                if (s.includes('hoan tat') || s.includes('hoan thanh')) return 4;
             }
             return 0;
         }
@@ -808,11 +868,11 @@
             // Đơn ảo FOMO (không phải khách thật) -> Tự động duyệt ngay lập tức
             if (!ord.isRealCustomerOrder) return true;
 
-            // Đơn khách đặt thật -> Bắt buộc Admin duyệt qua nút bấm hoặc đã tiến sang công đoạn khác
+            // Đơn khách đặt thật -> Đã được Admin duyệt, đã có bước >= 1 hoặc trạng thái đã tiến sang công đoạn khác
             if (ord.adminConfirmed === true) return true;
             if (typeof ord.manualStepIdx === 'number' && ord.manualStepIdx >= 1) return true;
-            let s = ord.lastSyncedSheetStatus || ord.status || '';
-            if (s && s !== 'Chờ xác nhận' && s !== 'Chờ thanh toán' && s !== 'Đã hủy') return true;
+            let s = boDauTiengViet(String(ord.lastSyncedSheetStatus || ord.status || '')).toLowerCase();
+            if (s && !s.includes('cho xac nhan') && !s.includes('cho thanh toan') && !s.includes('da huy')) return true;
             return false;
         }
 
@@ -832,13 +892,22 @@
                 durationsMin = [0, 20, 20, 30];
             }
 
+            let sNorm = boDauTiengViet(String(ord.status || ord.lastSyncedSheetStatus || '')).toLowerCase();
+            let isCancelled = (ord.isCancelled === true) || sNorm.includes('da huy');
+            if (isCancelled) {
+                let stopIdx = typeof ord.cancelledAtStep === 'number' ? Math.min(steps.length - 1, ord.cancelledAtStep) : 0;
+                ord.status = 'Đã hủy';
+                ord.isCancelled = true;
+                return { steps, isJerseyOrder, jerseyQty, currentIdx: stopIdx, isCancelled: true, cancelledAtStep: stopIdx, currentLabel: 'ĐÃ HỦY', badgeClass: 'badge-red', printingSubText: '' };
+            }
+
             let isConfirmed = kiemTraDonDaDuocDuyet(ord);
             let calcIdx = 0, accMin = 0, printingSubText = '';
 
-            // Nếu đơn CHƯA được Admin duyệt thì giữ nguyên ở bước 0 ("Chờ xác nhận"), KHÔNG tự động nhảy theo thời gian
+            // Nếu đơn đã được duyệt hoặc là đơn FOMO
             if (isConfirmed) {
                 if (ord.isRealCustomerOrder && !ord.confirmedAt) {
-                    ord.confirmedAt = Date.now();
+                    ord.confirmedAt = ord.startTime || Date.now();
                 }
                 calcIdx = 1;
                 let baseTime = ord.confirmedAt || ord.startTime || Date.now();
@@ -864,28 +933,36 @@
                     } else {
                         calcIdx = Math.min(steps.length - 1, Math.max(calcIdx, ord.manualStepIdx));
                     }
-                    if (calcIdx === steps.length - 2) {
-                        if (!ord.deliveredAt) ord.deliveredAt = Date.now();
-                        if ((Date.now() - ord.deliveredAt) >= 30 * MIN_MS) calcIdx = steps.length - 1;
-                    }
-                    if (isJerseyOrder && calcIdx === 2 && !printingSubText) {
-                        printingSubText = `Xưởng đang ép DTF 1/${jerseyQty} áo (10 phút/áo)`;
-                    }
+                }
+
+                // Luôn bảo toàn trạng thái nếu text từ backend/sheet là đã giao hoặc hoàn tất
+                if (sNorm.includes('hoan tat') || sNorm.includes('hoan thanh')) {
+                    calcIdx = steps.length - 1;
+                } else if (sNorm.includes('da giao') || sNorm.includes('da nhan')) {
+                    calcIdx = Math.max(calcIdx, steps.length - 2);
+                } else if (sNorm.includes('dang giao')) {
+                    calcIdx = Math.max(calcIdx, isJerseyOrder ? 5 : 2);
+                }
+
+                if (calcIdx === steps.length - 2) {
+                    if (!ord.deliveredAt) ord.deliveredAt = Date.now();
+                    if ((Date.now() - ord.deliveredAt) >= 30 * MIN_MS) calcIdx = steps.length - 1;
+                }
+                if (isJerseyOrder && calcIdx === 2 && !printingSubText) {
+                    printingSubText = `Xưởng đang ép DTF 1/${jerseyQty} áo (10 phút/áo)`;
                 }
             }
 
             calcIdx = Math.min(steps.length - 1, Math.max(0, calcIdx));
-
-            if (ord.isCancelled) {
-                let stopIdx = typeof ord.cancelledAtStep === 'number' ? Math.min(steps.length - 1, ord.cancelledAtStep) : calcIdx;
-                return { steps, isJerseyOrder, jerseyQty, currentIdx: stopIdx, isCancelled: true, cancelledAtStep: stopIdx, currentLabel: 'ĐÃ HỦY', badgeClass: 'badge-red', printingSubText: '' };
-            }
-
             let currentLabel = steps[calcIdx] || steps[steps.length - 1];
             let badgeClass = 'badge-orange';
             if (calcIdx === steps.length - 1 || currentLabel === 'Đã giao' || currentLabel === 'Đã nhận' || currentLabel === 'Hoàn tất' || currentLabel === 'Hoàn thành') badgeClass = 'badge-green';
             else if (currentLabel === 'Đang giao') badgeClass = 'badge-blue';
             else if (currentLabel === 'Chờ xác nhận') badgeClass = 'badge-orange';
+
+            // Đồng bộ lại status và manualStepIdx trên đối tượng để đảm bảo danh sách ngoài và bên trong luôn 100% giống nhau
+            ord.status = currentLabel;
+            ord.manualStepIdx = calcIdx;
 
             let autoCompleteRemainMin = 30;
             if (calcIdx === steps.length - 2) {
@@ -1357,9 +1434,18 @@
         
         // HÀM ĐỒNG BỘ ĐƠN HÀNG TRỰC TIẾP TỪ SERVER NODE.JS (CHẠY 50MS, SIÊU TỐC ĐA THIẾT BỊ)
         async function dongBoDonHangTuBackend(phone) {
-            if (!phone || phone === "0909501753") return;
             try {
-                let res = await fetch('/api/orders?phone=' + encodeURIComponent(phone));
+                let url = '';
+                if (currentCustomer && currentCustomer.isAdmin) {
+                    url = '/api/orders';
+                } else if (phone && phone !== "0909501753") {
+                    url = '/api/orders?phone=' + encodeURIComponent(phone);
+                } else if (currentCustomer && currentCustomer.phone && currentCustomer.phone !== "0909501753") {
+                    url = '/api/orders?phone=' + encodeURIComponent(currentCustomer.phone);
+                }
+                if (!url) return;
+
+                let res = await fetch(url);
                 let data = await res.json();
                 if (data && data.success && Array.isArray(data.data)) {
                     let hasNew = false;
@@ -1387,22 +1473,24 @@
                                 hasNew = true;
                             }
                         } else {
+                            let itemsTextList = Array.isArray(srvOrd.itemsList) ? srvOrd.itemsList : 
+                                (Array.isArray(srvOrd.items) ? srvOrd.items.map(it => `• ${it.item_name || it.name} (x${it.qty || 1}) - ${(it.unit_price || 0).toLocaleString('vi-VN')}đ`) : ['Sản phẩm Mairua Hoops']);
                             let ordObj = {
                                 orderCode: code,
                                 originalOrderCode: code,
                                 name: srvOrd.name || srvOrd.customer_name || 'Khách hàng',
-                                phone: srvOrd.phone || srvOrd.customer_phone || phone,
-                                accountPhone: srvOrd.accountPhone || srvOrd.account_phone || phone,
-                                addr: srvOrd.addr || srvOrd.customer_address || '',
-                                finalTotal: phanTichTienSo(srvOrd.finalTotal || srvOrd.final_amount),
-                                subtotal: phanTichTienSo(srvOrd.subtotal || srvOrd.finalTotal || srvOrd.final_amount),
+                                phone: srvOrd.phone || srvOrd.customer_phone || (phone || ''),
+                                accountPhone: srvOrd.accountPhone || srvOrd.account_phone || (phone || ''),
+                                addr: srvOrd.addr || srvOrd.customer_addr || srvOrd.customer_address || '',
+                                finalTotal: phanTichTienSo(srvOrd.finalTotal || srvOrd.final_total || srvOrd.final_amount),
+                                subtotal: phanTichTienSo(srvOrd.subtotal || srvOrd.final_total || srvOrd.finalTotal || srvOrd.final_amount),
                                 status: srvOrd.status || 'Chờ xác nhận',
                                 lastSyncedSheetStatus: srvOrd.status || 'Chờ xác nhận',
-                                itemsList: Array.isArray(srvOrd.itemsList) ? srvOrd.itemsList : ['Sản phẩm Mairua Hoops'],
-                                itemsCount: srvOrd.itemsCount || 1,
+                                itemsList: itemsTextList,
+                                itemsCount: srvOrd.itemsCount || (Array.isArray(srvOrd.items) ? srvOrd.items.reduce((s, it) => s + (it.qty || 1), 0) : 1),
                                 startTime: srvOrd.startTime || srvOrd.start_time || Date.now(),
                                 isRealCustomerOrder: true,
-                                adminConfirmed: srvAdminConfirmed,
+                                adminConfirmed: srvAdminConfirmed || (srvStepIdx !== null && srvStepIdx > 0),
                                 manualStepIdx: srvStepIdx !== null ? srvStepIdx : 0,
                                 confirmedAt: srvOrd.confirmed_at || srvOrd.confirmedAt || null,
                                 deliveredAt: srvOrd.delivered_at || srvOrd.deliveredAt || null
@@ -1416,6 +1504,9 @@
                         localStorage.setItem('mairua_remoteOrdersList', JSON.stringify(remoteOrdersList));
                         renderDanhSachDonTaiKhoan();
                         renderCustomerOrderHistory();
+                        if (currentCustomer && currentCustomer.isAdmin) {
+                            renderAdminOrdersTableOnly();
+                        }
                     }
                 }
             } catch(e) {
@@ -1597,11 +1688,11 @@
                 let dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
                 let totalVal = (ord.finalTotal || ord.subtotal || 0).toLocaleString('vi-VN') + 'đ';
                 return `
-                    <div class="order-row-card" onclick="xemChiTietDonTaiKhoan(${realIdx})">
+                    <div class="order-row-card" onclick="xemChiTietDonTaiKhoan('${code}')">
                         <div style="font-size:14px; color:#333;"><b>${code}</b> · <span style="color:#666;">${dateStr} · ${ord.itemsCount || 1} SP</span></div>
                         <div style="display:flex; align-items:center; gap:14px;">
-                            ${(!info.isCancelled && info.currentIdx === info.steps.length - 2) ? `<button type="button" onclick="event.stopPropagation(); khachXacNhanDaNhanHang(${realIdx});" style="background:#16a34a; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif;">✅ Đã nhận hàng</button>` : ''}
-                            ${(!info.isCancelled && info.currentIdx === info.steps.length - 1) ? `<button type="button" onclick="event.stopPropagation(); xemChiTietDonTaiKhoan(${realIdx}); moModalDanhGiaDonHang(${realIdx});" style="background:#ff5500; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif;">⭐ Đánh giá SP</button>` : ''}
+                            ${(!info.isCancelled && info.currentIdx === info.steps.length - 2) ? `<button type="button" onclick="event.stopPropagation(); khachXacNhanDaNhanHang('${code}');" style="background:#16a34a; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif;">✅ Đã nhận hàng</button>` : ''}
+                            ${(!info.isCancelled && info.currentIdx === info.steps.length - 1) ? `<button type="button" onclick="event.stopPropagation(); xemChiTietDonTaiKhoan('${code}'); moModalDanhGiaDonHang(${realIdx});" style="background:#ff5500; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif;">⭐ Đánh giá SP</button>` : ''}
                             <span class="order-badge-pill ${info.badgeClass}">${info.currentLabel}</span>
                             <span style="font-weight:800; font-size:15px; color:#111; min-width:95px; text-align:right;">${totalVal}</span>
                         </div>
@@ -1613,14 +1704,24 @@
             }
         }
 
-        function xemChiTietDonTaiKhoan(realIdx) {
-            selectedAccountOrderIndex = realIdx;
-            let ord = remoteOrdersList[realIdx];
+        function xemChiTietDonTaiKhoan(realIdxOrCode) {
+            let ord = null;
+            let realIdx = 0;
+            if (typeof realIdxOrCode === 'string') {
+                ord = remoteOrdersList.find(o => o && (o.orderCode === realIdxOrCode || o.originalOrderCode === realIdxOrCode));
+                realIdx = remoteOrdersList.indexOf(ord);
+            } else {
+                realIdx = realIdxOrCode;
+                ord = remoteOrdersList[realIdx];
+            }
             if (!ord) return;
+            selectedAccountOrderIndex = realIdx;
             document.getElementById('accOrdersListView').style.display = 'none';
             let detailView = document.getElementById('accOrderDetailView');
-            detailView.style.display = 'block';
-            detailView.innerHTML = taoHtmlTimelineChiTietDon(ord, realIdx, false);
+            if (detailView) {
+                detailView.style.display = 'block';
+                detailView.innerHTML = taoHtmlTimelineChiTietDon(ord, realIdx, false);
+            }
         }
 
         function quayLaiDanhSachDonTaiKhoan() {
@@ -2022,10 +2123,15 @@
                 finalTotal: calc.totalPrice,
                 earnedMCoin: Math.round(calc.totalPrice * 0.05),
                 couponUsed: null,
-                isRealCustomerOrder: false,
-                adminConfirmed: true,
+                isRealCustomerOrder: isManualClick ? true : false,
+                adminConfirmed: isManualClick ? false : true,
                 startTime: Date.now()
             };
+
+            if (isManualClick) {
+                daBietDonThatCode[newAutoOrder.orderCode] = true;
+                phatChuongBaoDonHangThat();
+            }
 
             remoteOrdersList.push(newAutoOrder);
             luuDuLieuLenDamMay();
@@ -2665,9 +2771,39 @@
             if (!ordListTable) return;
 
             let pendingCount = 0;
+            let realOrders = [];
             remoteOrdersList.forEach(o => {
-                if (o && !kiemTraDonDaDuocDuyet(o) && !o.isCancelled) pendingCount++;
+                if (o && o.isRealCustomerOrder) {
+                    realOrders.push(o);
+                    if (!kiemTraDonDaDuocDuyet(o) && !o.isCancelled) pendingCount++;
+                }
             });
+
+            // CHUÔNG CẢNH BÁO KHI CÓ KHÁCH THẬT ĐẶT ĐƠN MỚI
+            let hasNewUnseenRealOrder = false;
+            realOrders.forEach(o => {
+                let c = o.orderCode || o.originalOrderCode;
+                if (c && !daBietDonThatCode[c]) {
+                    daBietDonThatCode[c] = true;
+                    hasNewUnseenRealOrder = true;
+                }
+            });
+            if (hasNewUnseenRealOrder && Object.keys(daBietDonThatCode).length > realOrders.length - 1) {
+                phatChuongBaoDonHangThat();
+            }
+
+            // CẬP NHẬT BADGE ĐƠN THẬT NỔI BẬT TRÊN HEADER
+            let headerRealBadge = document.getElementById('adminRealOrderAlertBadge');
+            let headerRealText = document.getElementById('adminRealOrderAlertText');
+            if (headerRealBadge) {
+                if (pendingCount > 0) {
+                    headerRealBadge.style.display = 'inline-flex';
+                    if (headerRealText) headerRealText.innerText = `🚨 ${pendingCount} ĐƠN THẬT MỚI`;
+                } else {
+                    headerRealBadge.style.display = 'none';
+                }
+            }
+
             let bannerEl = document.getElementById('adminPendingOrdersBanner');
             let bannerText = document.getElementById('adminPendingOrdersBannerText');
             if (bannerEl && bannerText) {
@@ -2692,10 +2828,26 @@
                 return;
             }
 
+            // GẮN TAG [ĐƠN THẬT] & ƯU TIÊN ĐƠN THẬT LÊN ĐẦU BẢNG QUẢN LÝ
+            let indexedOrders = [];
+            for (let realIndex = 0; realIndex < remoteOrdersList.length; realIndex++) {
+                indexedOrders.push({ ord: remoteOrdersList[realIndex], realIndex });
+            }
+            indexedOrders.sort((a, b) => {
+                let aPending = a.ord && a.ord.isRealCustomerOrder && !kiemTraDonDaDuocDuyet(a.ord) && !a.ord.isCancelled;
+                let bPending = b.ord && b.ord.isRealCustomerOrder && !kiemTraDonDaDuocDuyet(b.ord) && !b.ord.isCancelled;
+                if (aPending && !bPending) return -1;
+                if (!aPending && bPending) return 1;
+                let aReal = a.ord && a.ord.isRealCustomerOrder;
+                let bReal = b.ord && b.ord.isRealCustomerOrder;
+                if (aReal && !bReal) return -1;
+                if (!aReal && bReal) return 1;
+                return (b.ord.startTime || 0) - (a.ord.startTime || 0);
+            });
+
             let matchedCount = 0;
-            for (let realIndex = remoteOrdersList.length - 1; realIndex >= 0; realIndex--) {
-                let ord = remoteOrdersList[realIndex];
-                if (!ord) continue;
+            indexedOrders.forEach(({ ord, realIndex }) => {
+                if (!ord) return;
                 let custName = ord.name || 'Khách hàng';
                 let custPhone = ord.phone || '';
                 let code = ord.orderCode || `MVP${12200 + realIndex}`;
@@ -2703,42 +2855,43 @@
 
                 let info = layThongTinTienTrinhDon(ord);
                 if (normKeyword) {
-                    if (!boDauTiengViet(custName).includes(normKeyword) && !custPhone.toLowerCase().includes(normKeyword) && !code.toLowerCase().includes(normKeyword) && !boDauTiengViet(info.currentLabel).includes(normKeyword)) continue;
+                    if (!boDauTiengViet(custName).includes(normKeyword) && !custPhone.toLowerCase().includes(normKeyword) && !code.toLowerCase().includes(normKeyword) && !boDauTiengViet(info.currentLabel).includes(normKeyword)) return;
                 }
-                if (timeFrom !== null && orderTime < timeFrom) continue;
-                if (timeTo !== null && orderTime > timeTo) continue;
+                if (timeFrom !== null && orderTime < timeFrom) return;
+                if (timeTo !== null && orderTime > timeTo) return;
 
                 matchedCount++;
                 let dateObj = new Date(orderTime);
                 let timeStr = `${String(dateObj.getHours()).padStart(2,'0')}:${String(dateObj.getMinutes()).padStart(2,'0')} - ${String(dateObj.getDate()).padStart(2,'0')}/${String(dateObj.getMonth()+1).padStart(2,'0')}/${dateObj.getFullYear()}`;
 
-                let realCustBadge = ord.isRealCustomerOrder ? ' <span style="font-size:10px; background:#16a34a; color:#fff; padding:2px 6px; border-radius:4px; font-weight:700;">KHÁCH ĐẶT</span>' : '';
+                // TAG [ĐƠN THẬT] THỂ THAO ĐẬM CHẤT SPORT INDUSTRIAL
+                let realCustBadge = ord.isRealCustomerOrder ? ' <span class="badge-don-that">[ĐƠN THẬT]</span>' : '';
                 let isConfirmed = kiemTraDonDaDuocDuyet(ord);
                 let confirmBtnHtml = (!isConfirmed && !info.isCancelled)
-                    ? `<button type="button" onclick="adminXacNhanDonHang(${realIndex}, event)" title="Duyệt đơn và chuyển sang công đoạn kế tiếp" style="background:#16a34a; color:#fff; border:none; padding:5px 12px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; box-shadow:0 2px 6px rgba(22,163,74,0.3); white-space:nowrap;">✅ Duyệt đơn</button>`
+                    ? `<button type="button" onclick="adminXacNhanDonHang(${realIndex}, event)" title="Duyệt đơn và chuyển sang công đoạn kế tiếp" style="background:#16a34a; color:#fff; border:none; padding:5px 12px; border-radius:4px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:'Montserrat',sans-serif; box-shadow:0 2px 6px rgba(22,163,74,0.3); white-space:nowrap;">✅ DUYỆT</button>`
                     : '';
                 let nextStepBtnHtml = (isConfirmed && !info.isCancelled && info.currentIdx < info.steps.length - 1)
-                    ? `<button type="button" onclick="adminChuyenBuocTiepTheo(${realIndex}, event)" title="Chuyển ngay sang bước tiếp theo" style="background:#2563eb; color:#fff; border:none; padding:5px 10px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; white-space:nowrap;">⏭ Bước tiếp</button>`
+                    ? `<button type="button" onclick="adminChuyenBuocTiepTheo(${realIndex}, event)" title="Chuyển ngay sang bước tiếp theo" style="background:#2563eb; color:#fff; border:none; padding:5px 10px; border-radius:4px; font-size:11px; font-weight:800; cursor:pointer; font-family:'Montserrat',sans-serif; white-space:nowrap;">⏭ BƯỚC TIẾP</button>`
                     : '';
 
-                ordListTable.innerHTML += `<tr class="clickable-row" style="${ord.isRealCustomerOrder ? 'background:#f0fdf4;' : ''}" onclick="hienChiTietDonHang(${realIndex})">
-                    <td><b>${code}</b> ${info.isJerseyOrder ? '<span style="font-size:10px; background:#111; color:#fff; padding:2px 5px; border-radius:4px;">JERSEY</span>' : ''}${realCustBadge}</td>
+                ordListTable.innerHTML += `<tr class="clickable-row" style="${ord.isRealCustomerOrder ? 'background:#132035;' : ''}" onclick="hienChiTietDonHang('${code}')">
+                    <td><b>${code}</b> ${info.isJerseyOrder ? '<span style="font-size:10px; background:#000; color:#fff; padding:2px 5px; border-radius:3px;">JERSEY</span>' : ''}${realCustBadge}</td>
                     <td><b>${custName}</b></td>
-                    <td><b>${custPhone}</b>${ord.accountPhone && ord.accountPhone !== custPhone ? `<div style="font-size:11px;color:#2563eb;">(Acc: ${ord.accountPhone})</div>` : ''}</td>
+                    <td><b>${custPhone}</b>${ord.accountPhone && ord.accountPhone !== custPhone ? `<div style="font-size:11px;color:#60a5fa;">(Acc: ${ord.accountPhone})</div>` : ''}</td>
                     <td>${ord.addr || '---'}</td>
-                    <td style="font-size:12px; color:#555;">${timeStr}</td>
+                    <td style="font-size:12px; color:#94a3b8;">${timeStr}</td>
                     <td><span class="order-badge-pill ${info.badgeClass}">${info.currentLabel}</span></td>
                     <td style="display:flex; align-items:center; justify-content:flex-end; gap:8px;">
                         ${confirmBtnHtml}
                         ${nextStepBtnHtml}
-                        <span style="color: #ff5500; font-weight: 600; cursor: pointer; font-size:12px; white-space:nowrap;">🔍 Chi tiết</span>
-                        <button type="button" onclick="xoaDonHangAdmin(${realIndex}, event)" title="Xóa đơn" style="background:#e74c3c; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">🗑️</button>
+                        <span onclick="event.stopPropagation(); hienChiTietDonHang('${code}')" style="color: #ff5500; font-weight: 700; cursor: pointer; font-size:12px; white-space:nowrap;">🔍 Chi tiết</span>
+                        <button type="button" onclick="xoaDonHangAdmin(${realIndex}, event)" title="Xóa đơn" style="background:#dc2626; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">🗑️</button>
                     </td>
                 </tr>`;
-            }
+            });
 
             if (matchedCount === 0) {
-                ordListTable.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #e74c3c; font-weight: 600; padding: 18px;">Không tìm thấy đơn hàng nào khớp điều kiện.</td></tr>`;
+                ordListTable.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ef4444; font-weight: 700; padding: 18px;">Không tìm thấy đơn hàng nào khớp điều kiện lọc.</td></tr>`;
             }
         }
 
@@ -2983,7 +3136,7 @@
                 let code = ord.orderCode || `MVP${12200 + realIdx}`;
                 let d = new Date(ord.startTime || Date.now());
                 let dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                return `<div class="order-row-card" onclick="moTabTaiKhoan('orders'); xemChiTietDonTaiKhoan(${realIdx});">
+                return `<div class="order-row-card" onclick="moTabTaiKhoan('orders'); xemChiTietDonTaiKhoan('${code}');">
                     <div><b>${code}</b> · ${dateStr} · ${ord.itemsCount || 1} SP</div>
                     <div style="display:flex; align-items:center; gap:12px;">
                         <span class="order-badge-pill ${info.badgeClass}">${info.currentLabel}</span>
@@ -2997,12 +3150,16 @@
         function capNhatTonKhoKhiDoiMauRestock(prodId) {
             let sel = document.getElementById(`restock-color-sel-${prodId}`);
             let stockSpan = document.getElementById(`restock-cur-stock-${prodId}`);
+            let costInput = document.getElementById(`restock-cost-${prodId}`);
             let prod = products.find(p => p.id === prodId);
             if (!sel || !stockSpan || !prod) return;
             let vIdx = parseInt(sel.value) || 0;
             let v = prod.variants[vIdx];
             if (!v) return;
-            stockSpan.innerHTML = `<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${v.hex};border:1px solid #666;margin-right:5px;vertical-align:middle;"></span><b style="color:${v.stock <= 5 ? '#dc2626' : '#15803d'};">${v.stock} cái</b> ${v.stock <= 5 ? '<span style="font-size:11px;color:#dc2626;">(Sắp hết!)</span>' : ''}`;
+            stockSpan.innerHTML = `<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${v.hex};border:1px solid #666;margin-right:5px;vertical-align:middle;"></span><b style="color:${v.stock <= 5 ? '#dc2626' : '#10b981'};">${v.stock} cái</b> ${v.stock <= 5 ? '<span style="font-size:11px;color:#dc2626;">(Sắp hết!)</span>' : ''}`;
+            if (costInput) {
+                costInput.value = layGiaVonSanPham(prod, vIdx);
+            }
         }
 
         function renderAdminDashboard() {
@@ -3022,19 +3179,30 @@
                 let lowCount = layDanhSachHangTonThap().length;
 
                 retentionBox.innerHTML = `
-                    <div class="retention-card" style="border-left-color: #27ae60;"><h4>🔄 Tỉ Lệ Khách Quay Lại Mua</h4><div class="big-num" style="color: #27ae60;">${retentionRate}%</div></div>
-                    <div class="retention-card" style="border-left-color: #2980b9;"><h4>👥 Tổng Số Khách Đã Mua</h4><div class="big-num">${totalBuyers} khách</div></div>
-                    <div class="retention-card" style="border-left-color: #dc2626; cursor:pointer;" onclick="moTabChuongAdmin('lowstock')"><h4>⚠️ Cảnh Báo Hàng Tồn (≤ 5)</h4><div class="big-num" style="color: #dc2626;">${lowCount} mặt hàng</div></div>
+                    <div class="retention-card" style="border-left-color: #ff5500; background:#0f172a; border-radius:4px; border:1px solid #1e293b; border-left:3px solid #ff5500;">
+                        <h4 style="color:#94a3b8; font-size:12px; margin-bottom:4px;">🔄 TỈ LỆ KHÁCH QUAY LẠI</h4>
+                        <div class="big-num" style="color: #ff5500; font-family:'Bebas Neue',sans-serif; font-size:32px;">${retentionRate}%</div>
+                    </div>
+                    <div class="retention-card" style="border-left-color: #2563eb; background:#0f172a; border-radius:4px; border:1px solid #1e293b; border-left:3px solid #2563eb;">
+                        <h4 style="color:#94a3b8; font-size:12px; margin-bottom:4px;">👥 TỔNG KHÁCH ĐÃ MUA</h4>
+                        <div class="big-num" style="color: #f8fafc; font-family:'Bebas Neue',sans-serif; font-size:32px;">${totalBuyers} khách</div>
+                    </div>
+                    <div class="retention-card" style="border-left-color: #dc2626; background:#0f172a; border-radius:4px; border:1px solid #1e293b; border-left:3px solid #dc2626; cursor:pointer;" onclick="moTabChuongAdmin('lowstock')">
+                        <h4 style="color:#94a3b8; font-size:12px; margin-bottom:4px;">⚠️ HÀNG TỒN THẤP (≤ 5)</h4>
+                        <div class="big-num" style="color: #dc2626; font-family:'Bebas Neue',sans-serif; font-size:32px;">${lowCount} mặt hàng</div>
+                    </div>
                 `;
             }
 
+            // BẢNG TỒN KHO CHI TIẾT KÈM GIÁ VỐN
             let invTable = document.getElementById('adminInventoryTable');
             if(invTable) {
                 invTable.innerHTML = '';
                 let flatVariants = [];
                 products.forEach(p => {
                     p.variants.forEach((v, vIdx) => {
-                        flatVariants.push({ prodId: p.id, prodName: p.name, price: p.price, colorName: v.colorName, hex: v.hex, stock: v.stock, sold: v.sold || 0, vIdx });
+                        let cost = layGiaVonSanPham(p, vIdx);
+                        flatVariants.push({ prodId: p.id, prodName: p.name, price: p.price, costPrice: cost, colorName: v.colorName, hex: v.hex, stock: v.stock, sold: v.sold || 0, vIdx });
                     });
                 });
                 flatVariants.sort((a, b) => b.sold - a.sold);
@@ -3043,23 +3211,23 @@
                 let yellowCutoff = Math.ceil((totalRows * 2) / 3);
 
                 flatVariants.forEach((item, index) => {
-                    let rowClass = index < greenCutoff ? 'inv-tier-green' : (index < yellowCutoff ? 'inv-tier-yellow' : 'inv-tier-red');
                     let tierBadge = index < greenCutoff ? '🟢 Bán chạy' : (index < yellowCutoff ? '🟡 Trung bình' : '🔴 Ít bán');
-                    let lowWarn = item.stock <= 5 ? ` <span style="background:#dc2626;color:#fff;padding:1px 6px;border-radius:4px;font-size:10.5px;">≤ 5</span>` : '';
-                    invTable.innerHTML += `<tr class="${rowClass}">
-                        <td><b>#${index + 1}</b> (${tierBadge})</td>
+                    let lowWarn = item.stock <= 5 ? ` <span style="background:#dc2626;color:#fff;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:800;">≤ 5</span>` : '';
+                    invTable.innerHTML += `<tr>
+                        <td><b>#${index + 1}</b> <span style="font-size:11px; color:#94a3b8;">(${tierBadge})</span></td>
                         <td><b>${item.prodName}</b></td>
-                        <td><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${item.hex};border:1px solid #555;vertical-align:middle;margin-right:5px;"></span><b>${item.colorName}</b></td>
-                        <td>${item.price.toLocaleString('vi-VN')}đ</td>
-                        <td><b>${item.sold}</b> đã bán</td>
-                        <td><b>${item.stock} cái</b>${lowWarn}</td>
+                        <td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${item.hex};border:1px solid #555;vertical-align:middle;margin-right:5px;"></span><b>${item.colorName}</b></td>
+                        <td style="color:#10b981; font-weight:700;">${item.costPrice.toLocaleString('vi-VN')}đ</td>
+                        <td><b>${item.price.toLocaleString('vi-VN')}đ</b></td>
+                        <td style="color:#94a3b8;">${item.sold} đã bán</td>
+                        <td><b style="color:${item.stock <= 5 ? '#ef4444' : '#f8fafc'};">${item.stock} cái</b>${lowWarn}</td>
                     </tr>`;
                 });
             }
 
             renderAdminOrdersTableOnly();
 
-            // Bảng Nhập Hàng: Mỗi sản phẩm đúng 1 dòng + Dropdown chọn Màu
+            // BẢNG NHẬP KHO THỦ CÔNG KÈM CỘT ĐƠN GIÁ VỐN
             let restockTable = document.getElementById('adminRestockTable');
             if(restockTable) {
                 let prevRestockState = {};
@@ -3067,44 +3235,355 @@
                     let sEl = document.getElementById(`restock-color-sel-${p.id}`);
                     let qEl = document.getElementById(`restock-qty-${p.id}`);
                     let cEl = document.getElementById(`restock-chk-${p.id}`);
+                    let costEl = document.getElementById(`restock-cost-${p.id}`);
                     prevRestockState[p.id] = {
                         vIdx: sEl ? (parseInt(sEl.value) || 0) : 0,
                         qty: qEl ? (parseInt(qEl.value) || 10) : 10,
-                        chk: cEl ? !!cEl.checked : false
+                        chk: cEl ? !!cEl.checked : false,
+                        cost: costEl ? (parseInt(costEl.value) || null) : null
                     };
                 });
                 restockTable.innerHTML = products.map(p => {
-                    let st = prevRestockState[p.id] || { vIdx: 0, qty: 10, chk: false };
+                    let st = prevRestockState[p.id] || { vIdx: 0, qty: 10, chk: false, cost: null };
                     let selIdx = p.variants[st.vIdx] ? st.vIdx : 0;
                     let v0 = p.variants[selIdx];
+                    let curCost = st.cost !== null ? st.cost : layGiaVonSanPham(p, selIdx);
                     let optionsHtml = p.variants.map((v, vIdx) => `<option value="${vIdx}" ${vIdx === selIdx ? 'selected' : ''}>${v.colorName} (Tồn: ${v.stock})</option>`).join('');
-
 
                     return `<tr>
                         <td><b>${p.name}</b></td>
                         <td>
-                            <select id="restock-color-sel-${p.id}" class="form-control" style="margin:0; padding:6px 10px; font-weight:600;" onchange="capNhatTonKhoKhiDoiMauRestock(${p.id})">
+                            <select id="restock-color-sel-${p.id}" class="form-control" style="margin:0; padding:6px 10px; font-weight:600; background:#0f172a; color:#f8fafc; border:1px solid #334155;" onchange="capNhatTonKhoKhiDoiMauRestock(${p.id})">
                                 ${optionsHtml}
                             </select>
                         </td>
                         <td id="restock-cur-stock-${p.id}">
                             <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${v0.hex};border:1px solid #666;margin-right:5px;vertical-align:middle;"></span>
-                            <b style="color:${v0.stock <= 5 ? '#dc2626' : '#15803d'};">${v0.stock} cái</b> ${v0.stock <= 5 ? '<span style="font-size:11px;color:#dc2626;">(Sắp hết!)</span>' : ''}
+                            <b style="color:${v0.stock <= 5 ? '#ef4444' : '#10b981'};">${v0.stock} cái</b> ${v0.stock <= 5 ? '<span style="font-size:10.5px;color:#ef4444;">(Sắp hết!)</span>' : ''}
                         </td>
-                        <td><input type="number" min="1" value="${st.qty}" class="form-control" id="restock-qty-${p.id}" style="margin:0; width: 90px;"></td>
-                        <td style="text-align:center;"><input type="checkbox" id="restock-chk-${p.id}" ${st.chk ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer;"></td>
+                        <td>
+                            <input type="number" id="restock-cost-${p.id}" value="${curCost}" class="form-control" style="margin:0; width:115px; background:#0f172a; color:#10b981; font-weight:700; border:1px solid #334155; font-size:12.5px;">
+                        </td>
+                        <td><input type="number" min="1" value="${st.qty}" class="form-control" id="restock-qty-${p.id}" style="margin:0; width: 85px; background:#0f172a; color:#f8fafc; border:1px solid #334155;"></td>
+                        <td style="text-align:center;"><input type="checkbox" id="restock-chk-${p.id}" ${st.chk ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer; accent-color:#ff5500;"></td>
                     </tr>`;
                 }).join('');
             }
+
+            // TỰ ĐỘNG CẬP NHẬT 4 THẺ KPI VÀ VẼ BIỂU ĐỒ CHART.JS
+            capNhatBaoCaoVaBieuDoAdmin();
         }
 
-        function hienChiTietDonHang(index) {
-            selectedAdminOrderIndex = index;
-            let ord = remoteOrdersList[index];
+        // ==============================================================
+        // QUẢN LÝ GIÁ VỐN, 4 THẺ KPI & VẼ BIỂU ĐỒ TRỰC QUAN CHART.JS
+        // ==============================================================
+        let chartRevenueProfitLineInstance = null;
+        let chartCategoryBreakdownInstance = null;
+
+        function capNhatBaoCaoVaBieuDoAdmin() {
+            let kpiRevEl = document.getElementById('kpiRevenue');
+            let kpiCostEl = document.getElementById('kpiCost');
+            let kpiGrossEl = document.getElementById('kpiGrossProfit');
+            let kpiMarginEl = document.getElementById('kpiProfitMargin');
+            if (!kpiRevEl && !kpiCostEl) return;
+
+            let totalRevenue = 0;
+            let totalCost = 0;
+            let dailyStats = {};
+            let catStats = {
+                'Balo': { rev: 0, cost: 0, profit: 0 },
+                'Jersey': { rev: 0, cost: 0, profit: 0 },
+                'Bóng rổ': { rev: 0, cost: 0, profit: 0 },
+                'Combat & Phụ kiện': { rev: 0, cost: 0, profit: 0 }
+            };
+
+            remoteOrdersList.forEach(ord => {
+                if (!ord || ord.isCancelled) return;
+                let rev = Number(ord.finalTotal || ord.subtotal || 0);
+                let orderCost = 0;
+
+                if (Array.isArray(ord.itemsList)) {
+                    ord.itemsList.forEach(line => {
+                        let lower = line.toLowerCase();
+                        let qtyMatch = line.match(/\(x(\d+)\)/i);
+                        let qty = qtyMatch ? (parseInt(qtyMatch[1]) || 1) : 1;
+
+                        let cat = 'Combat & Phụ kiện';
+                        let estimatedItemCost = 50000;
+
+                        if (lower.includes('balo')) {
+                            cat = 'Balo';
+                            estimatedItemCost = 690000;
+                        } else if (lower.includes('jersey') || lower.includes('áo') || lower.includes('roster')) {
+                            cat = 'Jersey';
+                            estimatedItemCost = 125000;
+                        } else if (lower.includes('bóng')) {
+                            cat = 'Bóng rổ';
+                            estimatedItemCost = 350000;
+                        } else {
+                            if (lower.includes('vớ') || lower.includes('tất')) estimatedItemCost = 25000;
+                            else if (lower.includes('bó gối')) estimatedItemCost = 90000;
+                            else if (lower.includes('quần combat')) estimatedItemCost = 95000;
+                        }
+
+                        let lineCost = estimatedItemCost * qty;
+                        orderCost += lineCost;
+
+                        if (!catStats[cat]) catStats[cat] = { rev: 0, cost: 0, profit: 0 };
+                        catStats[cat].cost += lineCost;
+                    });
+                } else {
+                    orderCost = Math.round(rev * 0.65);
+                }
+
+                let orderCat = 'Combat & Phụ kiện';
+                let ordText = Array.isArray(ord.itemsList) ? ord.itemsList.join(' ').toLowerCase() : '';
+                if (ordText.includes('balo')) orderCat = 'Balo';
+                else if (ordText.includes('jersey') || ordText.includes('áo')) orderCat = 'Jersey';
+                else if (ordText.includes('bóng')) orderCat = 'Bóng rổ';
+
+                catStats[orderCat].rev += rev;
+                catStats[orderCat].profit = Math.max(0, catStats[orderCat].rev - catStats[orderCat].cost);
+
+                totalRevenue += rev;
+                totalCost += orderCost;
+
+                let d = new Date(ord.startTime || Date.now());
+                let dayKey = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+                if (!dailyStats[dayKey]) dailyStats[dayKey] = { rev: 0, cost: 0, profit: 0 };
+                dailyStats[dayKey].rev += rev;
+                dailyStats[dayKey].cost += orderCost;
+                dailyStats[dayKey].profit += Math.max(0, rev - orderCost);
+            });
+
+            let grossProfit = Math.max(0, totalRevenue - totalCost);
+            let margin = totalRevenue > 0 ? ((grossProfit / totalRevenue) * 100).toFixed(1) : "0.0";
+
+            if (kpiRevEl) kpiRevEl.innerText = totalRevenue.toLocaleString('vi-VN') + 'đ';
+            if (kpiCostEl) kpiCostEl.innerText = totalCost.toLocaleString('vi-VN') + 'đ';
+            if (kpiGrossEl) kpiGrossEl.innerText = grossProfit.toLocaleString('vi-VN') + 'đ';
+            if (kpiMarginEl) kpiMarginEl.innerText = margin + '%';
+
+            if (typeof Chart === 'undefined') return;
+
+            // 1. BIỂU ĐỒ ĐƯỜNG: DOANH THU & LỢI NHUẬN THEO NGÀY
+            let lineCanvas = document.getElementById('chartRevenueProfitLine');
+            if (lineCanvas) {
+                let labels = Object.keys(dailyStats);
+                if (labels.length === 0) {
+                    labels = ['Hôm nay'];
+                    dailyStats['Hôm nay'] = { rev: totalRevenue, cost: totalCost, profit: grossProfit };
+                }
+                let revData = labels.map(k => dailyStats[k].rev);
+                let profitData = labels.map(k => dailyStats[k].profit);
+
+                if (chartRevenueProfitLineInstance) {
+                    chartRevenueProfitLineInstance.destroy();
+                }
+
+                chartRevenueProfitLineInstance = new Chart(lineCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Doanh thu (VNĐ)',
+                                data: revData,
+                                borderColor: '#ff5500',
+                                backgroundColor: 'rgba(255, 85, 0, 0.12)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.35,
+                                pointBackgroundColor: '#ff5500',
+                                pointBorderColor: '#fff',
+                                pointRadius: 4
+                            },
+                            {
+                                label: 'Lợi nhuận gộp (VNĐ)',
+                                data: profitData,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.35,
+                                pointBackgroundColor: '#10b981',
+                                pointBorderColor: '#fff',
+                                pointRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: { color: '#cbd5e1', font: { family: 'Montserrat', size: 11, weight: '700' } }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) {
+                                        return ctx.dataset.label + ': ' + (ctx.raw || 0).toLocaleString('vi-VN') + 'đ';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: '#1e293b' },
+                                ticks: { color: '#94a3b8', font: { family: 'Poppins', size: 11 } }
+                            },
+                            y: {
+                                grid: { color: '#1e293b' },
+                                ticks: {
+                                    color: '#94a3b8',
+                                    font: { family: 'Poppins', size: 11 },
+                                    callback: function(val) {
+                                        if (val >= 1000000) return (val / 1000000).toFixed(1) + 'Tr';
+                                        if (val >= 1000) return (val / 1000) + 'k';
+                                        return val;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 2. BIỂU ĐỒ CỘT: CƠ CẤU DOANH THU & LỢI NHUẬN THEO DANH MỤC
+            let catCanvas = document.getElementById('chartCategoryBreakdown');
+            if (catCanvas) {
+                let catLabels = Object.keys(catStats);
+                let catRevData = catLabels.map(k => catStats[k].rev);
+                let catProfitData = catLabels.map(k => catStats[k].profit);
+
+                if (chartCategoryBreakdownInstance) {
+                    chartCategoryBreakdownInstance.destroy();
+                }
+
+                chartCategoryBreakdownInstance = new Chart(catCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: catLabels,
+                        datasets: [
+                            {
+                                label: 'Doanh thu',
+                                data: catRevData,
+                                backgroundColor: '#ff5500',
+                                borderRadius: 4
+                            },
+                            {
+                                label: 'Lợi nhuận gộp',
+                                data: catProfitData,
+                                backgroundColor: '#10b981',
+                                borderRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: { color: '#cbd5e1', font: { family: 'Montserrat', size: 11, weight: '700' } }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) {
+                                        return ctx.dataset.label + ': ' + (ctx.raw || 0).toLocaleString('vi-VN') + 'đ';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: '#1e293b' },
+                                ticks: { color: '#cbd5e1', font: { family: 'Montserrat', size: 11, weight: '700' } }
+                            },
+                            y: {
+                                grid: { color: '#1e293b' },
+                                ticks: {
+                                    color: '#94a3b8',
+                                    font: { family: 'Poppins', size: 11 },
+                                    callback: function(val) {
+                                        if (val >= 1000000) return (val / 1000000).toFixed(1) + 'Tr';
+                                        if (val >= 1000) return (val / 1000) + 'k';
+                                        return val;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ==============================================================
+        // PHIẾU NHẬP HÀNG KHO TRUNG TÂM (RESTOCK RECEIPT MODAL)
+        // ==============================================================
+        function hienPhieuNhapHang(receiptItems, receiptTitle = 'PHIẾU NHẬP HÀNG KHO TRUNG TÂM') {
+            let modal = document.getElementById('phieuNhapHangModal');
+            let tbody = document.getElementById('phieuNhapHangTableBody');
+            let maPhieuEl = document.getElementById('phieuMaPhieu');
+            let ngayNhapEl = document.getElementById('phieuNgayNhap');
+            let tongQtyEl = document.getElementById('phieuNhapTongSoLuong');
+            let tongVonEl = document.getElementById('phieuNhapTongTienVon');
+            if (!modal || !tbody) return;
+
+            let now = new Date();
+            let maPhieu = `PNH-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${Math.floor(1000 + Math.random()*9000)}`;
+            let dateStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} - ${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+
+            if (maPhieuEl) maPhieuEl.innerText = maPhieu;
+            if (ngayNhapEl) ngayNhapEl.innerText = dateStr;
+
+            let totalQty = 0;
+            let totalCost = 0;
+
+            tbody.innerHTML = receiptItems.map((item, idx) => {
+                let qty = Number(item.qty || item.added) || 0;
+                let unitCost = Number(item.unitCost) || layGiaVonSanPham(item.prod, item.vIdx);
+                let subCost = qty * unitCost;
+                totalQty += qty;
+                totalCost += subCost;
+
+                return `<tr>
+                    <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+                    <td><b>${item.prodName || item.name}</b></td>
+                    <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.hex || '#ff5500'};margin-right:5px;vertical-align:middle;"></span>${item.colorName || item.color}</td>
+                    <td style="text-align:center; font-weight:800; color:#ff5500;">+${qty}</td>
+                    <td style="text-align:right;">${unitCost.toLocaleString('vi-VN')}đ</td>
+                    <td style="text-align:right; font-weight:700; color:#10b981;">${subCost.toLocaleString('vi-VN')}đ</td>
+                </tr>`;
+            }).join('');
+
+            if (tongQtyEl) tongQtyEl.innerText = `${totalQty} cái`;
+            if (tongVonEl) tongVonEl.innerText = `${totalCost.toLocaleString('vi-VN')}đ`;
+
+            modal.style.display = 'flex';
+        }
+
+        function dongPhieuNhapHang() {
+            let modal = document.getElementById('phieuNhapHangModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function hienChiTietDonHang(indexOrCode) {
+            let ord = null;
+            let index = 0;
+            if (typeof indexOrCode === 'string') {
+                ord = remoteOrdersList.find(o => o && (o.orderCode === indexOrCode || o.originalOrderCode === indexOrCode));
+                index = remoteOrdersList.indexOf(ord);
+            } else {
+                index = indexOrCode;
+                ord = remoteOrdersList[index];
+            }
             if (!ord) return;
+            selectedAdminOrderIndex = index;
             let detailBox = document.getElementById('adminOrderDetailBox');
-            detailBox.style.display = 'block';
-            detailBox.innerHTML = taoHtmlTimelineChiTietDon(ord, index, true);
+            if (detailBox) {
+                detailBox.style.display = 'block';
+                detailBox.innerHTML = taoHtmlTimelineChiTietDon(ord, index, true);
+            }
         }
 
         function thuGonChiTietDon() {
@@ -3113,28 +3592,41 @@
         }
 
         function thucHienNhapHang() {
-            let countImported = 0;
+            let importedItems = [];
             products.forEach(p => {
                 let chk = document.getElementById(`restock-chk-${p.id}`);
                 let sel = document.getElementById(`restock-color-sel-${p.id}`);
                 let qtyInput = document.getElementById(`restock-qty-${p.id}`);
+                let costInput = document.getElementById(`restock-cost-${p.id}`);
                 if (chk && chk.checked && sel && qtyInput) {
                     let vIdx = parseInt(sel.value) || 0;
                     let addQty = parseInt(qtyInput.value) || 0;
-                    if (addQty > 0 && p.variants[vIdx]) {
-                        p.variants[vIdx].stock += addQty;
-                        countImported++;
+                    let v = p.variants[vIdx];
+                    if (addQty > 0 && v) {
+                        let unitCost = costInput ? (parseInt(costInput.value) || layGiaVonSanPham(p, vIdx)) : layGiaVonSanPham(p, vIdx);
+                        v.stock += addQty;
+                        v.costPrice = unitCost;
+                        p.costPrice = unitCost;
+                        importedItems.push({
+                            prod: p,
+                            prodName: p.name,
+                            vIdx: vIdx,
+                            colorName: v.colorName,
+                            hex: v.hex,
+                            qty: addQty,
+                            unitCost: unitCost
+                        });
                         chk.checked = false;
                     }
                 }
             });
-            if (countImported > 0) {
+            if (importedItems.length > 0) {
                 capNhatTongStockVaSoldSanPham();
                 localStorage.setItem('mairua_products', JSON.stringify(products));
                 renderAdminDashboard();
                 renderGiaoDienChuong();
                 luuDuLieuLenDamMay();
-                alert(`🎉 Nhập hàng thành công cho ${countImported} sản phẩm đã chọn!`);
+                hienPhieuNhapHang(importedItems, 'PHIẾU NHẬP HÀNG KHO TRUNG TÂM (THỦ CÔNG)');
             } else {
                 alert("⚠️ Vui lòng tích chọn ít nhất một sản phẩm cần nhập kho!");
             }
@@ -3263,6 +3755,8 @@
             };
 
             remoteOrdersList.push(newOrder);
+            daBietDonThatCode[newOrder.orderCode] = true;
+            phatChuongBaoDonHangThat();
             let stockLedger = JSON.parse(localStorage.getItem('mairua_stockLedgerV2')) || {};
             stockLedger[`${newOrder.orderCode}_${newOrder.startTime}`] = 'deducted';
             localStorage.setItem('mairua_stockLedgerV2', JSON.stringify(stockLedger));
@@ -4007,11 +4501,13 @@
 
             let resolvedLowStockAlerts = [];
             let detailLogs = [];
+            let receiptItems = [];
 
             matchedVariants.forEach(item => {
                 let oldStk = item.v.stock;
                 item.v.stock += item.addQty;
                 let newStk = item.v.stock;
+                let unitCost = layGiaVonSanPham(item.prod, item.vIdx);
                 if (oldStk <= 5 && newStk > 5) {
                     resolvedLowStockAlerts.push(`${item.prod.name} (${item.v.colorName}: ${oldStk} → ${newStk} cái)`);
                 }
@@ -4020,7 +4516,17 @@
                     color: item.v.colorName,
                     added: item.addQty,
                     oldStock: oldStk,
-                    newStock: newStk
+                    newStock: newStk,
+                    unitCost: unitCost
+                });
+                receiptItems.push({
+                    prod: item.prod,
+                    prodName: item.prod.name,
+                    vIdx: item.vIdx,
+                    colorName: item.v.colorName,
+                    hex: item.v.hex,
+                    qty: item.addQty,
+                    unitCost: unitCost
                 });
             });
 
@@ -4036,7 +4542,8 @@
                 totalVariants: matchedVariants.length,
                 addedQtyPerItem: qty,
                 resolvedLowStockAlerts,
-                detailLogs
+                detailLogs,
+                receiptItems
             };
         }
 
@@ -4054,9 +4561,9 @@
             resBox.style.display = 'block';
 
             if (!result.success) {
-                resBox.style.background = '#fef2f2';
-                resBox.style.border = '1.5px solid #f87171';
-                resBox.style.color = '#991b1b';
+                resBox.style.background = '#1e293b';
+                resBox.style.borderLeft = '3px solid #ef4444';
+                resBox.style.color = '#ef4444';
                 resBox.innerHTML = `❌ <b>Không thành công:</b> ${result.msg}`;
                 return;
             }
@@ -4064,27 +4571,32 @@
             let resolvedHtml = '';
             if (result.resolvedLowStockAlerts && result.resolvedLowStockAlerts.length > 0) {
                 resolvedHtml = `
-                    <div style="margin-top:8px; padding:8px 12px; background:#f0fdf4; border:1px solid #86efac; border-radius:6px; color:#166534; font-size:12.5px;">
+                    <div style="margin-top:8px; padding:8px 12px; background:#111e33; border:1px solid #1e3a8a; border-radius:4px; color:#60a5fa; font-size:12px;">
                         <b>🧹 Đã tự động xóa ${result.resolvedLowStockAlerts.length} cảnh báo tồn kho sắp hết (≤ 5 cái):</b><br>
                         ${result.resolvedLowStockAlerts.map(t => `• ${t}`).join('<br>')}
                     </div>`;
             }
 
-            let previewItems = result.detailLogs.slice(0, 6).map(d => `• <b>${d.name}</b> (${d.color}): +${d.added} cái → Tồn mới: <b>${d.newStock}</b>`).join('<br>');
+            let previewItems = result.detailLogs.slice(0, 6).map(d => `• <b>${d.name}</b> (${d.color}): +${d.added} cái → Tồn mới: <b>${d.newStock}</b> (Vốn: ${d.unitCost.toLocaleString('vi-VN')}đ)`).join('<br>');
             if (result.detailLogs.length > 6) {
                 previewItems += `<br><i>...và ${result.detailLogs.length - 6} phân loại khác nữa.</i>`;
             }
 
-            resBox.style.background = '#f5f3ff';
-            resBox.style.border = '1.5px solid #c4b5fd';
-            resBox.style.color = '#5b21b6';
+            resBox.style.background = '#0b1322';
+            resBox.style.borderLeft = '3px solid #ff5500';
+            resBox.style.color = '#f8fafc';
             resBox.innerHTML = `
-                <div style="font-weight:800; font-size:14px; margin-bottom:4px;">🚀 AI ĐÃ NHẬP KHO THÀNH CÔNG CHO LỆNH: "${cmd}"</div>
+                <div style="font-weight:800; font-size:13.5px; margin-bottom:4px; color:#ff5500;">🚀 AI ĐÃ NHẬP KHO THÀNH CÔNG CHO LỆNH: "${cmd}"</div>
                 <div>Đã cộng thêm <b>+${result.addedQtyPerItem} cái</b> cho tổng cộng <b>${result.totalVariants} phân loại sản phẩm</b>.</div>
-                <div style="margin-top:6px; font-size:12.5px; color:#374151;">${previewItems}</div>
+                <div style="margin-top:6px; font-size:12px; color:#94a3b8;">${previewItems}</div>
                 ${resolvedHtml}
             `;
             input.value = '';
+
+            // TỰ ĐỘNG BẬT POPUP PHIẾU NHẬP HÀNG KHO TRUNG TÂM
+            if (result.receiptItems && result.receiptItems.length > 0) {
+                hienPhieuNhapHang(result.receiptItems, `PHIẾU NHẬP HÀNG (AI: "${cmd}")`);
+            }
         }
 
         // ================= HỆ THỐNG AI CHATBOT TƯ VẤN THÔNG MINH & LÊN COMBO =================
@@ -4953,16 +5465,32 @@
             `;
         }
 
-        function khachXacNhanDaNhanHang(realOrderIndex) {
-            let ord = remoteOrdersList[realOrderIndex];
+        function khachXacNhanDaNhanHang(realOrderIndexOrCode) {
+            let ord = null;
+            let realOrderIndex = 0;
+            if (typeof realOrderIndexOrCode === 'string') {
+                ord = remoteOrdersList.find(o => o && (o.orderCode === realOrderIndexOrCode || o.originalOrderCode === realOrderIndexOrCode));
+                realOrderIndex = remoteOrdersList.indexOf(ord);
+            } else {
+                realOrderIndex = realOrderIndexOrCode;
+                ord = remoteOrdersList[realOrderIndex];
+            }
             if (!ord) return;
             let info = layThongTinTienTrinhDon(ord);
             if (info.isCancelled) return;
             ord.manualStepIdx = info.steps.length - 1;
+            ord.adminConfirmed = true;
+            ord.status = 'Hoàn tất';
+            ord.lastSyncedSheetStatus = 'Hoàn tất';
             let targetCode = ord.originalOrderCode || ord.orderCode;
             daDongBoTrangThaiSheet[ord.orderCode] = 'Hoàn tất';
             daDongBoTrangThaiSheet[targetCode] = 'Hoàn tất';
             guiDuLieuGoogleSheets('updateOrderStatus', { orderCode: targetCode, status: 'Hoàn tất', phone: ord.phone });
+            fetch('/api/orders/' + encodeURIComponent(targetCode) + '/status', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stepIdx: info.steps.length - 1, adminConfirmed: true, status: 'Hoàn tất' })
+            }).catch(() => {});
             dongBoBackupDonKhachThat(ord);
             luuDuLieuLenDamMay();
             renderTrangTaiKhoan();

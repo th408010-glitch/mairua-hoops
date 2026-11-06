@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Montserrat:wght@600;700;800;900&family=Oswald:wght@500;600;700&family=Poppins:wght@300;400;500;600;700;800;900&family=Teko:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=7.0">
+    <!-- Thư viện Chart.js cho Biểu đồ Phân tích Doanh thu & Lợi nhuận Admin -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -24,6 +26,11 @@
         <div class="user-actions">
             <!-- Role Badge / Admin Quick Tag -->
             <div id="roleBadgeContainer"></div>
+            <!-- Badge Thông Báo Khách Thật Đặt Đơn (Sport Glow) -->
+            <div id="adminRealOrderAlertBadge" class="header-real-order-alert" style="display:none;" onclick="chuyenTab('remoteOrder'); chuyenSubTabAdmin('orders');" title="Nhấp để xem đơn thật mới">
+                <span class="pulse-dot"></span>
+                <span id="adminRealOrderAlertText">🚨 1 ĐƠN THẬT MỚI</span>
+            </div>
 
             <!-- Bell notifications -->
             <div class="bell-wrapper">
@@ -937,155 +944,241 @@
                 </div>
             </div>
 
-            <!-- VIEW CỦA ADMIN -->
+            <!-- VIEW CỦA ADMIN: SPORT INDUSTRIAL / DARK MODERN -->
             <div id="adminDashboardSection" style="display: none;">
-                <!-- ADMIN SUBTABS NAVIGATION (Gom cụm không cuộn dài) -->
-                <div class="admin-subtabs-nav" style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap;">
-                    <button type="button" class="admin-subtab-btn active" id="btnAdminTabOrders" onclick="chuyenSubTabAdmin('orders')">📦 Quản Lý Đơn Hàng & Duyệt Đơn</button>
-                    <button type="button" class="admin-subtab-btn" id="btnAdminTabInventory" onclick="chuyenSubTabAdmin('inventory')">📊 Tồn Kho & Nhập Hàng</button>
-                    <button type="button" class="admin-subtab-btn" id="btnAdminTabReports" onclick="chuyenSubTabAdmin('reports')">📈 Báo Cáo & Đơn Tự Động</button>
+                <!-- ADMIN SUBTABS NAVIGATION -->
+                <div class="admin-subtabs-nav sport-industrial-nav">
+                    <button type="button" class="admin-subtab-btn active" id="btnAdminTabOrders" onclick="chuyenSubTabAdmin('orders')">📦 ĐƠN HÀNG</button>
+                    <button type="button" class="admin-subtab-btn" id="btnAdminTabInventory" onclick="chuyenSubTabAdmin('inventory')">📊 KHO & NHẬP HÀNG</button>
+                    <button type="button" class="admin-subtab-btn" id="btnAdminTabReports" onclick="chuyenSubTabAdmin('reports')">📈 BÁO CÁO & LỢI NHUẬN</button>
                 </div>
 
-                <!-- SUB-TAB 1: QUẢN LÝ ĐƠN HÀNG & DUYỆT ĐƠN -->
+                <!-- SUB-TAB 1: QUẢN LÝ ĐƠN HÀNG -->
                 <div id="adminTabContentOrders" class="admin-tab-content">
-                    <div class="admin-box" style="margin-top: 0;">
-                        <div style="margin-bottom: 12px;">
-                            <h3 style="color: #c0392b; margin-bottom: 3px;">📦 Danh Sách Toàn Bộ Khách Hàng Đặt Đơn (<span id="adminTotalOrdersCount">0</span> đơn)</h3>
-                            <p style="font-size: 13px; color: #666;">Nhấn vào bất kỳ đơn hàng nào để xem Timeline tiến trình in/ép & giao hàng chi tiết:</p>
-                        </div>
-
-                        <div class="admin-search-panel">
-                            <span style="font-weight: 700; font-size: 13px; color: #1e293b;">🔍 Tìm kiếm đơn hàng:</span>
-                            <input type="text" id="adminOrderSearchInput" placeholder="Nhập mã đơn, tên người mua hoặc số điện thoại..." oninput="renderAdminOrdersTableOnly()">
-                            <button class="btn-submit" style="width: auto; padding: 9px 16px; font-size: 12px; background: #334155;" onclick="xoaTimKiemDonAdmin()">Xóa từ khóa</button>
-                        </div>
-
-                        <div class="admin-date-filter-panel">
-                            <div class="date-inputs-group">
-                                <span style="font-weight: 700; font-size: 13px; color: #1e293b;">📅 Lọc theo ngày đặt:</span>
-                                <label style="font-size: 12px; color: #64748b; font-weight: 600;">Từ ngày:</label>
-                                <input type="date" id="adminFilterDateFrom" onchange="locDonTheoKhoangNgay()">
-                                <label style="font-size: 12px; color: #64748b; font-weight: 600;">Đến ngày:</label>
-                                <input type="date" id="adminFilterDateTo" onchange="locDonTheoKhoangNgay()">
-                            </div>
-                            <div class="date-quick-btns">
-                                <button type="button" class="btn-date-preset active" id="btnDateAll" onclick="datKhoangNgayNhanh('all', this)">Tất cả</button>
-                                <button type="button" class="btn-date-preset" id="btnDateToday" onclick="datKhoangNgayNhanh('today', this)">Hôm nay</button>
-                                <button type="button" class="btn-date-preset" id="btnDate7Days" onclick="datKhoangNgayNhanh('7days', this)">7 ngày qua</button>
-                                <button type="button" class="btn-date-preset" id="btnDateMonth" onclick="datKhoangNgayNhanh('30days', this)">30 ngày qua</button>
-                                <button type="button" class="btn-date-preset" style="background:#e2e8f0; color:#333;" onclick="datLaiLocNgay()">Đặt lại ngày</button>
+                    <div class="admin-box industrial-card">
+                        <div class="admin-card-head">
+                            <div>
+                                <span class="industrial-pill">ORDER MANAGEMENT</span>
+                                <h3 class="industrial-title">QUẢN LÝ ĐƠN HÀNG (<span id="adminTotalOrdersCount">0</span>)</h3>
                             </div>
                         </div>
 
-                        <!-- BANNER CẢNH BÁO ĐƠN HÀNG KHÁCH ĐẶT CHỜ DUYỆT -->
-                        <div id="adminPendingOrdersBanner" style="display:none; margin: 10px 0 14px 0; background: linear-gradient(135deg, #fefce8 0%, #fef08a 100%); border: 1.5px solid #eab308; padding: 12px 18px; border-radius: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; box-shadow: 0 3px 10px rgba(234,179,8,0.15);">
-                            <div style="display:flex; align-items:center; gap:10px;">
-                                <span style="font-size:22px;">🚨</span>
-                                <div>
-                                    <span id="adminPendingOrdersBannerText" style="font-weight:800; color:#854d0e; font-size:13.5px;">Có đơn hàng mới từ khách thật đang chờ duyệt!</span>
-                                    <div style="font-size:12px; color:#a16207;">Đơn khách thật cần Admin duyệt để chuyển từ "Chờ xác nhận" sang "Chờ lấy hàng".</div>
+                        <!-- THANH TÌM KIẾM & LỌC NGÀY GỌN GÀNG -->
+                        <div class="industrial-toolbar">
+                            <div class="industrial-search-wrap">
+                                <input type="text" id="adminOrderSearchInput" placeholder="Mã đơn, tên khách, số điện thoại..." oninput="renderAdminOrdersTableOnly()">
+                                <button type="button" class="industrial-btn-dark" onclick="xoaTimKiemDonAdmin()">Xóa lọc</button>
+                            </div>
+                            <div class="industrial-date-wrap">
+                                <div class="date-pair">
+                                    <span>Từ:</span>
+                                    <input type="date" id="adminFilterDateFrom" onchange="locDonTheoKhoangNgay()">
+                                    <span>Đến:</span>
+                                    <input type="date" id="adminFilterDateTo" onchange="locDonTheoKhoangNgay()">
+                                </div>
+                                <div class="date-quick-btns">
+                                    <button type="button" class="btn-date-preset active" id="btnDateAll" onclick="datKhoangNgayNhanh('all', this)">Tất cả</button>
+                                    <button type="button" class="btn-date-preset" id="btnDateToday" onclick="datKhoangNgayNhanh('today', this)">Hôm nay</button>
+                                    <button type="button" class="btn-date-preset" id="btnDate7Days" onclick="datKhoangNgayNhanh('7days', this)">7 ngày</button>
+                                    <button type="button" class="btn-date-preset" id="btnDateMonth" onclick="datKhoangNgayNhanh('30days', this)">30 ngày</button>
+                                    <button type="button" class="btn-date-preset" onclick="datLaiLocNgay()">Đặt lại</button>
                                 </div>
                             </div>
-                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                                <button type="button" onclick="adminDuyetTatCaDonCho()" style="background:#16a34a; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:800; font-size:12px; cursor:pointer; font-family:'Poppins',sans-serif; box-shadow:0 2px 6px rgba(22,163,74,0.3);">✅ Duyệt tất cả đơn chờ</button>
-                                <button type="button" onclick="locDonChoDuyetNhanh()" style="background:#ca8a04; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; font-family:'Poppins',sans-serif;">🔍 Xem đơn chờ</button>
+                        </div>
+
+                        <!-- BANNER CẢNH BÁO ĐƠN HÀNG KHÁCH ĐẶT CHỜ DUYỆT (SPORT INDUSTRIAL ALERT) -->
+                        <div id="adminPendingOrdersBanner" class="industrial-alert-banner" style="display:none;">
+                            <div class="alert-content">
+                                <span class="alert-dot-pulse"></span>
+                                <div>
+                                    <span id="adminPendingOrdersBannerText" class="alert-title">Có đơn hàng mới từ khách thật đang chờ duyệt!</span>
+                                    <div class="alert-sub">Đơn khách thật cần Admin duyệt để chuyển sang công đoạn lấy hàng.</div>
+                                </div>
+                            </div>
+                            <div class="alert-actions">
+                                <button type="button" onclick="adminDuyetTatCaDonCho()" class="industrial-btn-accent">✅ DUYỆT TẤT CẢ ĐƠN CHỜ</button>
+                                <button type="button" onclick="locDonChoDuyetNhanh()" class="industrial-btn-dark">🔍 XEM ĐƠN CHỜ</button>
                             </div>
                         </div>
 
-                        <div style="overflow-x: auto; max-height: 480px; overflow-y: auto;">
-                            <table class="admin-table" style="margin-top: 5px;">
+                        <div class="industrial-table-wrapper">
+                            <table class="admin-table industrial-table">
                                 <thead>
-                                    <tr><th>Mã Đơn</th><th>Khách Hàng</th><th>Số Điện Thoại</th><th>Địa Chỉ Nhận</th><th>Thời Gian Đặt</th><th>Trạng Thái Hiện Tại</th><th>Thao Tác</th></tr>
+                                    <tr>
+                                        <th>MÃ ĐƠN</th>
+                                        <th>KHÁCH HÀNG</th>
+                                        <th>SĐT</th>
+                                        <th>ĐỊA CHỈ</th>
+                                        <th>THỜI GIAN</th>
+                                        <th>TRẠNG THÁI</th>
+                                        <th style="text-align:right;">THAO TÁC</th>
+                                    </tr>
                                 </thead>
                                 <tbody id="adminOrdersListTable"></tbody>
                             </table>
                         </div>
 
-                        <div id="adminOrderDetailBox" style="display:none; margin-top: 22px; background: #fff; padding: 24px; border-radius: 14px; border: 2px solid #ff5500; position: relative;"></div>
+                        <div id="adminOrderDetailBox" class="industrial-detail-box" style="display:none;"></div>
                     </div>
                 </div>
 
                 <!-- SUB-TAB 2: TỒN KHO & NHẬP HÀNG -->
                 <div id="adminTabContentInventory" class="admin-tab-content" style="display: none;">
-                    <div class="admin-box" style="margin-top: 0;">
-                        <h3 style="color: #c0392b; margin-bottom: 5px;">🛡️ QUẢN TRỊ VIÊN: Bảng Quản Lý Tồn Kho Chi Tiết Theo Từng Màu (Kể Cả Phôi Áo)</h3>
-                        <div style="overflow-x: auto; max-height: 420px; overflow-y: auto;">
-                            <table class="admin-table">
+                    <!-- AI RESTOCK INDUSTRIAL COMMAND TERMINAL -->
+                    <div class="admin-box industrial-card" style="margin-bottom: 20px;">
+                        <div class="admin-card-head">
+                            <div>
+                                <span class="industrial-pill accent">AI LOGISTICS ENGINE</span>
+                                <h3 class="industrial-title">AI NHẬP HÀNG TỰ ĐỘNG BẰNG CÂU LỆNH</h3>
+                            </div>
+                        </div>
+                        <div class="industrial-ai-input-bar">
+                            <input type="text" id="aiRestockInput" class="industrial-input" placeholder="Nhập lệnh tự nhiên: balo v1, quần combat, all bóng 10, phôi áo, bó gối 20..." onkeypress="if(event.key==='Enter') thucHienAINhapHang()">
+                            <button type="button" class="industrial-btn-accent" onclick="thucHienAINhapHang()">🚀 THỰC THI NHẬP HÀNG</button>
+                        </div>
+                        <div class="industrial-quick-tags">
+                            <span class="tag-label">LỆNH MẪU:</span>
+                            <button type="button" class="industrial-tag-btn" onclick="setVaChayAiRestock('balo v1')">Balo V1</button>
+                            <button type="button" class="industrial-tag-btn" onclick="setVaChayAiRestock('balo v1 đỏ')">Balo V1 đỏ</button>
+                            <button type="button" class="industrial-tag-btn" onclick="setVaChayAiRestock('quần combat')">Quần combat</button>
+                            <button type="button" class="industrial-tag-btn" onclick="setVaChayAiRestock('all bóng')">All bóng</button>
+                            <button type="button" class="industrial-tag-btn" onclick="setVaChayAiRestock('bóng size 7')">Bóng size 7</button>
+                            <button type="button" class="industrial-tag-btn" onclick="setVaChayAiRestock('áo')">Áo Jersey</button>
+                            <button type="button" class="industrial-tag-btn" onclick="setVaChayAiRestock('phôi áo')">Phôi áo</button>
+                            <button type="button" class="industrial-tag-btn" onclick="setVaChayAiRestock('bó gối')">Bó gối</button>
+                            <button type="button" class="industrial-tag-btn" onclick="setVaChayAiRestock('băng quấn cổ chân')">Băng cổ chân</button>
+                        </div>
+                        <div id="aiRestockResultBox" class="industrial-terminal-result" style="display:none;"></div>
+                    </div>
+
+                    <!-- BẢNG NHẬP KHO THỦ CÔNG & ĐƠN GIÁ VỐN -->
+                    <div class="admin-box industrial-card" style="margin-bottom: 20px;">
+                        <div class="admin-card-head">
+                            <div>
+                                <span class="industrial-pill">RESTOCK & UNIT COST</span>
+                                <h3 class="industrial-title">NHẬP KHO THỦ CÔNG & ĐƠN GIÁ VỐN</h3>
+                            </div>
+                        </div>
+                        <div class="industrial-table-wrapper" style="max-height: 400px;">
+                            <table class="admin-table industrial-table">
                                 <thead>
-                                    <tr><th>Hạng</th><th>Tên Sản Phẩm</th><th>Phân Loại Màu / Kiểu</th><th>Giá Bán</th><th>Đã Bán</th><th>Tồn Kho Còn Lại</th></tr>
+                                    <tr>
+                                        <th>SẢN PHẨM</th>
+                                        <th>CHỌN MÀU / PHÂN LOẠI</th>
+                                        <th>TỒN HIỆN TẠI</th>
+                                        <th>ĐƠN GIÁ VỐN (VNĐ)</th>
+                                        <th>SỐ LƯỢNG NHẬP</th>
+                                        <th style="text-align:center;">CHỌN</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminRestockTable"></tbody>
+                            </table>
+                        </div>
+                        <div style="margin-top: 15px; display:flex; justify-content: flex-end;">
+                            <button type="button" class="industrial-btn-accent big" onclick="thucHienNhapHang()">📥 HOÀN TẤT NHẬP HÀNG & XUẤT PHIẾU</button>
+                        </div>
+                    </div>
+
+                    <!-- BẢNG QUẢN LÝ TỒN KHO CHI TIẾT & GIÁ VỐN -->
+                    <div class="admin-box industrial-card">
+                        <div class="admin-card-head">
+                            <div>
+                                <span class="industrial-pill">INVENTORY AUDIT</span>
+                                <h3 class="industrial-title">BẢNG QUẢN LÝ TỒN KHO CHI TIẾT THEO MÀU</h3>
+                            </div>
+                        </div>
+                        <div class="industrial-table-wrapper" style="max-height: 420px;">
+                            <table class="admin-table industrial-table">
+                                <thead>
+                                    <tr>
+                                        <th>HẠNG</th>
+                                        <th>TÊN SẢN PHẨM</th>
+                                        <th>PHÂN LOẠI MÀU</th>
+                                        <th>GIÁ VỐN</th>
+                                        <th>GIÁ BÁN</th>
+                                        <th>ĐÃ BÁN</th>
+                                        <th>TỒN KHO</th>
+                                    </tr>
                                 </thead>
                                 <tbody id="adminInventoryTable"></tbody>
                             </table>
                         </div>
                     </div>
-
-                    <!-- MỤC AI NHẬP HÀNG TỰ ĐỘNG BẰNG CÂU LỆNH TỰ NHIÊN (AUTO RESTOCK & XÓA CẢNH BÁO TỒN) -->
-                    <div class="admin-box" style="border-color: #8b5cf6; background: linear-gradient(180deg, #fbf7ff 0%, #ffffff 100%);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom: 8px;">
-                            <h3 style="color: #7c3aed; margin:0; display:flex; align-items:center; gap:8px;">
-                                🤖 AI Nhập Hàng Tự Động (Nhập theo câu lệnh tự nhiên)
-                            </h3>
-                            <span style="font-size:12px; background:#ede9fe; color:#6d28d9; padding:4px 12px; border-radius:20px; font-weight:700;">✨ Tự động xóa cảnh báo tồn kho ≤ 5 khi đã nhập</span>
-                        </div>
-                        <p style="font-size: 13px; color: #4b5563; margin-bottom: 12px; line-height: 1.55;">
-                            AI tự động phân tích câu lệnh, nhận diện sản phẩm, phân loại màu sắc và cộng dồn tồn kho (Mặc định <b>10 cái</b>/món nếu không ghi số lượng).<br>
-                            <i>Ví dụ mẫu:</i> <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">balo v1</code> (nhập mỗi màu v1 10 cái) · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">balo v1 đỏ</code> (nhập 10 cái v1 đỏ) · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">quần combat</code> (nhập đủ màu, chủng loại, size) · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">all bóng</code> (nhập mỗi quả 10 trái) · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">bóng size 7</code> · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">áo</code> (áo đấu NBA) · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">phôi áo</code> (nhập phôi Jersey) · <code style="background:#ede9fe; padding:2px 6px; border-radius:4px; color:#6d28d9;">bó gối 20</code>...
-                        </p>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                            <input type="text" id="aiRestockInput" class="form-control" style="margin:0; flex:1; min-width:280px; border:1.5px solid #c4b5fd; font-size:13.5px; font-weight:500;" placeholder="Nhập câu lệnh nhập hàng (VD: balo v1, balo v1 đỏ, quần combat, all bóng 15, bóng size 7, phôi áo...)" onkeypress="if(event.key==='Enter') thucHienAINhapHang()">
-                            <button class="btn-submit" style="width:auto; padding:10px 22px; background:linear-gradient(135deg, #7c3aed, #9333ea); margin:0;" onclick="thucHienAINhapHang()">🚀 AI Nhập Hàng</button>
-                        </div>
-                        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; align-items:center;">
-                            <span style="font-size:12px; font-weight:700; color:#6b7280;">Bấm thử nhanh:</span>
-                            <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('balo v1')">Balo V1</button>
-                            <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('balo v1 đỏ')">Balo V1 đỏ</button>
-                            <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('quần combat')">Quần combat</button>
-                            <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('all bóng')">All bóng</button>
-                            <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('bóng size 7')">Bóng size 7</button>
-                            <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('áo')">Áo Jersey</button>
-                            <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('phôi áo')">Phôi áo Jersey</button>
-                            <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('bó gối')">Bó gối</button>
-                            <button type="button" class="btn-date-preset" onclick="setVaChayAiRestock('băng quấn cổ chân')">Băng cổ chân</button>
-                        </div>
-                        <div id="aiRestockResultBox" style="display:none; margin-top:12px; padding:12px 14px; border-radius:8px; font-size:13px; line-height:1.6;"></div>
-                    </div>
-
-                    <!-- BẢNG NHẬP KHO GỌN GÀNG: MỖI SẢN PHẨM 1 DÒNG + CỘT CHỌN MÀU (KỂ CẢ PHÔI ÁO) -->
-                    <div class="admin-box" style="border-color: #27ae60;">
-                        <h3 style="color: #27ae60; margin-bottom: 5px;">📥 Nhập Thêm Hàng Vào Kho (Gọn Gàng 1 Dòng / 1 Sản Phẩm — Chọn Màu Để Nhập)</h3>
-                        <p style="font-size: 13px; color: #666; margin-bottom: 12px;">Chọn màu sắc / phân loại ở cột thứ 2 để xem tồn hiện tại của màu đó, điền số lượng và tích chọn để nhập kho (bao gồm cả Phôi Áo Jersey Custom):</p>
-                        <div style="overflow-x: auto; max-height: 440px; overflow-y: auto;">
-                            <table class="admin-table">
-                                <thead>
-                                    <tr><th>Tên Sản Phẩm</th><th>Chọn Màu Sắc / Phân Loại</th><th>Tồn Hiện Tại (Màu Đã Chọn)</th><th>Nhập Số Lượng</th><th>Tích Chọn Nhập</th></tr>
-                                </thead>
-                                <tbody id="adminRestockTable"></tbody>
-                            </table>
-                        </div>
-                        <button class="btn-submit" style="background-color: #27ae60; margin-top: 15px;" onclick="thucHienNhapHang()">📥 NHẬP HÀNG VÀO KHO</button>
-                    </div>
                 </div>
 
-                <!-- SUB-TAB 3: BÁO CÁO & ĐƠN TỰ ĐỘNG -->
+                <!-- SUB-TAB 3: BÁO CÁO & LỢI NHUẬN & CHART.JS -->
                 <div id="adminTabContentReports" class="admin-tab-content" style="display: none;">
-                    <div class="admin-box" style="margin-top: 0; border-color: #2980b9;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
-                            <div>
-                                <h3 style="color: #2980b9; margin-bottom: 3px;">📊 Thống Kê Tỉ Lệ Khách Hàng Quay Lại & Hệ Thống Đơn Tự Động (Trừ Tồn Kho Thực Tế)</h3>
-                                <p style="font-size: 12.5px; color: #666;">Mỗi đơn hàng khách đặt hoặc đơn tự động đều trừ trực tiếp vào số lượng tồn kho của đúng màu sản phẩm đó.</p>
+                    <!-- 4 THẺ KPI CHỈ SỐ TÀI CHÍNH -->
+                    <div class="industrial-kpi-grid">
+                        <div class="kpi-card-industrial">
+                            <div class="kpi-label">TỔNG DOANH THU</div>
+                            <div class="kpi-value" id="kpiRevenue">0đ</div>
+                            <div class="kpi-sub">Doanh thu từ các đơn hàng thực tế</div>
+                        </div>
+                        <div class="kpi-card-industrial">
+                            <div class="kpi-label">TỔNG TIỀN VỐN (COGS)</div>
+                            <div class="kpi-value" id="kpiCost">0đ</div>
+                            <div class="kpi-sub">Số lượng bán × Đơn giá vốn</div>
+                        </div>
+                        <div class="kpi-card-industrial highlight-profit">
+                            <div class="kpi-label">LỢI NHUẬN GỘP</div>
+                            <div class="kpi-value profit-color" id="kpiGrossProfit">0đ</div>
+                            <div class="kpi-sub">Doanh thu − Tiền vốn sản phẩm</div>
+                        </div>
+                        <div class="kpi-card-industrial highlight-margin">
+                            <div class="kpi-label">TỶ SUẤT LỢI NHUẬN</div>
+                            <div class="kpi-value margin-color" id="kpiProfitMargin">0.0%</div>
+                            <div class="kpi-sub">Lợi nhuận ÷ Tổng doanh thu</div>
+                        </div>
+                    </div>
+
+                    <!-- KHU VỰC BIỂU ĐỒ CHART.JS (LINE & DOUGHNUT/BAR) -->
+                    <div class="industrial-charts-grid">
+                        <div class="admin-box industrial-card chart-card">
+                            <div class="admin-card-head">
+                                <div>
+                                    <span class="industrial-pill">PERFORMANCE TIMELINE</span>
+                                    <h3 class="industrial-title">BIẾN ĐỘNG DOANH THU & LỢI NHUẬN THEO NGÀY</h3>
+                                </div>
                             </div>
-                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                <button class="btn-submit" id="btnToggleAutoFakeOrder" style="width: auto; padding: 8px 14px; font-size: 12px; background: #27ae60;" onclick="batTatCheDoDonAo()">
-                                    🟢 Tự động đơn mới: ĐANG BẬT (~1.5 - 2 phút/đơn)
+                            <div class="chart-canvas-container">
+                                <canvas id="chartRevenueProfitLine"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="admin-box industrial-card chart-card">
+                            <div class="admin-card-head">
+                                <div>
+                                    <span class="industrial-pill">CATEGORY ANALYSIS</span>
+                                    <h3 class="industrial-title">CƠ CẤU DOANH THU THEO DANH MỤC</h3>
+                                </div>
+                            </div>
+                            <div class="chart-canvas-container">
+                                <canvas id="chartCategoryBreakdown"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- THỐNG KÊ KHÁCH HÀNG & MÔ PHỎNG ĐƠN -->
+                    <div class="admin-box industrial-card" style="margin-top: 20px;">
+                        <div class="admin-card-head" style="align-items: center;">
+                            <div>
+                                <span class="industrial-pill">CUSTOMER RETENTION & ENGINE</span>
+                                <h3 class="industrial-title">KHÁCH HÀNG QUAY LẠI & MÁY PHÁT ĐƠN TỰ ĐỘNG</h3>
+                            </div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button type="button" class="industrial-btn-dark" id="btnToggleAutoFakeOrder" onclick="batTatCheDoDonAo()">
+                                    🟢 ĐƠN TỰ ĐỘNG: ĐANG BẬT
                                 </button>
-                                <button class="btn-submit" style="width: auto; padding: 8px 14px; font-size: 12px; background: #8e44ad;" onclick="taoMotDonHangAoTuDong(true)">
-                                    ⚡ Tạo 1 đơn khách thật ngay (Trừ kho)
+                                <button type="button" class="industrial-btn-accent" onclick="taoMotDonHangAoTuDong(true)">
+                                    ⚡ TẠO 1 ĐƠN THẬT NGAY
                                 </button>
                             </div>
                         </div>
                         <div class="retention-grid" id="adminRetentionStats"></div>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     </div>
@@ -1386,6 +1479,54 @@
             © 2026 MVP Hoops · mairua.com. Bảo lưu mọi quyền.
         </div>
     </footer>
+
+    <!-- MODAL PHIẾU NHẬP HÀNG KHO TRUNG TÂM (SPORT INDUSTRIAL INVOICE) -->
+    <div id="phieuNhapHangModal" class="phieu-nhap-overlay" style="display:none;" onclick="dongPhieuNhapHang()">
+        <div class="phieu-nhap-card" onclick="event.stopPropagation()">
+            <div class="phieu-nhap-head">
+                <div class="phieu-head-left">
+                    <div class="phieu-badge">MAIRUA HOOPS · INVENTORY LOGISTICS</div>
+                    <h2 class="phieu-title">PHIẾU NHẬP HÀNG KHO TRUNG TÂM</h2>
+                    <div class="phieu-info-line">
+                        Mã phiếu: <b id="phieuMaPhieu">PNH-20261106-0001</b> · Ngày lập: <span id="phieuNgayNhap">--</span> · Người thực hiện: <b>Admin Hệ Thống</b>
+                    </div>
+                </div>
+                <button type="button" class="phieu-close-btn" onclick="dongPhieuNhapHang()">✕</button>
+            </div>
+
+            <div class="phieu-table-wrap">
+                <table class="phieu-table">
+                    <thead>
+                        <tr>
+                            <th style="width:45px; text-align:center;">STT</th>
+                            <th>TÊN SẢN PHẨM</th>
+                            <th>PHÂN LOẠI MÀU / SIZE</th>
+                            <th style="text-align:center;">SL NHẬP</th>
+                            <th style="text-align:right;">ĐƠN GIÁ VỐN</th>
+                            <th style="text-align:right;">THÀNH TIỀN VỐN</th>
+                        </tr>
+                    </thead>
+                    <tbody id="phieuNhapHangTableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="phieu-summary-box">
+                <div class="phieu-sum-row">
+                    <span>Tổng số lượng sản phẩm nhập:</span>
+                    <b id="phieuNhapTongSoLuong">0 cái</b>
+                </div>
+                <div class="phieu-sum-row total-highlight">
+                    <span>TỔNG TIỀN VỐN PHẢI TRẢ:</span>
+                    <span id="phieuNhapTongTienVon" class="phieu-total-amount">0đ</span>
+                </div>
+            </div>
+
+            <div class="phieu-actions-bar">
+                <button type="button" class="btn-phieu-print" onclick="window.print()">🖨️ IN PHIẾU NHẬP</button>
+                <button type="button" class="btn-phieu-close" onclick="dongPhieuNhapHang()">ĐÓNG PHIẾU</button>
+            </div>
+        </div>
+    </div>
 
     <script src="app.js?v=7.0"></script>
 </body>
