@@ -2,7 +2,7 @@
  * ====================================================================
  * MAIRUA HOOPS - FULL-STACK BACKEND RESTful API SERVER
  * Thương mại điện tử đồ bóng rổ & Custom Studio - mairua.com
- * Công nghệ: Node.js + Express + MySQL / SQLite + JWT + Gemini AI Proxy
+ * Công nghệ: Node.js + Express + SQLite (better-sqlite3) + JWT + Groq Llama 3.3
  * ====================================================================
  */
 
@@ -11,17 +11,9 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
-const mysql = require('mysql2/promise');
-let sqlite3 = null;
-let sqliteOpen = null;
-try {
-    sqlite3 = require('sqlite3');
-    sqliteOpen = require('sqlite').open;
-} catch (e) {
-    console.warn('⚠️ [SQLite] Chưa tải được native sqlite3 (GLIBC/Platform):', e.message);
-}
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { db, tinhGiaVonMacDinh } = require('./db');
 
 dotenv.config();
 
@@ -62,340 +54,8 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Database Pool Connection (Hỗ trợ SQLite chuẩn bảo mật & MySQL)
-let pool = null;
-let dbConnected = false;
-let dbType = 'sqlite'; // 'sqlite' hoặc 'mysql'
-
-function taoSqliteQueryAdapter(sqliteDb) {
-    const executeQuery = async (sql, params = []) => {
-        let cleanSql = sql.trim();
-        // Chuyển đổi tương thích SQL: GREATEST -> MAX
-        cleanSql = cleanSql.replace(/GREATEST\s*\(/gi, 'MAX(');
-        // Chuyển đổi tương thích UPDATE LIMIT OFFSET trên SQLite
-        cleanSql = cleanSql.replace(/WHERE\s+product_id\s*=\s*\?\s+ORDER\s+BY\s+id\s+ASC\s+LIMIT\s+1\s+OFFSET\s*\?/gi, 
-            'WHERE id = (SELECT id FROM product_variants WHERE product_id = ? ORDER BY id ASC LIMIT 1 OFFSET ?)');
-
-        const lower = cleanSql.toLowerCase();
-        if (lower.startsWith('select') || lower.startsWith('pragma')) {
-            const rows = await sqliteDb.all(cleanSql, params);
-            return [rows];
-        } else {
-            const result = await sqliteDb.run(cleanSql, params);
-            return [{
-                insertId: result.lastID,
-                affectedRows: result.changes,
-                lastID: result.lastID,
-                changes: result.changes
-            }];
-        }
-    };
-
-    return {
-        query: executeQuery,
-        getConnection: async () => {
-            return {
-                query: executeQuery,
-                beginTransaction: async () => { await sqliteDb.run('BEGIN TRANSACTION'); },
-                commit: async () => { await sqliteDb.run('COMMIT'); },
-                rollback: async () => { await sqliteDb.run('ROLLBACK'); },
-                release: () => {}
-            };
-        }
-    };
-}
-
-// Hàm tính giá vốn mặc định theo giá bán: Giá bán - (100.000đ đến 200.000đ)
-function tinhGiaVonMacDinh(price) {
-    price = Number(price) || 0;
-    if (price >= 800000) return Math.max(50000, price - 200000);
-    if (price >= 400000) return Math.max(50000, price - 150000);
-    if (price >= 150000) return Math.max(30000, price - 100000);
-    return Math.max(20000, Math.round(price * 0.6));
-}
-
-async function initDatabase() {
-    // Nếu có cấu hình DB_CLIENT=mysql và các thông số MySQL rõ ràng thì thử MySQL trước
-    if (process.env.DB_CLIENT === 'mysql') {
-        try {
-            const mysqlPool = mysql.createPool({
-                host: process.env.DB_HOST || 'localhost',
-                port: Number(process.env.DB_PORT) || 3306,
-                user: process.env.DB_USER || 'root',
-                password: process.env.DB_PASSWORD || '',
-                database: process.env.DB_NAME || 'mairua_db',
-                waitForConnections: true,
-                connectionLimit: 15,
-                queueLimit: 0
-            });
-            await mysqlPool.query('SELECT 1 + 1 AS test');
-            pool = mysqlPool;
-            dbConnected = true;
-            dbType = 'mysql';
-            console.log('🏀 [Database] Kết nối MySQL thành công (database: mairua_db)!');
-            return;
-        } catch (err) {
-            console.warn('⚠️ [Database] Không kết nối được MySQL, tự động kích hoạt SQLite bảo mật:', err.message);
-        }
-    }
-
-    // MẶC ĐỊNH & KHUYẾN NGHỊ: Khởi tạo SQLite tự động (Zero-config, chạy ngay không cần cài đặt thêm server)
-    try {
-        if (!sqlite3 || !sqliteOpen) {
-            console.warn('💡 [Database] Môi trường không hỗ trợ native sqlite3 binary, tự động chạy chế độ In-Memory & Cloud Fallback an toàn.');
-            return;
-        }
-        const dataDir = path.join(__dirname, 'data');
-        if (!fs.existsSync(dataDir)) {
-            fs.mkdirSync(dataDir, { recursive: true });
-        }
-        const dbPath = path.join(dataDir, 'mairua.db');
-        const sqliteDb = await sqliteOpen({
-            filename: dbPath,
-            driver: sqlite3.Database
-        });
-
-        await sqliteDb.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
-
-        // 1. Tạo bảng Accounts
-        await sqliteDb.exec(`
-            CREATE TABLE IF NOT EXISTS accounts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                phone VARCHAR(20) UNIQUE NOT NULL,
-                pass_hash VARCHAR(255) NOT NULL,
-                name VARCHAR(100) NOT NULL,
-                email VARCHAR(100),
-                orders_count INT DEFAULT 0,
-                mcoin INT DEFAULT 0,
-                ai_tokens INT DEFAULT 3,
-                tier_level VARCHAR(50) DEFAULT 'Đồng',
-                is_admin BOOLEAN DEFAULT 0,
-                created_at BIGINT
-            );
-        `);
-
-        // 2. Tạo bảng Addresses
-        await sqliteDb.exec(`
-            CREATE TABLE IF NOT EXISTS addresses (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                account_phone VARCHAR(20) NOT NULL,
-                recipient_name VARCHAR(100) NOT NULL,
-                recipient_phone VARCHAR(20) NOT NULL,
-                province VARCHAR(100),
-                ward VARCHAR(100),
-                street VARCHAR(255),
-                full_address TEXT NOT NULL,
-                is_default BOOLEAN DEFAULT 0
-            );
-        `);
-
-        // 3. Tạo bảng Products
-        await sqliteDb.exec(`
-            CREATE TABLE IF NOT EXISTS products (
-                id INTEGER PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                category VARCHAR(50),
-                price INT NOT NULL,
-                cost_price INT DEFAULT 0,
-                rating REAL DEFAULT 5.0,
-                reviews_count INT DEFAULT 0,
-                stock INT DEFAULT 0,
-                sold INT DEFAULT 0,
-                is_jersey_blank BOOLEAN DEFAULT 0,
-                is_accessory BOOLEAN DEFAULT 0,
-                has_size BOOLEAN DEFAULT 0,
-                sizes TEXT,
-                specs TEXT,
-                description TEXT
-            );
-        `);
-
-        // 4. Tạo bảng Product Variants
-        await sqliteDb.exec(`
-            CREATE TABLE IF NOT EXISTS product_variants (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                product_id INT NOT NULL,
-                color_name VARCHAR(100) NOT NULL,
-                hex VARCHAR(20) NOT NULL,
-                img TEXT NOT NULL,
-                stock INT DEFAULT 0,
-                sold INT DEFAULT 0,
-                cost_price INT DEFAULT 0,
-                FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-            );
-        `);
-
-        // 5. Tạo bảng Orders
-        await sqliteDb.exec(`
-            CREATE TABLE IF NOT EXISTS orders (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                order_code VARCHAR(50) UNIQUE NOT NULL,
-                account_phone VARCHAR(20),
-                customer_name VARCHAR(100) NOT NULL,
-                customer_phone VARCHAR(20) NOT NULL,
-                customer_addr TEXT NOT NULL,
-                subtotal INT NOT NULL,
-                discount_amt INT DEFAULT 0,
-                used_mcoin INT DEFAULT 0,
-                earned_mcoin INT DEFAULT 0,
-                cashback_percent INT DEFAULT 5,
-                shipping_fee INT DEFAULT 30000,
-                final_total INT NOT NULL,
-                coupon_used VARCHAR(50),
-                has_custom_jersey BOOLEAN DEFAULT 0,
-                jersey_count INT DEFAULT 0,
-                status VARCHAR(50) DEFAULT 'Chờ xác nhận',
-                status_step_idx INT DEFAULT 0,
-                admin_confirmed BOOLEAN DEFAULT 0,
-                is_cancelled BOOLEAN DEFAULT 0,
-                needs_invoice BOOLEAN DEFAULT 0,
-                invoice_info_json TEXT,
-                start_time BIGINT,
-                confirmed_at BIGINT,
-                delivered_at BIGINT
-            );
-        `);
-
-        // 6. Tạo bảng Order Items
-        await sqliteDb.exec(`
-            CREATE TABLE IF NOT EXISTS order_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                order_code VARCHAR(50) NOT NULL,
-                product_id INT,
-                variant_index INT DEFAULT 0,
-                item_name VARCHAR(255) NOT NULL,
-                sub_info VARCHAR(255),
-                unit_price INT NOT NULL,
-                qty INT NOT NULL,
-                custom_design_json TEXT
-            );
-        `);
-
-        // 7. Tạo bảng Coupons
-        await sqliteDb.exec(`
-            CREATE TABLE IF NOT EXISTS coupons (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                code VARCHAR(50) UNIQUE NOT NULL,
-                percent INT NOT NULL,
-                created_at BIGINT NOT NULL,
-                target_phone VARCHAR(20),
-                is_active BOOLEAN DEFAULT 1
-            );
-        `);
-
-        // 8. Tạo bảng Coupon Usages
-        await sqliteDb.exec(`
-            CREATE TABLE IF NOT EXISTS coupon_usages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                code VARCHAR(50) NOT NULL,
-                account_phone VARCHAR(20) NOT NULL,
-                used_at BIGINT
-            );
-        `);
-
-        // 9. Tạo bảng Product Reviews
-        await sqliteDb.exec(`
-            CREATE TABLE IF NOT EXISTS product_reviews (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                product_id INT NOT NULL,
-                order_code VARCHAR(50),
-                phone VARCHAR(20),
-                author_name VARCHAR(100),
-                stars INT NOT NULL,
-                comment TEXT,
-                img TEXT,
-                created_at BIGINT
-            );
-        `);
-
-        // Migration an toàn cho database hiện hữu: Bổ sung cột cost_price nếu chưa có
-        try { await sqliteDb.exec(`ALTER TABLE products ADD COLUMN cost_price INT DEFAULT 0;`); } catch(e) {}
-        try { await sqliteDb.exec(`ALTER TABLE product_variants ADD COLUMN cost_price INT DEFAULT 0;`); } catch(e) {}
-
-        // Tự động Seed tài khoản Admin nếu bảng accounts còn trống
-        const accCount = await sqliteDb.get('SELECT COUNT(*) as count FROM accounts');
-        if (!accCount || accCount.count === 0) {
-            const salt = await bcrypt.genSalt(10);
-            const adminPassHash = await bcrypt.hash('5888', salt);
-            await sqliteDb.run(`
-                INSERT INTO accounts (phone, pass_hash, name, email, orders_count, mcoin, ai_tokens, tier_level, is_admin, created_at)
-                VALUES (?, ?, ?, ?, 99, 999999, 99, 'Kim Cương', 1, ?)
-            `, ['0909501753', adminPassHash, 'Admin Mairua Hoops', 'admin@mairua.com', Date.now()]);
-            console.log('👑 [SQLite] Đã tự động tạo tài khoản Admin bảo mật: 0909501753 / 5888');
-        }
-
-        // Tự động Seed toàn bộ 37 sản phẩm từ products_seed.json nếu bảng products còn trống
-        const prodCount = await sqliteDb.get('SELECT COUNT(*) as count FROM products');
-        if (!prodCount || prodCount.count === 0) {
-            let seedData = [];
-            try {
-                seedData = require(path.join(__dirname, 'products_seed.json'));
-            } catch(e) {
-                seedData = [];
-            }
-            if (Array.isArray(seedData) && seedData.length > 0) {
-                for (const p of seedData) {
-                    const costPrice = p.cost_price || p.costPrice || tinhGiaVonMacDinh(p.price);
-                    await sqliteDb.run(`
-                        INSERT OR REPLACE INTO products (id, name, category, price, cost_price, rating, reviews_count, stock, sold, is_jersey_blank, is_accessory, has_size, sizes, specs, description)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    `, [
-                        p.id, p.name, p.category, p.price, costPrice, p.rating || 5, p.reviewsCount || 0,
-                        p.stock || 0, p.sold || 0, p.isJerseyBlank ? 1 : 0, p.isAccessory ? 1 : 0,
-                        p.hasSize ? 1 : 0, JSON.stringify(p.sizes || []), JSON.stringify(p.specs || []),
-                        p.description || ''
-                    ]);
-
-                    if (Array.isArray(p.variants)) {
-                        for (const v of p.variants) {
-                            const vCostPrice = v.cost_price || v.costPrice || costPrice;
-                            await sqliteDb.run(`
-                                INSERT INTO product_variants (product_id, color_name, hex, img, stock, sold, cost_price)
-                                VALUES (?, ?, ?, ?, ?, ?, ?)
-                            `, [p.id, v.colorName, v.hex, v.img, v.stock || 0, v.sold || 0, vCostPrice]);
-                        }
-                    }
-                }
-                console.log(`📦 [SQLite] Đã tự động nạp thành công ${seedData.length} sản phẩm & các biến thể vào Database!`);
-            }
-        }
-
-        pool = taoSqliteQueryAdapter(sqliteDb);
-        dbConnected = true;
-        dbType = 'sqlite';
-        console.log('🔒 [Database] Khởi chạy SQLite bảo mật thành công tại data/mairua.db!');
-    } catch (err) {
-        dbConnected = false;
-        console.error('⚠️ [Database] Lỗi khởi tạo SQLite:', err);
-        console.warn('💡 [Database] Chuyển sang chế độ In-Memory & LocalStorage Fallback.');
-    }
-}
-initDatabase();
-
-// Hàm tính hạng thành viên theo tổng chi tiêu
-function tinhHangThanhVien(totalSpent) {
-    if (totalSpent >= 20000000) return { name: 'Kim Cương', ratePercent: 10, rateDecimal: 0.10 };
-    if (totalSpent >= 15000000) return { name: 'Vàng', ratePercent: 7, rateDecimal: 0.07 };
-    if (totalSpent >= 10000000) return { name: 'Bạc', ratePercent: 6, rateDecimal: 0.06 };
-    return { name: 'Đồng', ratePercent: 5, rateDecimal: 0.05 };
-}
-
-// ====================================================================
-// 1. RESTful APIs: SẢN PHẨM & AI NHẬP HÀNG TỰ ĐỘNG
-// ====================================================================
-
-/**
- * GET /api/products
- * Lấy toàn bộ 37 sản phẩm kèm các biến thể màu sắc, hình ảnh và tồn kho
- */
-
-// ====================================================================
-// CLOUD CART SYNC (ĐỒNG BỘ GIỎ HÀNG ĐA THIẾT BỊ: ĐIỆN THOẠI & LAPTOP)
-// ====================================================================
+// Cloud cart in-memory sync helper
 const cloudCarts = {};
-const fallbackOrders = [];
-let fallbackProducts = [];
-try { fallbackProducts = require('./products_seed.json'); } catch(e) { fallbackProducts = []; }
 
 app.get('/api/cart/:phone', (req, res) => {
     const phone = req.params.phone;
@@ -409,853 +69,429 @@ app.post('/api/cart/:phone', (req, res) => {
     res.json({ success: true, message: 'Đã đồng bộ giỏ hàng lên server', cart: cloudCarts[phone] });
 });
 
-app.get('/api/products', async (req, res) => {
+// ====================================================================
+// 1. RESTful APIs: INVENTORY & SẢN PHẨM (ĐỒNG BỘ 100% QUA SQLITE)
+// ====================================================================
+
+/**
+ * GET /api/inventory & GET /api/products
+ * Trả về toàn bộ danh mục sản phẩm, màu sắc, giá bán, giá vốn và số lượng tồn kho thực tế
+ */
+app.get(['/api/inventory', '/api/products'], (req, res) => {
     try {
-        const { cat, min_price, max_price, search, sort } = req.query;
-
-        if (dbConnected && pool) {
-            let sql = 'SELECT * FROM products WHERE 1=1';
-            const params = [];
-
-            if (cat && cat !== 'all') {
-                sql += ' AND cat = ?';
-                params.push(cat);
+        const rows = db.prepare('SELECT * FROM inventory').all();
+        const map = {};
+        rows.forEach(r => {
+            if (!map[r.product_id]) {
+                map[r.product_id] = {
+                    id: r.product_id,
+                    name: r.product_name,
+                    price: r.price,
+                    costPrice: r.cost_price || tinhGiaVonMacDinh(r.price),
+                    category: r.category || 'general',
+                    variants: [],
+                    stock: 0,
+                    sold: 0
+                };
             }
-            if (min_price) {
-                sql += ' AND price >= ?';
-                params.push(Number(min_price));
-            }
-            if (max_price) {
-                sql += ' AND price <= ?';
-                params.push(Number(max_price));
-            }
-            if (search) {
-                sql += ' AND name LIKE ?';
-                params.push(`%${search}%`);
-            }
-
-            if (sort === 'price_asc') sql += ' ORDER BY price ASC';
-            else if (sort === 'price_desc') sql += ' ORDER BY price DESC';
-            else sql += ' ORDER BY id ASC';
-
-            const [prods] = await pool.query(sql, params);
-
-            for (const p of prods) {
-                const [vars] = await pool.query(
-                    'SELECT id, color_name AS colorName, hex, img, stock, sold, cost_price AS costPrice FROM product_variants WHERE product_id = ? ORDER BY id ASC',
-                    [p.id]
-                );
-                p.costPrice = p.cost_price || tinhGiaVonMacDinh(p.price);
-                vars.forEach(v => {
-                    v.costPrice = v.costPrice || v.cost_price || p.costPrice;
-                });
-                p.variants = vars;
-                p.stock = vars.reduce((s, v) => s + (v.stock || 0), 0);
-                p.sold = vars.reduce((s, v) => s + (v.sold || 0), 0);
-                p.hasSize = !!p.has_size;
-                p.isCombatPants = !!p.is_combat_pants;
-                p.isJerseyBlank = !!p.is_jersey_blank;
-                p.isShorts = !!p.is_shorts;
-                p.isProtectiveGear = !!p.is_protective_gear;
-                p.gearType = p.gear_type;
-                p.sizes = p.sizes_json ? (typeof p.sizes_json === 'string' ? JSON.parse(p.sizes_json) : p.sizes_json) : [];
-            }
-
-            return res.json({ success: true, count: prods.length, data: prods });
-        }
-
-        // FALLBACK ĐỒNG BỘ CLOUD: Phục vụ trực tiếp danh sách 37 sản phẩm với tồn kho thống nhất
-        let prods = JSON.parse(JSON.stringify(fallbackProducts));
-        if (cat && cat !== 'all') prods = prods.filter(p => p.cat === cat);
-        if (min_price) prods = prods.filter(p => p.price >= Number(min_price));
-        if (max_price) prods = prods.filter(p => p.price <= Number(max_price));
-        if (search) {
-            let sLower = search.toLowerCase();
-            prods = prods.filter(p => p.name.toLowerCase().includes(sLower));
-        }
-        if (sort === 'price_asc') prods.sort((a, b) => a.price - b.price);
-        else if (sort === 'price_desc') prods.sort((a, b) => b.price - a.price);
-
-        prods.forEach(p => {
-            if (Array.isArray(p.variants)) {
-                p.stock = p.variants.reduce((s, v) => s + (v.stock || 0), 0);
-                p.sold = p.variants.reduce((s, v) => s + (v.sold || 0), 0);
-            }
+            map[r.product_id].variants.push({
+                colorName: r.color_variant,
+                hex: r.hex,
+                img: r.img,
+                price: r.price,
+                costPrice: r.cost_price || map[r.product_id].costPrice,
+                stock: r.stock || 0,
+                sold: r.sold || 0
+            });
+            map[r.product_id].stock += (r.stock || 0);
+            map[r.product_id].sold += (r.sold || 0);
         });
 
-        res.json({ success: true, source: 'fallback', count: prods.length, data: prods });
-    } catch (err) {
-        console.error('Lỗi GET /api/products:', err);
-        res.status(500).json({ success: false, message: 'Lỗi máy chủ khi lấy danh sách sản phẩm', error: err.message });
+        const products = Object.values(map);
+        return res.json({ success: true, count: products.length, data: products, inventory: rows });
+    } catch (e) {
+        console.error('Lỗi GET /api/inventory:', e);
+        res.status(500).json({ success: false, message: e.message });
     }
 });
 
 /**
- * POST /api/products/sync-stocks
- * Đồng bộ toàn bộ tồn kho giữa các thiết bị (Laptop, Điện thoại) lên Server Cloud
+ * POST /api/inventory/restock & POST /api/admin/restock
+ * Cập nhật số lượng nhập kho vào bảng inventory
  */
-app.post('/api/products/sync-stocks', (req, res) => {
+app.post(['/api/inventory/restock', '/api/admin/restock'], (req, res) => {
     try {
-        const { productsList, variantStocks } = req.body;
-        if (Array.isArray(productsList) && productsList.length > 0) {
-            productsList.forEach(p => {
-                const prod = fallbackProducts.find(fp => fp.id === p.id);
-                if (prod && Array.isArray(p.variants)) {
-                    p.variants.forEach((v, vIdx) => {
-                        if (prod.variants[vIdx]) {
-                            if (typeof v.stock === 'number') prod.variants[vIdx].stock = v.stock;
-                            if (typeof v.sold === 'number') prod.variants[vIdx].sold = v.sold;
-                        }
-                    });
-                    prod.stock = prod.variants.reduce((s, vr) => s + (vr.stock || 0), 0);
-                    prod.sold = prod.variants.reduce((s, vr) => s + (vr.sold || 0), 0);
-                }
-            });
-        } else if (Array.isArray(variantStocks)) {
-            variantStocks.forEach(vs => {
-                const prod = fallbackProducts.find(fp => fp.id === vs.id);
-                if (prod && Array.isArray(prod.variants) && Array.isArray(vs.v)) {
-                    vs.v.forEach((vItem, vIdx) => {
-                        if (prod.variants[vIdx]) {
-                            if (typeof vItem.s === 'number') prod.variants[vIdx].stock = vItem.s;
-                            if (typeof vItem.d === 'number') prod.variants[vIdx].sold = vItem.d;
-                        }
-                    });
-                    prod.stock = prod.variants.reduce((s, vr) => s + (vr.stock || 0), 0);
-                    prod.sold = prod.variants.reduce((s, vr) => s + (vr.sold || 0), 0);
-                }
-            });
+        const { items } = req.body;
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ success: false, message: 'Danh sách nhập kho trống' });
         }
+        const updateRestock = db.prepare(`
+            UPDATE inventory 
+            SET stock = stock + ?, cost_price = COALESCE(NULLIF(?, 0), cost_price)
+            WHERE product_id = ? AND color_variant = ?
+        `);
+        const insertRestock = db.prepare(`
+            INSERT OR REPLACE INTO inventory 
+            (product_id, product_name, color_variant, price, cost_price, stock, sold, hex, img, category)
+            VALUES (?, ?, ?, ?, ?, ?, 0, '#ff5500', '', 'general')
+        `);
 
-        // Lưu bản sao dự phòng xuống file nếu môi trường cho phép
-        try {
-            const fs = require('fs');
-            fs.writeFileSync('./products_seed.json', JSON.stringify(fallbackProducts, null, 2));
-        } catch(e) {}
+        const restockTx = db.transaction(() => {
+            for (const item of items) {
+                const pId = item.id || item.productId;
+                const cVar = item.color || item.colorName || item.variant || 'Tiêu chuẩn';
+                const qty = Number(item.qty || item.quantity || item.stock || 0);
+                const cost = Number(item.costPrice || item.cost_price || 0);
+                const pName = item.name || item.product_name || `Sản phẩm #${pId}`;
+                const price = Number(item.price || (cost > 0 ? cost * 1.5 : 200000));
 
-        res.json({ success: true, message: 'Đã đồng bộ tồn kho thành công lên Máy Chủ Cloud!', count: fallbackProducts.length });
-    } catch (err) {
-        console.error('Lỗi POST /api/products/sync-stocks:', err);
-        res.status(500).json({ success: false, message: 'Lỗi đồng bộ tồn kho', error: err.message });
-    }
-});
-
-/**
- * POST /api/admin/restock
- * Tính năng "AI Nhập Hàng Tự Động"
- */
-app.post('/api/admin/restock', async (req, res) => {
-    try {
-        const { restockList = [], commandText = '' } = req.body;
-
-        if (!restockList || restockList.length === 0) {
-            return res.status(400).json({ success: false, message: 'Danh sách sản phẩm nhập kho trống!' });
-        }
-
-        if (dbConnected && pool) {
-            const conn = await pool.getConnection();
-            try {
-                await conn.beginTransaction();
-
-                const updated = [];
-                for (const item of restockList) {
-                    const { productId, variantIndex = 0, colorName, addStock = 10 } = item;
-
-                    let updateQuery = '';
-                    let updateParams = [];
-
-                    if (colorName) {
-                        updateQuery = 'UPDATE product_variants SET stock = stock + ? WHERE product_id = ? AND color_name = ?';
-                        updateParams = [addStock, productId, colorName];
-                    } else {
-                        // Cập nhật theo variant offset
-                        updateQuery = `
-                            UPDATE product_variants pv 
-                            JOIN (
-                                SELECT id FROM product_variants 
-                                WHERE product_id = ? 
-                                ORDER BY id ASC 
-                                LIMIT 1 OFFSET ?
-                            ) sub ON pv.id = sub.id 
-                            SET pv.stock = pv.stock + ?
-                        `;
-                        updateParams = [productId, variantIndex, addStock];
-                    }
-
-                    await conn.query(updateQuery, updateParams);
-                    updated.push({ productId, addStock });
+                const existing = db.prepare('SELECT stock FROM inventory WHERE product_id = ? AND color_variant = ?').get(pId, cVar);
+                if (existing) {
+                    updateRestock.run(qty, cost, pId, cVar);
+                } else {
+                    insertRestock.run(pId, pName, cVar, price, cost || tinhGiaVonMacDinh(price), qty);
                 }
-
-                await conn.commit();
-                return res.json({
-                    success: true,
-                    message: `✅ AI đã tự động nhập hàng thành công cho ${updated.length} phân loại sản phẩm!`,
-                    updated
-                });
-            } catch (txErr) {
-                await conn.rollback();
-                throw txErr;
-            } finally {
-                conn.release();
             }
-        }
-
-        // Cập nhật tồn kho vào bộ nhớ Fallback Server
-        if (Array.isArray(restockList)) {
-            restockList.forEach(item => {
-                const prod = fallbackProducts.find(p => p.id === Number(item.productId));
-                if (prod && Array.isArray(prod.variants)) {
-                    const v = prod.variants[item.variantIndex || 0] || prod.variants[0];
-                    if (v) {
-                        v.stock = (v.stock || 0) + Number(item.addStock || 0);
-                    }
-                    prod.stock = prod.variants.reduce((s, vr) => s + (vr.stock || 0), 0);
-                }
-            });
-            try {
-                fs.writeFileSync('./products_seed.json', JSON.stringify(fallbackProducts, null, 2));
-            } catch(e) {}
-        }
-
-        res.json({
-            success: true,
-            message: 'Đã nhận lệnh nhập hàng và đồng bộ tồn kho toàn hệ thống!',
-            commandText
         });
-    } catch (err) {
-        console.error('Lỗi POST /api/admin/restock:', err);
-        res.status(500).json({ success: false, message: 'Lỗi thực hiện lệnh nhập hàng', error: err.message });
+        restockTx();
+        return res.json({ success: true, message: 'Cập nhật nhập kho thành công!' });
+    } catch (e) {
+        console.error('Lỗi POST /api/inventory/restock:', e);
+        res.status(500).json({ success: false, message: e.message });
     }
 });
 
 // ====================================================================
-// 2. RESTful APIs: XÁC THỰC & SỔ ĐỊA CHỈ & HẠNG THÀNH VIÊN
+// 2. RESTful APIs: XÁC THỰC TÀI KHOẢN & NGƯỜI DÙNG (USERS)
 // ====================================================================
-
-/**
- * POST /api/auth/login
- */
-app.post('/api/auth/login', async (req, res) => {
-    try {
-        const { phone, password } = req.body;
-
-        if (!phone || !password) {
-            return res.status(400).json({ success: false, message: 'Vui lòng nhập SĐT và Mật khẩu!' });
-        }
-
-        // Admin cố định
-        if (phone === '0909501753' && password === '5888') {
-            const adminData = {
-                phone: '0909501753',
-                name: 'Quản Trị Viên (Admin)',
-                isAdmin: true,
-                tokens: 99,
-                mcoin: 0,
-                tierLevel: 'Kim Cương',
-                addresses: []
-            };
-            const token = jwt.sign({ phone: adminData.phone, isAdmin: true }, JWT_SECRET, { expiresIn: '7d' });
-            return res.json({ success: true, message: 'Đăng nhập Admin thành công!', token, user: adminData });
-        }
-
-        if (dbConnected && pool) {
-            const [rows] = await pool.query('SELECT * FROM accounts WHERE phone = ?', [phone]);
-            if (rows.length === 0) {
-                return res.status(401).json({ success: false, message: 'Số điện thoại chưa được đăng ký!' });
-            }
-
-            const acc = rows[0];
-            let isMatch = false;
-
-            // Kiểm tra mật khẩu (hỗ trợ hash bcrypt hoặc pass dev '123')
-            if (password === '123' || password === acc.pass_hash) {
-                isMatch = true;
-            } else {
-                isMatch = await bcrypt.compare(password, acc.pass_hash);
-            }
-
-            if (!isMatch) {
-                return res.status(401).json({ success: false, message: 'Mật khẩu không chính xác!' });
-            }
-
-            // Lấy danh sách địa chỉ của tài khoản
-            const [addrs] = await pool.query(
-                'SELECT id, recipient_name AS name, recipient_phone AS phone, province, ward, street, full_address AS fullAddress, is_default AS isDefault FROM addresses WHERE account_phone = ? ORDER BY is_default DESC, id DESC',
-                [phone]
-            );
-
-            const userData = {
-                phone: acc.phone,
-                name: acc.name,
-                email: acc.email,
-                orders: acc.orders_count || 0,
-                mcoin: acc.mcoin || 0,
-                tokens: acc.ai_tokens || 3,
-                tierLevel: acc.tier_level || 'Đồng',
-                isAdmin: !!acc.is_admin,
-                addresses: addrs
-            };
-
-            const token = jwt.sign({ phone: acc.phone, isAdmin: !!acc.is_admin }, JWT_SECRET, { expiresIn: '7d' });
-            return res.json({ success: true, message: `Xin chào ${acc.name}!`, token, user: userData });
-        }
-
-        // Fallback test
-        if (password === '123') {
-            return res.json({
-                success: true,
-                message: 'Đăng nhập thành công (Fallback)',
-                user: { phone, name: 'Khách hàng Mairua', orders: 1, mcoin: 0, tokens: 3, tierLevel: 'Đồng', isAdmin: false, addresses: [] }
-            });
-        }
-
-        res.status(401).json({ success: false, message: 'Sai mật khẩu!' });
-    } catch (err) {
-        console.error('Lỗi POST /api/auth/login:', err);
-        res.status(500).json({ success: false, message: 'Lỗi đăng nhập', error: err.message });
-    }
-});
 
 /**
  * POST /api/auth/register
+ * Nhận phone, name, password, kiểm tra số điện thoại tồn tại, thêm vào bảng users và trả về thông tin tài khoản
  */
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', (req, res) => {
     try {
         const { phone, password, name, email = null } = req.body;
-
         if (!phone || !password || !name) {
             return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ SĐT, Tên và Mật khẩu!' });
         }
-
-        if (dbConnected && pool) {
-            const [exist] = await pool.query('SELECT phone FROM accounts WHERE phone = ?', [phone]);
-            if (exist.length > 0) {
-                return res.status(400).json({ success: false, message: 'Số điện thoại này đã được đăng ký!' });
-            }
-
-            const salt = await bcrypt.genSalt(10);
-            const passHash = await bcrypt.hash(password, salt);
-
-            await pool.query(
-                'INSERT INTO accounts (phone, pass_hash, name, email, orders_count, mcoin, ai_tokens, tier_level, is_admin) VALUES (?, ?, ?, ?, 0, 0, 3, \'Đồng\', FALSE)',
-                [phone, passHash, name, email]
-            );
-
-            const newUser = {
-                phone, name, email, orders: 0, mcoin: 0, tokens: 3, tierLevel: 'Đồng', isAdmin: false, addresses: []
-            };
-            const token = jwt.sign({ phone, isAdmin: false }, JWT_SECRET, { expiresIn: '7d' });
-
-            return res.status(201).json({ success: true, message: 'Đăng ký tài khoản thành công!', token, user: newUser });
+        const cleanPhone = String(phone).trim();
+        const existing = db.prepare('SELECT phone FROM users WHERE phone = ?').get(cleanPhone);
+        if (existing) {
+            return res.status(400).json({ success: false, message: 'Số điện thoại này đã được đăng ký!' });
         }
+        const salt = bcrypt.genSaltSync(10);
+        const passHash = bcrypt.hashSync(String(password), salt);
+        const now = Date.now();
+        db.prepare(`
+            INSERT INTO users (phone, name, password, email, mcoin, tokens, tier, is_admin, created_at)
+            VALUES (?, ?, ?, ?, 0, 3, 'Đồng', 0, ?)
+        `).run(cleanPhone, String(name).trim(), passHash, email ? String(email).trim() : '', now);
 
-        res.status(201).json({ success: true, message: 'Đăng ký thành công (Fallback)' });
-    } catch (err) {
-        console.error('Lỗi POST /api/auth/register:', err);
-        res.status(500).json({ success: false, message: 'Lỗi đăng ký tài khoản', error: err.message });
-    }
-});
-
-/**
- * PUT /api/account/profile
- */
-app.put('/api/account/profile', async (req, res) => {
-    try {
-        const { phone, name, email, newPassword } = req.body;
-        if (!phone) return res.status(400).json({ success: false, message: 'Thiếu số điện thoại!' });
-
-        if (dbConnected && pool) {
-            let sql = 'UPDATE accounts SET name = ?, email = ?';
-            const params = [name, email];
-
-            if (newPassword) {
-                const salt = await bcrypt.genSalt(10);
-                const passHash = await bcrypt.hash(newPassword, salt);
-                sql += ', pass_hash = ?';
-                params.push(passHash);
-            }
-
-            sql += ' WHERE phone = ?';
-            params.push(phone);
-
-            await pool.query(sql, params);
-            return res.json({ success: true, message: 'Cập nhật thông tin tài khoản thành công!' });
-        }
-
-        res.json({ success: true, message: 'Đã cập nhật (Fallback)' });
-    } catch (err) {
-        console.error('Lỗi PUT /api/account/profile:', err);
-        res.status(500).json({ success: false, message: 'Lỗi cập nhật profile', error: err.message });
-    }
-});
-
-/**
- * POST /api/account/addresses
- * Thêm hoặc cập nhật địa chỉ giao hàng
- */
-app.post('/api/account/addresses', async (req, res) => {
-    try {
-        const { accountPhone, recipientName, recipientPhone, province, ward, street, fullAddress, isDefault = false } = req.body;
-
-        if (!accountPhone || !recipientName || !recipientPhone || !fullAddress) {
-            return res.status(400).json({ success: false, message: 'Thiếu thông tin địa chỉ bắt buộc!' });
-        }
-
-        if (dbConnected && pool) {
-            if (isDefault) {
-                await pool.query('UPDATE addresses SET is_default = FALSE WHERE account_phone = ?', [accountPhone]);
-            }
-
-            const [result] = await pool.query(
-                'INSERT INTO addresses (account_phone, recipient_name, recipient_phone, province, ward, street, full_address, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [accountPhone, recipientName, recipientPhone, province || '', ward || '', street || '', fullAddress, isDefault ? 1 : 0]
-            );
-
-            return res.status(201).json({ success: true, message: 'Đã lưu địa chỉ vào sổ địa chỉ!', addressId: result.insertId });
-        }
-
-        res.status(201).json({ success: true, message: 'Đã lưu địa chỉ (Fallback)' });
-    } catch (err) {
-        console.error('Lỗi POST /api/account/addresses:', err);
-        res.status(500).json({ success: false, message: 'Lỗi lưu địa chỉ', error: err.message });
-    }
-});
-
-// ====================================================================
-// 3. RESTful APIs: ĐƠN HÀNG, QUY TRÌNH DUYỆT 5 BƯỚC & HOÀN KHO
-// ====================================================================
-
-/**
- * POST /api/orders
- * Tạo đơn hàng mới, trừ tồn kho SQL bằng Transaction, tính M-Coin & Hạng thành viên
- */
-app.post('/api/orders', async (req, res) => {
-    try {
-        const {
-            orderCode,
-            accountPhone,
-            customerName,
-            customerPhone,
-            customerAddr,
-            subtotal,
-            discountAmt = 0,
-            usedMCoin = 0,
-            shippingFee = 30000,
-            finalTotal,
-            couponUsed = null,
-            hasCustomJersey = false,
-            jerseyCount = 0,
-            needsInvoice = false,
-            invoiceInfo = null,
-            items = []
-        } = req.body;
-
-        if (!customerName || !customerPhone || !customerAddr || !items || items.length === 0) {
-            return res.status(400).json({ success: false, message: 'Thông tin đơn hàng hoặc giỏ hàng không hợp lệ!' });
-        }
-
-        const genCode = orderCode || `MVP${Date.now().toString().slice(-6)}`;
-        const startTime = Date.now();
-
-        if (dbConnected && pool) {
-            const conn = await pool.getConnection();
-            try {
-                await conn.beginTransaction();
-
-                // 1. Tính chi tiêu tích lũy và hoàn M-Coin
-                let earnedMCoin = 0;
-                let cashbackPercent = 5;
-                if (accountPhone) {
-                    const [accRows] = await conn.query('SELECT * FROM accounts WHERE phone = ?', [accountPhone]);
-                    if (accRows.length > 0) {
-                        const acc = accRows[0];
-                        const tier = tinhHangThanhVien(acc.orders_count * 1000000); // mô phỏng
-                        cashbackPercent = tier.ratePercent;
-                        earnedMCoin = Math.round(Number(finalTotal) * tier.rateDecimal);
-
-                        // Cập nhật account: cộng 1 đơn, trừ usedMCoin, cộng earnedMCoin, cộng 1 Token AI
-                        await conn.query(`
-                            UPDATE accounts 
-                            SET orders_count = orders_count + 1,
-                                mcoin = GREATEST(0, mcoin - ? + ?),
-                                ai_tokens = ai_tokens + 1
-                            WHERE phone = ?
-                        `, [usedMCoin, earnedMCoin, accountPhone]);
-                    }
-                }
-
-                // 2. Tạo đơn hàng vào bảng orders
-                await conn.query(`
-                    INSERT INTO orders 
-                    (order_code, account_phone, customer_name, customer_phone, customer_addr, subtotal, discount_amt, used_mcoin, earned_mcoin, cashback_percent, shipping_fee, final_total, coupon_used, has_custom_jersey, jersey_count, status_step_idx, admin_confirmed, is_cancelled, needs_invoice, invoice_info_json, start_time)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, FALSE, FALSE, ?, ?, ?)
-                `, [
-                    genCode, accountPhone || null, customerName, customerPhone, customerAddr,
-                    subtotal, discountAmt, usedMCoin, earnedMCoin, cashbackPercent, shippingFee, finalTotal,
-                    couponUsed, hasCustomJersey ? 1 : 0, jerseyCount, needsInvoice ? 1 : 0,
-                    invoiceInfo ? JSON.stringify(invoiceInfo) : null, startTime
-                ]);
-
-                // 3. Thêm chi tiết order_items và trừ tồn kho SQL
-                for (const item of items) {
-                    await conn.query(`
-                        INSERT INTO order_items 
-                        (order_code, product_id, variant_index, item_name, sub_info, unit_price, qty, custom_design_json)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    `, [
-                        genCode, item.productId || null, item.variantIndex || 0,
-                        item.name, item.subInfo || '', item.price, item.qty,
-                        item.customDesign ? JSON.stringify(item.customDesign) : null
-                    ]);
-
-                    // Trừ tồn kho trong product_variants
-                    if (item.productId) {
-                        await conn.query(`
-                            UPDATE product_variants 
-                            SET stock = GREATEST(0, stock - ?), sold = sold + ? 
-                            WHERE product_id = ? 
-                            ORDER BY id ASC LIMIT 1 OFFSET ?
-                        `, [item.qty, item.qty, item.productId, item.variantIndex || 0]);
-                    }
-                }
-
-                // 4. Nếu có dùng coupon, lưu vào coupon_usages
-                if (couponUsed && accountPhone) {
-                    await conn.query(
-                        'INSERT INTO coupon_usages (code, account_phone) VALUES (?, ?)',
-                        [couponUsed, accountPhone]
-                    );
-                }
-
-                await conn.commit();
-                return res.status(201).json({
-                    success: true,
-                    message: '🎉 Tạo đơn hàng thành công và đã lưu vào MySQL Database!',
-                    orderCode: genCode,
-                    earnedMCoin
-                });
-            } catch (txErr) {
-                await conn.rollback();
-                throw txErr;
-            } finally {
-                conn.release();
-            }
-        }
-
-        // Lưu ngay vào danh sách đơn hàng máy chủ (Fallback cho Cloud Render)
-        const fbOrder = {
-            order_code: genCode,
-            orderCode: genCode,
-            account_phone: accountPhone || customerPhone,
-            accountPhone: accountPhone || customerPhone,
-            customer_phone: customerPhone,
-            phone: customerPhone,
-            customer_name: customerName,
-            name: customerName,
-            customer_address: customerAddr || req.body.customerAddress,
-            addr: customerAddr || req.body.customerAddress,
-            subtotal: subtotal || req.body.finalAmount || 0,
-            discount_amount: discountAmt || req.body.discountAmount || 0,
-            shipping_fee: shippingFee || req.body.shippingFee || 30000,
-            final_amount: finalTotal || req.body.finalAmount || 0,
-            finalTotal: finalTotal || req.body.finalAmount || 0,
-            status: 'Chờ xác nhận',
-            status_step_idx: 0,
-            has_custom_jersey: hasCustomJersey ? 1 : 0,
-            hasCustomJersey: !!hasCustomJersey,
-            itemsList: Array.isArray(items) ? items.map(i => `${i.name} (x${i.qty || 1})`) : [],
-            itemsCount: Array.isArray(items) ? items.reduce((s, i) => s + (i.qty || 1), 0) : 1,
-            cartSnapshot: Array.isArray(items) ? items : [],
-            start_time: startTime,
-            startTime: startTime
+        const user = {
+            phone: cleanPhone,
+            name: String(name).trim(),
+            email: email || '',
+            mcoin: 0,
+            tokens: 3,
+            tier: 'Đồng',
+            isAdmin: false
         };
-        fallbackOrders.unshift(fbOrder);
+        const token = jwt.sign({ phone: user.phone, isAdmin: false }, JWT_SECRET, { expiresIn: '7d' });
+        return res.status(201).json({ success: true, message: 'Đăng ký tài khoản thành công!', token, user });
+    } catch (e) {
+        console.error('Lỗi POST /api/auth/register:', e);
+        res.status(500).json({ success: false, message: 'Lỗi server khi đăng ký: ' + e.message });
+    }
+});
 
-        // Trừ tồn kho đồng bộ trong fallbackProducts trên Server Cloud
-        if (Array.isArray(items)) {
-            items.forEach(item => {
-                if (item.productId) {
-                    const prod = fallbackProducts.find(p => p.id === Number(item.productId));
-                    if (prod && Array.isArray(prod.variants)) {
-                        const v = prod.variants[item.variantIndex || 0] || prod.variants[0];
-                        if (v) {
-                            v.stock = Math.max(0, (v.stock || 0) - Number(item.qty || 1));
-                            v.sold = (v.sold || 0) + Number(item.qty || 1);
-                        }
-                        prod.stock = prod.variants.reduce((s, vr) => s + (vr.stock || 0), 0);
-                        prod.sold = prod.variants.reduce((s, vr) => s + (vr.sold || 0), 0);
-                    }
-                }
-            });
+/**
+ * POST /api/auth/login
+ * Nhận phone, password, kiểm tra khớp dữ liệu trong bảng users và trả về phiên đăng nhập
+ */
+app.post('/api/auth/login', (req, res) => {
+    try {
+        const { phone, password } = req.body;
+        if (!phone || !password) {
+            return res.status(400).json({ success: false, message: 'Vui lòng nhập số điện thoại và mật khẩu!' });
+        }
+        const cleanPhone = String(phone).trim();
+        // Cố định admin nếu nhập 0909501753 / 5888
+        if (cleanPhone === '0909501753' && String(password) === '5888') {
+            const adminUser = {
+                phone: '0909501753',
+                name: 'Quản Trị Viên (Admin)',
+                email: 'admin@mairua.com',
+                mcoin: 999999,
+                tokens: 99,
+                tier: 'Kim Cương',
+                isAdmin: true
+            };
+            const token = jwt.sign({ phone: '0909501753', isAdmin: true }, JWT_SECRET, { expiresIn: '7d' });
+            return res.json({ success: true, message: 'Đăng nhập Admin thành công!', token, user: adminUser });
         }
 
-        // Dọn sạch giỏ hàng đám mây trên máy chủ ngay lập tức
-        if (customerPhone) cloudCarts[customerPhone] = [];
-        if (accountPhone) cloudCarts[accountPhone] = [];
+        const userRow = db.prepare('SELECT * FROM users WHERE phone = ?').get(cleanPhone);
+        if (!userRow) {
+            return res.status(401).json({ success: false, message: 'Số điện thoại chưa được đăng ký!' });
+        }
 
-        res.status(201).json({
-            success: true,
-            message: 'Tạo đơn hàng thành công (Lưu trên Server Cloud)',
-            orderCode: genCode,
-            order: fbOrder
+        let isMatch = false;
+        if (String(password) === '123' || String(password) === userRow.password) {
+            isMatch = true;
+        } else {
+            isMatch = bcrypt.compareSync(String(password), userRow.password);
+        }
+
+        if (!isMatch) {
+            return res.status(401).json({ success: false, message: 'Mật khẩu không chính xác!' });
+        }
+
+        const isAdmin = cleanPhone === '0909501753' || !!userRow.is_admin;
+        const user = {
+            phone: userRow.phone,
+            name: userRow.name,
+            email: userRow.email || '',
+            mcoin: userRow.mcoin || 0,
+            tokens: userRow.tokens || 3,
+            tier: userRow.tier || 'Đồng',
+            isAdmin
+        };
+        const token = jwt.sign({ phone: user.phone, isAdmin }, JWT_SECRET, { expiresIn: '7d' });
+        return res.json({ success: true, message: `Xin chào ${user.name}!`, token, user });
+    } catch (e) {
+        console.error('Lỗi POST /api/auth/login:', e);
+        res.status(500).json({ success: false, message: 'Lỗi server khi đăng nhập: ' + e.message });
+    }
+});
+
+/**
+ * GET /api/user/:phone
+ * Trả về toàn bộ thông tin tài khoản, số dư M-Coin, Token AI, danh sách đơn hàng đã mua và voucher của số điện thoại đó
+ */
+app.get('/api/user/:phone', (req, res) => {
+    try {
+        const phone = String(req.params.phone).trim();
+        let userRow = db.prepare('SELECT phone, name, email, mcoin, tokens, tier, is_admin FROM users WHERE phone = ?').get(phone);
+        if (!userRow) {
+            userRow = {
+                phone,
+                name: 'Khách hàng Mairua',
+                email: '',
+                mcoin: 0,
+                tokens: 3,
+                tier: 'Đồng',
+                is_admin: phone === '0909501753' ? 1 : 0
+            };
+        }
+        const user = {
+            phone: userRow.phone,
+            name: userRow.name,
+            email: userRow.email || '',
+            mcoin: userRow.mcoin || 0,
+            tokens: userRow.tokens || 3,
+            tier: userRow.tier || 'Đồng',
+            isAdmin: phone === '0909501753' || !!userRow.is_admin
+        };
+        const orders = db.prepare('SELECT * FROM orders WHERE phone = ? ORDER BY created_at DESC').all(phone);
+        orders.forEach(o => {
+            if (typeof o.items_json === 'string') {
+                try { o.items = JSON.parse(o.items_json); } catch(e) { o.items = []; }
+            } else {
+                o.items = o.items_json || [];
+            }
         });
-    } catch (err) {
-        console.error('Lỗi POST /api/orders:', err);
-        res.status(500).json({ success: false, message: 'Lỗi tạo đơn hàng', error: err.message });
+        const vouchers = db.prepare('SELECT * FROM vouchers WHERE target_phone = ? OR target_phone IS NULL').all(phone);
+        return res.json({ success: true, user, orders, vouchers });
+    } catch (e) {
+        console.error('Lỗi GET /api/user/:phone:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// ====================================================================
+// 3. RESTful APIs: ĐƠN HÀNG (ORDERS) TẬP TRUNG QUA SQLITE TRANSACTION
+// ====================================================================
+
+/**
+ * POST /api/orders/create & POST /api/orders
+ * Nhận đơn hàng mới, dùng SQLite transaction để lưu vào bảng orders đồng thời trừ số lượng tồn kho tương ứng trong bảng inventory
+ */
+app.post(['/api/orders/create', '/api/orders'], (req, res) => {
+    try {
+        const { order_code, orderCode, customer_name, customerName, phone, address, total_amount, totalAmount, items, has_custom, hasCustom } = req.body;
+        const code = order_code || orderCode || ('MR' + Date.now().toString().slice(-6));
+        const cName = customer_name || customerName || 'Khách Hàng Mairua';
+        const cPhone = String(phone || '').trim();
+        const cAddr = address || 'Địa chỉ tiêu chuẩn';
+        const cTotal = Number(total_amount || totalAmount || 0);
+        const cItems = Array.isArray(items) ? items : [];
+        const cCustom = (has_custom || hasCustom) ? 1 : 0;
+        const now = Date.now();
+
+        const createTx = db.transaction(() => {
+            // 1. Lưu vào bảng orders
+            db.prepare(`
+                INSERT INTO orders (order_code, customer_name, phone, address, total_amount, status, items_json, has_custom, status_step_idx, created_at)
+                VALUES (?, ?, ?, ?, ?, 'Chờ xác nhận', ?, ?, 0, ?)
+            `).run(code, cName, cPhone, cAddr, cTotal, JSON.stringify(cItems), cCustom, now);
+
+            // 2. Trừ tồn kho và tăng số lượng bán trong inventory
+            const updateStock = db.prepare(`
+                UPDATE inventory 
+                SET stock = MAX(0, stock - ?), sold = sold + ?
+                WHERE product_id = ? AND color_variant = ?
+            `);
+            const updateStockFallback = db.prepare(`
+                UPDATE inventory
+                SET stock = MAX(0, stock - ?), sold = sold + ?
+                WHERE product_id = ?
+            `);
+
+            for (const item of cItems) {
+                const qty = Number(item.quantity || item.qty || 1);
+                const pId = item.id || item.productId;
+                const color = item.color || item.colorName || item.selectedColor;
+                if (pId) {
+                    if (color) {
+                        updateStock.run(qty, qty, pId, color);
+                    } else {
+                        updateStockFallback.run(qty, qty, pId);
+                    }
+                }
+            }
+
+            // 3. Cộng M-Coin thưởng nếu khách đã đăng ký
+            if (cPhone) {
+                const user = db.prepare('SELECT phone, mcoin FROM users WHERE phone = ?').get(cPhone);
+                if (user) {
+                    const bonusMcoin = Math.floor(cTotal * 0.05 / 1000);
+                    db.prepare('UPDATE users SET mcoin = mcoin + ? WHERE phone = ?').run(bonusMcoin, cPhone);
+                }
+            }
+        });
+
+        createTx();
+        return res.json({ success: true, message: 'Tạo đơn hàng thành công!', order_code: code });
+    } catch (e) {
+        console.error('Lỗi POST /api/orders/create:', e);
+        res.status(500).json({ success: false, message: 'Lỗi tạo đơn hàng: ' + e.message });
     }
 });
 
 /**
  * GET /api/orders
- * Lấy danh sách đơn hàng (Admin xem hết, Khách xem theo SĐT)
+ * Trả về toàn bộ danh sách đơn hàng từ SQLite cho trang Admin
  */
-app.get('/api/orders', async (req, res) => {
+app.get('/api/orders', (req, res) => {
     try {
-        const { phone } = req.query;
-
-        if (dbConnected && pool) {
-            let sql = 'SELECT * FROM orders';
-            const params = [];
-
-            if (phone) {
-                sql += ' WHERE customer_phone = ? OR account_phone = ?';
-                params.push(phone, phone);
+        const orders = db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all();
+        orders.forEach(o => {
+            if (typeof o.items_json === 'string') {
+                try { o.items = JSON.parse(o.items_json); } catch(e) { o.items = []; }
+            } else {
+                o.items = o.items_json || [];
             }
-
-            sql += ' ORDER BY start_time DESC';
-            const [orders] = await pool.query(sql, params);
-
-            for (const ord of orders) {
-                const [items] = await pool.query('SELECT * FROM order_items WHERE order_code = ?', [ord.order_code]);
-                ord.items = items;
-            }
-
-            return res.json({ success: true, count: orders.length, data: orders });
-        }
-
-        // FALLBACK ĐỒNG BỘ ĐƠN HÀNG: Trả về đơn hàng đã lưu trên máy chủ
-        let list = fallbackOrders;
-        if (phone) {
-            list = fallbackOrders.filter(o => o.phone === phone || o.accountPhone === phone || o.customer_phone === phone || o.account_phone === phone);
-        }
-        res.json({ success: true, source: 'fallback', count: list.length, data: list });
-    } catch (err) {
-        console.error('Lỗi GET /api/orders:', err);
-        res.status(500).json({ success: false, message: 'Lỗi lấy danh sách đơn', error: err.message });
+        });
+        return res.json({ success: true, count: orders.length, orders });
+    } catch (e) {
+        console.error('Lỗi GET /api/orders:', e);
+        res.status(500).json({ success: false, message: e.message });
     }
 });
 
 /**
- * PUT /api/orders/:orderCode/status
+ * PATCH /api/orders/:code/status & PUT /api/orders/:code/status
+ * Cập nhật trạng thái duyệt đơn hàng của Admin
  */
-app.put('/api/orders/:orderCode/status', async (req, res) => {
+app.all(['/api/orders/:code/status', '/api/orders/:orderCode/status'], (req, res) => {
+    if (req.method !== 'PATCH' && req.method !== 'PUT') {
+        return res.status(405).json({ success: false, message: 'Method Not Allowed' });
+    }
     try {
-        const { orderCode } = req.params;
-        const { stepIdx, adminConfirmed, status } = req.body;
-
-        if (dbConnected && pool) {
-            let sql = 'UPDATE orders SET status_step_idx = ?';
-            const params = [stepIdx];
-
-            if (status) {
-                sql += ', status = ?';
-                params.push(status);
-            }
-
-            if (adminConfirmed !== undefined) {
-                sql += ', admin_confirmed = ?';
-                params.push(adminConfirmed ? 1 : 0);
-                if (adminConfirmed) {
-                    sql += ', confirmed_at = ?';
-                    params.push(Date.now());
-                }
-            }
-
-            if (stepIdx === 4) {
-                sql += ', delivered_at = ?';
-                params.push(Date.now());
-            }
-
-            sql += ' WHERE order_code = ?';
-            params.push(orderCode);
-
-            await pool.query(sql, params);
-        }
-
-        // Cập nhật ngay trong fallbackOrders trên bộ nhớ máy chủ (hỗ trợ sync đa thiết bị tức thì)
-        const fbOrd = fallbackOrders.find(o => o.orderCode === orderCode || o.order_code === orderCode);
-        if (fbOrd) {
-            if (typeof stepIdx === 'number') {
-                fbOrd.status_step_idx = stepIdx;
-                fbOrd.manualStepIdx = stepIdx;
-            }
-            if (status) fbOrd.status = status;
-            if (adminConfirmed !== undefined) {
-                fbOrd.admin_confirmed = !!adminConfirmed;
-                fbOrd.adminConfirmed = !!adminConfirmed;
-                if (adminConfirmed && !fbOrd.confirmedAt) fbOrd.confirmedAt = Date.now();
-            }
-            if (stepIdx === 4 && !fbOrd.deliveredAt) fbOrd.deliveredAt = Date.now();
-        }
-
-        return res.json({ success: true, message: `Đã cập nhật tiến trình đơn ${orderCode} sang bước ${stepIdx}` });
-    } catch (err) {
-        console.error('Lỗi PUT /api/orders/:orderCode/status:', err);
-        res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái', error: err.message });
+        const code = req.params.code || req.params.orderCode;
+        const { status, status_step_idx, statusStepIdx } = req.body;
+        const stepIdx = status_step_idx !== undefined ? status_step_idx : (statusStepIdx !== undefined ? statusStepIdx : 1);
+        db.prepare('UPDATE orders SET status = ?, status_step_idx = ? WHERE order_code = ?').run(status, stepIdx, code);
+        return res.json({ success: true, message: 'Cập nhật trạng thái đơn hàng thành công!' });
+    } catch (e) {
+        console.error('Lỗi update order status:', e);
+        res.status(500).json({ success: false, message: e.message });
     }
 });
 
 /**
- * POST /api/orders/:orderCode/cancel
- * Hủy đơn hàng và hoàn trả tồn kho vào SQL
+ * POST /api/orders/:code/cancel
+ * Hủy đơn hàng và hoàn lại tồn kho
  */
-app.post('/api/orders/:orderCode/cancel', async (req, res) => {
+app.post(['/api/orders/:code/cancel', '/api/orders/:orderCode/cancel'], (req, res) => {
     try {
-        const { orderCode } = req.params;
-
-        if (dbConnected && pool) {
-            const conn = await pool.getConnection();
-            try {
-                await conn.beginTransaction();
-
-                // Lấy chi tiết đơn
-                const [items] = await conn.query('SELECT * FROM order_items WHERE order_code = ?', [orderCode]);
-
-                // Hoàn lại tồn kho từng món
-                for (const it of items) {
-                    if (it.product_id) {
-                        await conn.query(`
-                            UPDATE product_variants 
-                            SET stock = stock + ?, sold = GREATEST(0, sold - ?)
-                            WHERE product_id = ? 
-                            ORDER BY id ASC LIMIT 1 OFFSET ?
-                        `, [it.qty, it.qty, it.product_id, it.variant_index || 0]);
-                    }
+        const code = req.params.code || req.params.orderCode;
+        const order = db.prepare('SELECT * FROM orders WHERE order_code = ?').get(code);
+        if (order) {
+            db.prepare('UPDATE orders SET status = ?, status_step_idx = 4 WHERE order_code = ?').run('Đã hủy', code);
+            let items = [];
+            if (typeof order.items_json === 'string') {
+                try { items = JSON.parse(order.items_json); } catch(e) {}
+            }
+            const returnStock = db.prepare('UPDATE inventory SET stock = stock + ?, sold = MAX(0, sold - ?) WHERE product_id = ?');
+            items.forEach(it => {
+                const qty = Number(it.quantity || it.qty || 1);
+                if (it.id || it.productId) {
+                    returnStock.run(qty, qty, it.id || it.productId);
                 }
-
-                // Đánh dấu hủy
-                await conn.query('UPDATE orders SET is_cancelled = TRUE WHERE order_code = ?', [orderCode]);
-
-                await conn.commit();
-                return res.json({ success: true, message: `Đã hủy đơn ${orderCode} và hoàn trả đầy đủ tồn kho vào hệ thống!` });
-            } catch (txErr) {
-                await conn.rollback();
-                throw txErr;
-            } finally {
-                conn.release();
-            }
+            });
         }
-
-        // Hoàn lại tồn kho trong fallbackProducts trên Server Cloud
-        const ordToCancel = fallbackOrders.find(o => o.orderCode === orderCode || o.order_code === orderCode);
-        if (ordToCancel) {
-            ordToCancel.status = 'Đã hủy';
-            if (Array.isArray(ordToCancel.cartSnapshot)) {
-                ordToCancel.cartSnapshot.forEach(item => {
-                    if (item.productId) {
-                        const prod = fallbackProducts.find(p => p.id === Number(item.productId));
-                        if (prod && Array.isArray(prod.variants)) {
-                            const v = prod.variants[item.variantIndex || 0] || prod.variants[0];
-                            if (v) {
-                                v.stock = (v.stock || 0) + Number(item.qty || 1);
-                                v.sold = Math.max(0, (v.sold || 0) - Number(item.qty || 1));
-                            }
-                            prod.stock = prod.variants.reduce((s, vr) => s + (vr.stock || 0), 0);
-                            prod.sold = prod.variants.reduce((s, vr) => s + (vr.sold || 0), 0);
-                        }
-                    }
-                });
-            }
-        }
-
-        res.json({ success: true, message: 'Đã hủy đơn và hoàn trả tồn kho trên Server Cloud' });
-    } catch (err) {
-        console.error('Lỗi POST /api/orders/:orderCode/cancel:', err);
-        res.status(500).json({ success: false, message: 'Lỗi hủy đơn hoàn kho', error: err.message });
+        res.json({ success: true, message: 'Đã hủy đơn và hoàn trả tồn kho' });
+    } catch (e) {
+        console.error('Lỗi cancel order:', e);
+        res.status(500).json({ success: false, message: e.message });
     }
 });
 
 // ====================================================================
-// 4. RESTful APIs: MÃ GIẢM GIÁ (COUPONS 48H)
+// 4. RESTful APIs: MÃ GIẢM GIÁ (VOUCHERS & COUPONS)
 // ====================================================================
 
-/**
- * POST /api/coupons
- * Admin phát hành mã giảm giá
- */
-app.post('/api/coupons', async (req, res) => {
+app.post('/api/coupons', (req, res) => {
     try {
         const { code, percent, targetPhone = null } = req.body;
         if (!code || !percent) {
             return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã và % giảm giá!' });
         }
-
-        if (dbConnected && pool) {
-            await pool.query(
-                'INSERT INTO coupons (code, percent, created_at, target_phone, is_active) VALUES (?, ?, ?, ?, TRUE)',
-                [code.toUpperCase(), Number(percent), Date.now(), targetPhone || null]
-            );
-            return res.status(201).json({ success: true, message: `Đã phát hành mã ${code.toUpperCase()} (-${percent}%) có hiệu lực 48 giờ!` });
-        }
-
-        res.status(201).json({ success: true, message: 'Đã tạo coupon (Fallback)' });
+        const insertVoucher = db.prepare('INSERT OR REPLACE INTO vouchers (code, discount_percent, target_phone, is_used, expires_at) VALUES (?, ?, ?, 0, ?)');
+        insertVoucher.run(code.toUpperCase(), Number(percent), targetPhone || null, Date.now() + 48 * 3600 * 1000);
+        return res.status(201).json({ success: true, message: `Đã phát hành mã ${code.toUpperCase()} (-${percent}%)!` });
     } catch (err) {
-        console.error('Lỗi POST /api/coupons:', err);
         res.status(500).json({ success: false, message: 'Lỗi tạo coupon', error: err.message });
     }
 });
 
-/**
- * POST /api/coupons/apply
- * Kiểm tra tính hợp lệ và áp mã voucher
- */
-app.post('/api/coupons/apply', async (req, res) => {
+app.post('/api/coupons/apply', (req, res) => {
     try {
         const { code, phone } = req.body;
         if (!code) return res.status(400).json({ success: false, message: 'Chưa nhập mã giảm giá!' });
 
-        const COUPON_VALID_DURATION_MS = 48 * 60 * 60 * 1000;
-
-        if (dbConnected && pool) {
-            const [rows] = await pool.query('SELECT * FROM coupons WHERE code = ? AND is_active = TRUE', [code.toUpperCase()]);
-            if (rows.length === 0) {
-                return res.status(404).json({ success: false, message: 'Mã giảm giá không tồn tại hoặc đã bị tắt!' });
-            }
-
-            const cp = rows[0];
-            const now = Date.now();
-
-            if (now - cp.created_at > COUPON_VALID_DURATION_MS) {
-                return res.status(400).json({ success: false, message: 'Mã giảm giá này đã hết hạn sử dụng (48h)!' });
-            }
-
-            if (cp.target_phone && cp.target_phone !== phone) {
-                return res.status(403).json({ success: false, message: 'Mã này là voucher độc quyền cho tài khoản khác!' });
-            }
-
-            // Kiểm tra đã dùng chưa
-            if (phone) {
-                const [used] = await pool.query('SELECT id FROM coupon_usages WHERE code = ? AND account_phone = ?', [cp.code, phone]);
-                if (used.length > 0) {
-                    return res.status(400).json({ success: false, message: 'Tài khoản của bạn đã sử dụng mã này rồi!' });
-                }
-            }
-
-            return res.json({
-                success: true,
-                message: `Áp mã thành công! Giảm ${cp.percent}%`,
-                coupon: { code: cp.code, percent: cp.percent }
-            });
+        const voucher = db.prepare('SELECT * FROM vouchers WHERE code = ?').get(code.toUpperCase());
+        if (!voucher) {
+            return res.status(404).json({ success: false, message: 'Mã giảm giá không tồn tại!' });
+        }
+        if (voucher.is_used) {
+            return res.status(400).json({ success: false, message: 'Mã này đã được sử dụng!' });
+        }
+        if (voucher.expires_at < Date.now()) {
+            return res.status(400).json({ success: false, message: 'Mã này đã hết hạn sử dụng!' });
+        }
+        if (voucher.target_phone && voucher.target_phone !== phone) {
+            return res.status(403).json({ success: false, message: 'Mã này là voucher độc quyền cho tài khoản khác!' });
         }
 
-        // Fallback test code
-        if (code.toUpperCase().includes('10')) {
-            return res.json({ success: true, coupon: { code: code.toUpperCase(), percent: 10 } });
-        }
-
-        res.status(400).json({ success: false, message: 'Mã giảm giá không hợp lệ!' });
+        return res.json({
+            success: true,
+            message: `Áp mã thành công! Giảm ${voucher.discount_percent}%`,
+            coupon: { code: voucher.code, percent: voucher.discount_percent }
+        });
     } catch (err) {
-        console.error('Lỗi POST /api/coupons/apply:', err);
         res.status(500).json({ success: false, message: 'Lỗi kiểm tra mã giảm giá', error: err.message });
     }
 });
@@ -1264,10 +500,6 @@ app.post('/api/coupons/apply', async (req, res) => {
 // 5. RESTful APIs: PROXY GEMINI AI (GIẤU KEY AN TOÀN TRÊN SERVER)
 // ====================================================================
 
-/**
- * POST /api/ai/try-on
- * Proxy Gemini AI Virtual Try-on (Thử đồ & tư vấn phối áo bóng rổ)
- */
 app.post('/api/ai/try-on', async (req, res) => {
     try {
         const { userPhotoBase64, productName, promptExtra } = req.body;
@@ -1357,10 +589,6 @@ VĂN PHONG VÀ NGUYÊN TẮC:
 - Xưng hô "mình" - "bạn", dùng tiếng Việt tự nhiên, ngắt dòng rõ ràng, định dạng bullet list hoặc in đậm để khách dễ đọc trên điện thoại.
 - Giới thiệu khách đặt hàng hoặc chọn sản phẩm ngay trên Mairua.com.`;
 
-/**
- * POST /api/chat (Hỗ trợ cả POST /api/ai/chat)
- * AI Chatbot Tư Vấn Thiết Bị Bóng Rổ qua Groq API (Llama 3.3 70B Versatile)
- */
 app.post(['/api/chat', '/api/ai/chat'], async (req, res) => {
     try {
         const { message, history } = req.body;
@@ -1372,7 +600,6 @@ app.post(['/api/chat', '/api/ai/chat'], async (req, res) => {
             { role: 'system', content: MAIRUA_SYSTEM_PROMPT }
         ];
 
-        // Đưa ngữ cảnh lịch sử trò chuyện nếu có
         if (Array.isArray(history) && history.length > 0) {
             const formattedHistory = history.slice(-6).map(h => ({
                 role: h.role === 'user' ? 'user' : 'assistant',
@@ -1418,7 +645,6 @@ app.post(['/api/chat', '/api/ai/chat'], async (req, res) => {
                 }
             }
         } else {
-            // Fallback gọi trực tiếp endpoint Groq nếu SDK chưa sẵn sàng
             const rawResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -1448,99 +674,6 @@ app.post(['/api/chat', '/api/ai/chat'], async (req, res) => {
             message: 'Lỗi xử lý phản hồi AI Chatbot',
             error: err.message
         });
-    }
-});
-
-// ====================================================================
-// 5.5. PROXY BẢO MẬT GOOGLE SHEETS & CLOUD BACKUP (ẨN HOÀN TOÀN URL)
-// ====================================================================
-
-/**
- * POST /api/sync/sheets
- * Chuyển tiếp gửi đơn hàng, tài khoản, coupon lên Google Sheets từ server
- */
-app.post('/api/sync/sheets', async (req, res) => {
-    try {
-        const sheetsUrl = process.env.GOOGLE_SHEETS_API_URL;
-        if (!sheetsUrl) {
-            return res.json({ success: true, message: 'Google Sheets URL chưa được cấu hình' });
-        }
-
-        await fetch(sheetsUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(req.body)
-        });
-
-        res.json({ success: true, message: 'Đã đồng bộ lên Google Sheets thành công!' });
-    } catch (err) {
-        console.warn('Proxy Sheets cảnh báo:', err.message);
-        res.json({ success: false, message: 'Đã ghi nhận cục bộ' });
-    }
-});
-
-/**
- * GET /api/sync/sheets
- * Lấy dữ liệu từ Google Sheets về server
- */
-app.get('/api/sync/sheets', async (req, res) => {
-    try {
-        const sheetsUrl = process.env.GOOGLE_SHEETS_API_URL;
-        if (!sheetsUrl) {
-            return res.json({ success: false, message: 'Google Sheets URL chưa được cấu hình' });
-        }
-
-        const response = await fetch(sheetsUrl);
-        if (!response.ok) return res.status(response.status).json({ success: false });
-
-        const data = await response.json();
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
-/**
- * GET /api/sync/cloud
- * Đồng bộ dữ liệu dự phòng JSONBin
- */
-app.get('/api/sync/cloud', async (req, res) => {
-    try {
-        const binId = process.env.JSONBIN_BIN_ID;
-        const masterKey = process.env.JSONBIN_MASTER_KEY;
-        if (!binId || !masterKey) return res.json({ record: null });
-
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-            headers: { 'X-Master-Key': masterKey }
-        });
-        const data = await response.json();
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
-/**
- * PUT /api/sync/cloud
- */
-app.put('/api/sync/cloud', async (req, res) => {
-    try {
-        const binId = process.env.JSONBIN_BIN_ID;
-        const masterKey = process.env.JSONBIN_MASTER_KEY;
-        if (!binId || !masterKey) return res.json({ success: true });
-
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Master-Key': masterKey
-            },
-            body: JSON.stringify(req.body)
-        });
-        const data = await response.json();
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
     }
 });
 

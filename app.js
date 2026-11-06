@@ -180,43 +180,19 @@
                 a.addresses = [];
             }
         });
-        localStorage.setItem('mairua_addressesByPhone', JSON.stringify(addressesByPhone));
-        localStorage.setItem('mairua_accountsDB', JSON.stringify(accountsDB));
-
-        let savedCustomerSession = JSON.parse(sessionStorage.getItem('mairua_currentCustomer')) || JSON.parse(localStorage.getItem('mairua_currentCustomer'));
-        if (savedCustomerSession && (savedCustomerSession.isAdmin || savedCustomerSession.phone === "0909501753")) {
-            localStorage.removeItem('mairua_currentCustomer');
-            if (!savedCustomerSession.adminTabAuth5888) {
-                sessionStorage.removeItem('mairua_currentCustomer');
-                savedCustomerSession = null;
-            }
-        }
-        let currentCustomer = savedCustomerSession || {
+        let savedUserPhone = localStorage.getItem('mairua_currentUserPhone') || sessionStorage.getItem('mairua_currentUserPhone');
+        let currentCustomer = {
             phone: "", pass: "", name: "Khách vãng lai", orders: 0, mcoin: 0, tokens: 3, loggedIn: false, isAdmin: false, addresses: []
         };
-        if (typeof currentCustomer.mcoin !== 'number') currentCustomer.mcoin = 0;
-        if (currentCustomer.loggedIn && currentCustomer.phone) {
-            let dbAcc = accountsDB.find(a => a.phone === currentCustomer.phone);
-            if (profileByPhone[currentCustomer.phone]) {
-                if (profileByPhone[currentCustomer.phone].name) currentCustomer.name = profileByPhone[currentCustomer.phone].name;
-                if (profileByPhone[currentCustomer.phone].pass && currentCustomer.phone !== "0909501753") currentCustomer.pass = profileByPhone[currentCustomer.phone].pass;
-                if (typeof profileByPhone[currentCustomer.phone].email === 'string') currentCustomer.email = profileByPhone[currentCustomer.phone].email;
-            } else if (dbAcc && dbAcc.email) {
-                currentCustomer.email = dbAcc.email;
+        if (savedUserPhone) {
+            currentCustomer.phone = savedUserPhone;
+            currentCustomer.loggedIn = true;
+            if (savedUserPhone === "0909501753") {
+                currentCustomer.name = "Quản Trị Viên (Admin)";
+                currentCustomer.isAdmin = true;
+                currentCustomer.adminTabAuth5888 = true;
+                currentCustomer.tokens = 99;
             }
-            if (Array.isArray(addressesByPhone[currentCustomer.phone])) {
-                currentCustomer.addresses = addressesByPhone[currentCustomer.phone];
-            } else if (dbAcc && Array.isArray(dbAcc.addresses)) {
-                currentCustomer.addresses = dbAcc.addresses;
-            } else if (!Array.isArray(currentCustomer.addresses)) {
-                currentCustomer.addresses = [];
-            }
-            sessionStorage.setItem('mairua_currentCustomer', JSON.stringify(currentCustomer));
-            if (!currentCustomer.isAdmin) {
-                localStorage.setItem('mairua_currentCustomer', JSON.stringify(currentCustomer));
-            }
-        } else {
-            currentCustomer.addresses = [];
         }
 
         // HÀM GỬI DỮ LIỆU ĐẾN GOOGLE SHEETS QUA PROXY BACKEND (ẨN TOÀN BỘ URL NHẠY CẢM)
@@ -3779,28 +3755,32 @@
                 }
             });
 
-            // Đồng bộ đơn hàng tới MySQL REST API Backend
+            // Đồng bộ đơn hàng tới SQLite REST API Backend (/api/orders/create)
             (async () => {
                 try {
-                    await fetch('/api/orders', {
+                    const ordRes = await fetch('/api/orders/create', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            orderCode: newOrder.orderCode,
-                            accountPhone: currentCustomer.phone,
-                            customerName: newOrder.name,
-                            customerPhone: newOrder.phone,
-                            customerAddress: newOrder.addr,
-                            subtotal: newOrder.subtotal,
-                            discountAmount: newOrder.discountAmt,
-                            shippingFee: newOrder.shippingFee,
-                            finalAmount: roundedFinalTotal,
-                            items: newOrder.cartSnapshot
+                            order_code: newOrder.orderCode,
+                            customer_name: newOrder.name,
+                            phone: newOrder.phone,
+                            address: newOrder.addr,
+                            total_amount: roundedFinalTotal,
+                            items: cart,
+                            has_custom: newOrder.hasCustomJersey
                         })
                     });
-                    console.log('✅ Đã lưu đơn hàng vào MySQL Database thành công!');
+                    const resJson = await ordRes.json();
+                    if (resJson.success) {
+                        console.log('✅ Đã lưu đơn hàng vào SQLite Database thành công!');
+                    }
+                    taiSanPhamTuBackendAPI();
+                    if (currentCustomer && currentCustomer.phone) {
+                        taiThongTinTaiKhoanTuBackend(currentCustomer.phone);
+                    }
                 } catch (e) {
-                    console.log('ℹ️ Đơn hàng đã được lưu an toàn trong LocalStorage & Google Sheets.');
+                    console.log('ℹ️ Lỗi gửi đơn hàng backend: ' + e.message);
                 }
             })();
 
@@ -4915,8 +4895,13 @@
                 document.getElementById('view-remoteOrder').classList.add('active');
                 let navRo = document.getElementById('nav-remoteOrder');
                 if (navRo) navRo.classList.add('active');
-                if(currentCustomer.isAdmin) renderAdminDashboard();
-                else renderCustomerOrderHistory();
+                if(currentCustomer.isAdmin) {
+                    renderAdminDashboard();
+                    taiDuLieuAdminTuServer();
+                } else {
+                    renderCustomerOrderHistory();
+                    if (currentCustomer.phone) taiThongTinTaiKhoanTuBackend(currentCustomer.phone);
+                }
                 dongBoTuGoogleSheets(true);
             } else if (tabName === 'aiTryOn') {
                 document.getElementById('view-aiTryOn').classList.add('active');
@@ -6970,95 +6955,96 @@
         async function xuLyDangNhap() {
             let phone = document.getElementById('loginPhone').value.trim();
             let pass = document.getElementById('loginPass').value.trim();
-
-            if (phone === "0909501753") {
-                if (pass !== "5888") {
-                    alert('❌ Sai mật khẩu tài khoản Admin!');
-                    return;
-                }
-                luuGioHangLocal(); // Lưu giỏ của tài khoản trước đó nếu có
-                currentCustomer = { phone: "0909501753", pass: "5888", name: "Quản Trị Viên (Admin)", orders: 99, mcoin: 0, tokens: 99, loggedIn: true, isAdmin: true, adminTabAuth5888: true, addresses: [] };
-                sessionStorage.setItem('mairua_currentCustomer', JSON.stringify(currentCustomer));
-                localStorage.removeItem('mairua_currentCustomer');
-                cart = []; // Admin không mua sắm
-                localStorage.setItem('mairua_cart', JSON.stringify(cart));
-                capNhatHeaderTaiKhoan(); dongModal('loginModal'); resetSessionTimeout(); chuyenTab('remoteOrder');
-                alert(`🛡️ Đăng nhập ADMIN thành công!`);
+            if (!phone || !pass) {
+                alert('⚠️ Vui lòng nhập số điện thoại và mật khẩu!');
                 return;
             }
 
-            let found = accountsDB.find(acc => acc.phone === phone && acc.pass === pass);
-            if (!found) {
-                await dongBoTuGoogleSheets();
-                found = accountsDB.find(acc => acc.phone === phone && acc.pass === pass);
-            }
-            if (!found) {
-                await taiDuLieuTuDamMay(false);
-                found = accountsDB.find(acc => acc.phone === phone && acc.pass === pass);
-            }
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password: pass })
+                });
+                const data = await res.json();
+                if (data.success && data.user) {
+                    localStorage.setItem('mairua_currentUserPhone', phone);
+                    currentCustomer = {
+                        phone: data.user.phone,
+                        name: data.user.name,
+                        email: data.user.email || '',
+                        orders: data.user.orders || 0,
+                        mcoin: data.user.mcoin || 0,
+                        tokens: data.user.tokens || 3,
+                        tier: data.user.tier || 'Đồng',
+                        loggedIn: true,
+                        isAdmin: !!data.user.isAdmin,
+                        adminTabAuth5888: !!data.user.isAdmin,
+                        addresses: data.user.addresses || []
+                    };
 
-            if(found) {
-                luuGioHangLocal(); // Lưu giỏ trước đó (ví dụ giỏ khách vãng lai)
-                let savedAddrs = Array.isArray(addressesByPhone[phone]) && addressesByPhone[phone].length > 0
-                    ? addressesByPhone[phone]
-                    : (Array.isArray(found.addresses) ? found.addresses : []);
-                addressesByPhone[phone] = savedAddrs;
-                localStorage.setItem('mairua_addressesByPhone', JSON.stringify(addressesByPhone));
-                currentCustomer = { ...found, mcoin: found.mcoin || 0, addresses: savedAddrs, loggedIn: true };
-                sessionStorage.setItem('mairua_currentCustomer', JSON.stringify(currentCustomer));
-                if (!currentCustomer.isAdmin) {
-                    localStorage.setItem('mairua_currentCustomer', JSON.stringify(currentCustomer));
+                    await taiThongTinTaiKhoanTuBackend(phone);
+
+                    if (currentCustomer.isAdmin) {
+                        cart = [];
+                        chuyenTab('remoteOrder');
+                        taiDuLieuAdminTuServer();
+                    } else {
+                        dongBoGioHangTuServer(phone);
+                    }
+
+                    capNhatHeaderTaiKhoan();
+                    dongModal('loginModal');
+                    resetSessionTimeout();
+                    alert(`🎉 Đăng nhập thành công! Xin chào ${currentCustomer.name}`);
+                } else {
+                    alert('❌ ' + (data.message || 'Sai Số điện thoại hoặc Mật khẩu!'));
                 }
-                // Tải giỏ hàng riêng biệt được lưu theo số điện thoại của tài khoản này
-                cart = layGioHangTheoKey(phone);
-                dongBoGioHangTuServer(phone);
-                dongBoDonHangTuBackend(phone);
-                dongBoTuGoogleSheets().then(() => renderTrangTaiKhoan());
-                localStorage.setItem('mairua_cart', JSON.stringify(cart));
-                appliedCoupon = null;
-                capNhatHeaderTaiKhoan(); dongModal('loginModal'); resetSessionTimeout();
-                alert(`Đăng nhập thành công! Xin chào ${currentCustomer.name}`);
-            } else {
-                alert('Sai Số điện thoại hoặc Mật khẩu!');
+            } catch (e) {
+                alert('❌ Lỗi kết nối đăng nhập: ' + e.message);
             }
         }
 
-        function xuLyDangKy() {
+        async function xuLyDangKy() {
             let name = document.getElementById('regName').value.trim();
             let phone = document.getElementById('regPhone').value.trim();
             let pass = document.getElementById('regPass').value.trim();
             if(!name || name.length < 2) { alert('⚠️ Vui lòng nhập đầy đủ Họ và Tên!'); return; }
             if(!phone || phone.length < 8) { alert('⚠️ Vui lòng nhập số điện thoại hợp lệ!'); return; }
-            if(!pass) { alert('Vui lòng nhập mật khẩu!'); return; }
-            if(accountsDB.find(acc => acc.phone === phone)) { alert('Số điện thoại đã tồn tại!'); return; }
+            if(!pass) { alert('⚠️ Vui lòng nhập mật khẩu!'); return; }
 
-            luuGioHangLocal(); // Lưu giỏ trước đó
-            let newAcc = { phone, pass, name, orders: 0, mcoin: 0, tokens: 3, isAdmin: false, addresses: [] };
-            addressesByPhone[phone] = [];
-            localStorage.setItem('mairua_addressesByPhone', JSON.stringify(addressesByPhone));
-            accountsDB.push(newAcc);
-            localStorage.setItem('mairua_accountsDB', JSON.stringify(accountsDB));
-            currentCustomer = { ...newAcc, loggedIn: true };
-            sessionStorage.setItem('mairua_currentCustomer', JSON.stringify(currentCustomer));
-            if (!currentCustomer.isAdmin) {
-                localStorage.setItem('mairua_currentCustomer', JSON.stringify(currentCustomer));
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password: pass, name })
+                });
+                const data = await res.json();
+                if (data.success && data.user) {
+                    localStorage.setItem('mairua_currentUserPhone', phone);
+                    currentCustomer = {
+                        phone: data.user.phone,
+                        name: data.user.name,
+                        email: data.user.email || '',
+                        orders: 0,
+                        mcoin: 0,
+                        tokens: 3,
+                        tier: 'Đồng',
+                        loggedIn: true,
+                        isAdmin: false,
+                        addresses: []
+                    };
+                    cart = [];
+                    capNhatHeaderTaiKhoan();
+                    dongModal('registerModal');
+                    resetSessionTimeout();
+                    alert(`🎉 Đăng ký tài khoản thành công! Chào mừng ${name}`);
+                } else {
+                    alert('❌ ' + (data.message || 'Số điện thoại đã tồn tại!'));
+                }
+            } catch (e) {
+                alert('❌ Lỗi kết nối máy chủ: ' + e.message);
             }
-            // Khởi tạo giỏ hàng mới tinh cho tài khoản mới
-            cartsByPhone[phone] = [];
-            cart = [];
-            localStorage.setItem('mairua_cartsByPhone', JSON.stringify(cartsByPhone));
-            localStorage.setItem('mairua_cart', JSON.stringify(cart));
-            appliedCoupon = null;
-            capNhatHeaderTaiKhoan(); dongModal('registerModal'); resetSessionTimeout(); luuDuLieuLenDamMay();
-            guiDuLieuGoogleSheets('register', {
-                phone: newAcc.phone,
-                name: newAcc.name,
-                pass: newAcc.pass,
-                mcoin: newAcc.mcoin,
-                orders: newAcc.orders,
-                addresses: []
-            });
-            alert(`🎉 Đăng ký thành công! Chào mừng ${name}`);
         }
 
         // KHỞI TẠO HỆ THỐNG
@@ -7154,6 +7140,94 @@ async function taiSanPhamTuBackendAPI() {
         }
     } catch (e) {
         console.log('ℹ️ Kết nối Local fallback.');
+    }
+}
+
+// 1.0 Tải thông tin tài khoản và lịch sử đơn hàng từ Backend SQLite
+async function taiThongTinTaiKhoanTuBackend(phone) {
+    if (!phone) return;
+    try {
+        const res = await fetch('/api/user/' + encodeURIComponent(phone) + '?t=' + Date.now());
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.user) {
+                currentCustomer.name = data.user.name || currentCustomer.name;
+                currentCustomer.email = data.user.email || currentCustomer.email;
+                currentCustomer.mcoin = data.user.mcoin !== undefined ? data.user.mcoin : currentCustomer.mcoin;
+                currentCustomer.tokens = data.user.tokens !== undefined ? data.user.tokens : currentCustomer.tokens;
+                currentCustomer.tier = data.user.tier || currentCustomer.tier;
+                currentCustomer.isAdmin = !!data.user.isAdmin;
+            }
+            if (data.success && Array.isArray(data.orders)) {
+                customerOrdersList = data.orders.map(o => ({
+                    orderCode: o.order_code,
+                    finalTotal: o.total_amount,
+                    status: o.status,
+                    statusStepIdx: o.status_step_idx || 0,
+                    cartSnapshot: o.items || [],
+                    itemsList: (o.items || []).map(i => `• ${i.name || i.product_name} (x${i.quantity || i.qty || 1})`),
+                    startTime: Number(o.created_at) || Date.now()
+                }));
+                if (currentCustomer.phone === phone) {
+                    currentCustomer.orders = customerOrdersList.length;
+                }
+            }
+            capNhatHeaderTaiKhoan();
+            renderCustomerOrderHistory();
+            renderTrangTaiKhoan();
+        }
+    } catch (e) {
+        console.warn('Lỗi tải thông tin tài khoản backend:', e.message);
+    }
+}
+
+// 1.05 Tải toàn bộ đơn hàng & tồn kho tập trung từ SQLite cho trang Admin
+async function taiDuLieuAdminTuServer() {
+    try {
+        const [ordRes, invRes] = await Promise.all([
+            fetch('/api/orders?t=' + Date.now()),
+            fetch('/api/inventory?t=' + Date.now())
+        ]);
+        if (ordRes.ok) {
+            const ordData = await ordRes.json();
+            if (ordData.success && Array.isArray(ordData.orders)) {
+                remoteOrdersList = ordData.orders.map(o => ({
+                    orderCode: o.order_code,
+                    accountPhone: o.phone,
+                    name: o.customer_name,
+                    phone: o.phone,
+                    addr: o.address,
+                    finalTotal: o.total_amount,
+                    status: o.status,
+                    statusStepIdx: o.status_step_idx || 0,
+                    cartSnapshot: o.items || [],
+                    itemsList: (o.items || []).map(i => `• ${i.name || i.product_name || 'Sản phẩm'} (x${i.quantity || i.qty || 1})`),
+                    itemsCount: (o.items || []).reduce((s, i) => s + Number(i.quantity || i.qty || 1), 0),
+                    isRealCustomerOrder: true,
+                    adminConfirmed: o.status !== 'Chờ xác nhận',
+                    startTime: Number(o.created_at) || Date.now()
+                }));
+            }
+        }
+        if (invRes.ok) {
+            const invData = await invRes.json();
+            if (invData.success && Array.isArray(invData.data)) {
+                invData.data.forEach(dbItem => {
+                    let localItem = products.find(p => p.id === dbItem.id);
+                    if (localItem) {
+                        localItem.price = dbItem.price;
+                        localItem.costPrice = dbItem.costPrice;
+                        if (Array.isArray(dbItem.variants)) localItem.variants = dbItem.variants;
+                        localItem.stock = dbItem.stock;
+                        localItem.sold = dbItem.sold;
+                    }
+                });
+                capNhatTongStockVaSoldSanPham();
+            }
+        }
+        renderAdminDashboard();
+    } catch (e) {
+        console.warn('Lỗi tải dữ liệu admin từ SQLite:', e.message);
     }
 }
 
