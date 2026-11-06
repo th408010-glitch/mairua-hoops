@@ -7,26 +7,19 @@
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "engines": {
-    "node": ">=20.0.0 <=22.x"
-  },
   "keywords": [
     "basketball",
     "mairua",
     "ecommerce",
-    "sqlite",
+    "sheets",
     "express"
   ],
   "author": "Mairua Hoops Team",
   "license": "ISC",
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "groq-sdk": "^1.6.0",
-    "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.9.7"
+    "groq-sdk": "^1.6.0"
   }
 }
