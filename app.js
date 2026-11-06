@@ -982,25 +982,35 @@
             let estStr = `${String(estDate.getHours()).padStart(2,'0')}:${String(estDate.getMinutes()).padStart(2,'0')} ngày ${String(estDate.getDate()).padStart(2,'0')}/${String(estDate.getMonth()+1).padStart(2,'0')}/${estDate.getFullYear()} (tổng ~${totalPipelineMinutes} phút)`;
 
             let customNote = info.isJerseyOrder
-                ? `có áo thiết kế Jersey (${info.jerseyQty} áo · in 10 phút/áo · giao 1 kiện sau khi in xong)`
-                : `đơn tiêu chuẩn`;
+                ? `Áo thiết kế Jersey (${info.jerseyQty} áo · in 10p/áo)`
+                : `Đơn hàng tiêu chuẩn`;
 
             let timelineItemsHtml = '';
             if (info.isCancelled) {
                 for (let i = 0; i <= info.cancelledAtStep && i < info.steps.length; i++) {
-                    timelineItemsHtml += `<div class="v-step done"><span class="v-step-dot"></span><div>${info.steps[i]}</div></div>`;
+                    timelineItemsHtml += `<div class="v-step done"><span class="v-step-dot"></span><div style="color:${isAdminView ? '#f8fafc' : '#111'}; font-weight:700; font-size:13.5px;">${info.steps[i]}</div></div>`;
                 }
-                timelineItemsHtml += `<div class="v-step cancelled"><span class="v-step-dot"></span><div>Đã hủy</div><div class="v-step-sub">Đơn hàng đã bị hủy tại công đoạn "${info.steps[info.cancelledAtStep] || 'Chờ xác nhận'}".</div></div>`;
+                timelineItemsHtml += `<div class="v-step cancelled"><span class="v-step-dot"></span><div style="color:#ef4444; font-weight:800; font-size:14px; text-transform:uppercase;">✕ Đã hủy</div><div class="v-step-sub" style="color:${isAdminView ? '#cbd5e1' : '#6b7280'};">Đơn hàng đã bị hủy tại công đoạn "${info.steps[info.cancelledAtStep] || 'Chờ xác nhận'}".</div></div>`;
             } else {
                 info.steps.forEach((stepName, idx) => {
-                    let cls = idx < info.currentIdx ? 'done' : (idx === info.currentIdx ? 'current' : '');
+                    let isDone = idx < info.currentIdx;
+                    let isCurrent = idx === info.currentIdx;
+                    let cls = isDone ? 'done' : (isCurrent ? 'current' : '');
+                    let stepColor = isCurrent ? '#ff5500' : (isDone ? (isAdminView ? '#f8fafc' : '#111') : (isAdminView ? '#64748b' : '#9ca3af'));
+                    let stepWeight = isCurrent ? '900' : (isDone ? '700' : '500');
+                    let stepIcon = isCurrent ? '⚡ ' : (isDone ? '✓ ' : '');
+
                     let subHtml = '';
                     if (idx === 0 && info.currentIdx === 0) {
-                        subHtml = `<div class="v-step-sub" style="color:#d97706; font-weight:600;">⏳ Đang chờ Admin/Shop xác nhận đơn hàng...</div>`;
-                    } else if (idx === info.currentIdx && info.printingSubText && stepName === 'Đang in/ép') {
-                        subHtml = `<div class="v-step-sub">${info.printingSubText}</div>`;
+                        subHtml = `<div class="v-step-sub" style="color:#f59e0b; font-weight:700; margin-top:3px;">⏳ Đang chờ Admin xác nhận duyệt đơn...</div>`;
+                    } else if (isCurrent && info.printingSubText && stepName === 'Đang in/ép') {
+                        subHtml = `<div class="v-step-sub" style="color:#38bdf8; font-weight:600; margin-top:3px;">${info.printingSubText}</div>`;
                     }
-                    timelineItemsHtml += `<div class="v-step ${cls}"><span class="v-step-dot"></span><div>${stepName}</div>${subHtml}</div>`;
+                    timelineItemsHtml += `<div class="v-step ${cls}">
+                        <span class="v-step-dot"></span>
+                        <div style="color:${stepColor}; font-weight:${stepWeight}; font-size:${isCurrent ? '14.5px' : '13.5px'}; letter-spacing:${isCurrent ? '0.5px' : '0'}; text-transform:${isCurrent ? 'uppercase' : 'none'};">${stepIcon}${stepName}</div>
+                        ${subHtml}
+                    </div>`;
                 });
             }
 
@@ -1009,83 +1019,93 @@
             let isAtDeliveredStep = !info.isCancelled && info.currentIdx === info.steps.length - 2;
 
             let bottomActionHtml = info.isCancelled
-                ? `<div style="background:#fef2f2; border-left:4px solid #dc2626; padding:12px 14px; border-radius:6px; font-size:12.5px; color:#991b1b; font-weight:600;">Đơn hàng này đã hủy (Đã hoàn trả lại số lượng hàng tồn kho).</div>`
+                ? `<div style="background:${isAdminView ? '#1e1b2e' : '#fef2f2'}; border:1px solid #ef4444; border-left:4px solid #dc2626; padding:12px 16px; border-radius:4px; font-size:13px; color:#fca5a5; font-weight:700;">Đơn hàng này đã hủy (Đã hoàn trả lại số lượng tồn kho).</div>`
                 : (canCancel
-                    ? `<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:#fff8f5; border:1px solid #fed7aa; padding:12px 16px; border-radius:10px;">
-                        <span style="font-size:12.5px; color:#7c2d12;">Nếu nhấn hủy, tiến trình sẽ ngắt ngay tại bước <b>"${info.currentLabel}"</b> và chuyển thành Đã hủy.</span>
-                        <div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" onclick="huyDonHangTheoIndex(${realOrderIndex}, ${isAdminView})" style="background:#dc2626; color:#fff; border:none; padding:8px 18px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; font-family:'Poppins',sans-serif;">✕ Hủy đơn hàng</button>
-
-
+                    ? `<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:${isAdminView ? '#0f172a' : '#fff8f5'}; border:1px solid ${isAdminView ? '#334155' : '#fed7aa'}; padding:12px 16px; border-radius:4px;">
+                        <span style="font-size:12.5px; color:${isAdminView ? '#cbd5e1' : '#7c2d12'}; font-weight:500;">Nếu nhấn hủy, tiến trình sẽ ngắt ngay tại bước <b style="color:#ff5500;">"${info.currentLabel}"</b> và chuyển thành Đã hủy.</span>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button type="button" onclick="huyDonHangTheoIndex(${realOrderIndex}, ${isAdminView})" style="background:#dc2626; color:#fff; border:1px solid #ef4444; padding:8px 18px; border-radius:4px; font-weight:800; font-size:12px; cursor:pointer; font-family:'Montserrat',sans-serif; text-transform:uppercase; letter-spacing:0.5px;">✕ Hủy đơn hàng</button>
                         </div>
                        </div>`
                     : (isAtDeliveredStep
-                        ? `<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; background:#f0fdf4; border:1.5px solid #16a34a; padding:14px 18px; border-radius:10px;">
-                            <div style="font-size:13px; color:#166534; line-height:1.5;">
+                        ? `<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; background:${isAdminView ? '#062817' : '#f0fdf4'}; border:1.5px solid #16a34a; padding:14px 18px; border-radius:4px;">
+                            <div style="font-size:13px; color:${isAdminView ? '#86efac' : '#166534'}; line-height:1.5;">
                                 📦 <b>Đơn hàng đã giao đến nơi!</b> Vui lòng kiểm tra và nhấn <b>"Đã nhận được hàng"</b>.<br>
-                                <span style="font-size:12px; color:#15803d;">⏳ Nếu quá 30 phút không nhấn (còn ~<b>${info.autoCompleteRemainMin || 30} phút</b>), hệ thống sẽ tự động chuyển qua <b>Hoàn tất</b>.</span>
+                                <span style="font-size:12px; color:${isAdminView ? '#4ade80' : '#15803d'};">⏳ Nếu quá 30 phút không nhấn (còn ~<b>${info.autoCompleteRemainMin || 30} phút</b>), hệ thống sẽ tự động chuyển qua <b>Hoàn tất</b>.</span>
                             </div>
-                            ${!isAdminView ? `<button type="button" onclick="khachXacNhanDaNhanHang(${realOrderIndex})" style="background:#16a34a; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer; font-family:'Poppins',sans-serif; box-shadow:0 4px 12px rgba(22,163,74,0.25);">✅ Đã nhận được hàng</button>` : ''}
+                            ${!isAdminView ? `<button type="button" onclick="khachXacNhanDaNhanHang(${realOrderIndex})" style="background:#16a34a; color:#fff; border:none; padding:10px 20px; border-radius:4px; font-weight:800; font-size:13px; cursor:pointer; font-family:'Montserrat',sans-serif; box-shadow:0 4px 12px rgba(22,163,74,0.35); text-transform:uppercase;">✅ Đã nhận được hàng</button>` : ''}
                            </div>`
-                        : `<div style="background:#f0fdf4; border-left:4px solid #16a34a; padding:12px 14px; border-radius:6px; font-size:12.5px; color:#166534; font-weight:600;">Đơn hàng đã hoàn tất! Đã cộng +${(ord.earnedMCoin || Math.round((ord.finalTotal || 0)*0.05)).toLocaleString('vi-VN')} M-Coin (${ord.cashbackPercent || 5}%) và +1 Token AI.</div>${taoHtmlKhungDanhGiaTrongDon(ord, realOrderIndex, isAdminView)}`));
+                        : `<div style="background:${isAdminView ? '#062817' : '#f0fdf4'}; border:1px solid #16a34a; border-left:4px solid #16a34a; padding:12px 16px; border-radius:4px; font-size:13px; color:${isAdminView ? '#86efac' : '#166534'}; font-weight:700;">Đơn hàng đã hoàn tất! Đã cộng +${(ord.earnedMCoin || Math.round((ord.finalTotal || 0)*0.05)).toLocaleString('vi-VN')} M-Coin (${ord.cashbackPercent || 5}%) và +1 Token AI.</div>${taoHtmlKhungDanhGiaTrongDon(ord, realOrderIndex, isAdminView)}`));
 
             let isConfirmed = kiemTraDonDaDuocDuyet(ord);
             let adminControlHtml = '';
             if (isAdminView && !info.isCancelled) {
                 if (!isConfirmed) {
                     adminControlHtml = `
-                    <div style="margin-bottom:16px; background:#f0fdf4; border:2px solid #22c55e; padding:16px 20px; border-radius:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; box-shadow:0 4px 14px rgba(34,197,94,0.15);">
+                    <div style="margin-bottom:18px; background:#0b1d14; border:1.5px solid #22c55e; padding:16px 20px; border-radius:4px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; box-shadow:0 4px 16px rgba(34,197,94,0.18);">
                         <div>
-                            <div style="font-size:14px; font-weight:800; color:#15803d; display:flex; align-items:center; gap:6px;">
-                                <span style="font-size:18px;">🛡️</span> ĐƠN HÀNG MỚI ĐANG CHỜ DUYỆT
+                            <div style="font-size:14px; font-weight:900; color:#4ade80; display:flex; align-items:center; gap:8px; font-family:'Montserrat',sans-serif; text-transform:uppercase; letter-spacing:0.5px;">
+                                <span style="font-size:16px;">🚨</span> ĐƠN HÀNG MỚI ĐANG CHỜ DUYỆT
                             </div>
-                            <div style="font-size:12.5px; color:#166534; margin-top:3px;">
-                                Nhấn nút bên cạnh để duyệt đơn này và chuyển ngay sang công đoạn <b>"${info.steps[1]}"</b> (Đồng bộ lên Google Sheets).
+                            <div style="font-size:12.5px; color:#cbd5e1; margin-top:4px;">
+                                Nhấn duyệt đơn để xác nhận và chuyển sang công đoạn <b>"${info.steps[1]}"</b>.
                             </div>
                         </div>
                         <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                            <button type="button" onclick="adminXacNhanDonHang(${realOrderIndex})" style="background:#16a34a; color:#fff; border:none; padding:11px 22px; border-radius:8px; font-size:13px; font-weight:800; cursor:pointer; font-family:'Poppins',sans-serif; box-shadow:0 3px 12px rgba(22,163,74,0.35);">✅ Xác nhận duyệt đơn này</button>
-                            <button type="button" onclick="huyDonHangTheoIndex(${realOrderIndex}, true)" style="background:#dc2626; color:#fff; border:none; padding:11px 16px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif;">✕ Hủy đơn spam</button>
+                            <button type="button" onclick="adminXacNhanDonHang(${realOrderIndex})" style="background:#16a34a; color:#fff; border:1px solid #22c55e; padding:10px 22px; border-radius:4px; font-size:12.5px; font-weight:800; cursor:pointer; font-family:'Montserrat',sans-serif; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 3px 12px rgba(22,163,74,0.4);">✅ XÁC NHẬN DUYỆT ĐƠN</button>
+                            <button type="button" onclick="huyDonHangTheoIndex(${realOrderIndex}, true)" style="background:#dc2626; color:#fff; border:1px solid #ef4444; padding:10px 16px; border-radius:4px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Montserrat',sans-serif; text-transform:uppercase;">✕ HỦY ĐƠN</button>
                         </div>
                     </div>`;
                 } else if (info.currentIdx < info.steps.length - 1) {
                     adminControlHtml = `
-                    <div style="margin-bottom:16px; background:#eff6ff; border:1.5px solid #93c5fd; padding:14px 18px; border-radius:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                    <div style="margin-bottom:18px; background:#0b192e; border:1.5px solid #2563eb; padding:14px 20px; border-radius:4px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; box-shadow:0 4px 16px rgba(37,99,235,0.18);">
                         <div>
-                            <span style="font-size:13.5px; font-weight:800; color:#1e40af;">🛡️ Điều khiển tiến trình đơn (Admin Demo):</span>
-                            <div style="font-size:12px; color:#1e3a8a; margin-top:2px;">Bấm nút để chuyển nhanh công đoạn đơn hàng trong buổi thuyết trình.</div>
+                            <div style="font-size:13.5px; font-weight:900; color:#60a5fa; font-family:'Montserrat',sans-serif; text-transform:uppercase; letter-spacing:0.5px;">⚡ ĐIỀU KHIỂN TIẾN TRÌNH ĐƠN HÀNG:</div>
+                            <div style="font-size:12px; color:#cbd5e1; margin-top:3px;">Chuyển nhanh các bước giao vận hoặc hoàn tất đơn tức thì.</div>
                         </div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            <button type="button" onclick="adminChuyenBuocTiepTheo(${realOrderIndex})" style="background:#2563eb; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; box-shadow:0 2px 8px rgba(37,99,235,0.25);">⏭ Chuyển công đoạn tiếp theo</button>
-                            <button type="button" onclick="adminHoanTatDonNgay(${realOrderIndex})" style="background:#16a34a; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif; box-shadow:0 2px 8px rgba(22,163,74,0.25);">✅ Hoàn tất đơn ngay</button>
+                            <button type="button" onclick="adminChuyenBuocTiepTheo(${realOrderIndex})" style="background:#2563eb; color:#fff; border:1px solid #3b82f6; padding:9px 18px; border-radius:4px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Montserrat',sans-serif; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 3px 10px rgba(37,99,235,0.3);">⏭ BƯỚC TIẾP THEO</button>
+                            <button type="button" onclick="adminHoanTatDonNgay(${realOrderIndex})" style="background:#16a34a; color:#fff; border:1px solid #22c55e; padding:9px 18px; border-radius:4px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Montserrat',sans-serif; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 3px 10px rgba(22,163,74,0.3);">✅ HOÀN TẤT ĐƠN</button>
                         </div>
                     </div>`;
                 }
             }
 
             let customerPendingNoticeHtml = (!isAdminView && !isConfirmed && !info.isCancelled)
-                ? `<div style="margin-bottom:16px; background:#fffbeb; border:1.5px solid #fde68a; padding:12px 16px; border-radius:10px; font-size:12.5px; color:#92400e; display:flex; align-items:center; gap:10px;">
+                ? `<div style="margin-bottom:16px; background:#fffbeb; border:1.5px solid #fde68a; padding:12px 16px; border-radius:6px; font-size:12.5px; color:#92400e; display:flex; align-items:center; gap:10px;">
                     <span style="font-size:20px;">⏳</span>
                     <div><b>Đơn hàng đang chờ Shop duyệt:</b> Shop sẽ kiểm tra và xác nhận đơn sớm nhất. Sau khi duyệt, đơn sẽ tự động chuyển sang công đoạn <b>"${info.steps[1]}"</b>.</div>
                    </div>`
                 : '';
 
             let backBtnHtml = isAdminView
-                ? `<button onclick="thuGonChiTietDon()" style="background:#111; color:#fff; border:none; padding:5px 12px; border-radius:6px; font-size:12px; cursor:pointer; float:right;">Thu gọn [×]</button>`
-                : `<div onclick="quayLaiDanhSachDonTaiKhoan()" style="color:#ff5500; font-size:13px; font-weight:600; cursor:pointer; margin-bottom:10px;">← Danh sách đơn</div>`;
+                ? `<button type="button" onclick="thuGonChiTietDon()" style="background:#1e293b; color:#ffffff; border:1px solid #334155; padding:7px 16px; border-radius:4px; font-size:11.5px; font-weight:800; cursor:pointer; float:right; text-transform:uppercase; letter-spacing:0.8px; font-family:'Montserrat',sans-serif;">✕ THU GỌN</button>`
+                : `<div onclick="quayLaiDanhSachDonTaiKhoan()" style="color:#ff5500; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:10px;">← Quay lại danh sách đơn</div>`;
+
+            let receiverCardBg = isAdminView ? '#090d16' : '#f9fafb';
+            let receiverCardBorder = isAdminView ? '#1e293b' : '#eee';
+            let receiverCardText = isAdminView ? '#e2e8f0' : '#222';
 
             return `
                 ${backBtnHtml}
-                <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:10px;">
-                    <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
-                        <h2 style="font-family:'Bebas Neue','Oswald',sans-serif; font-size:34px; font-style:italic; letter-spacing:0.8px; color:#111; margin:0;">ĐƠN ${orderCode}</h2>
-                        <a href="javascript:void(0)" onclick="moModalHoaDonDienTu(${realOrderIndex})" style="font-size:13.5px; color:#ff5500; text-decoration:underline; font-weight:600; cursor:pointer;" title="Nhấn để xem hóa đơn điện tử kiểu bill siêu thị">(hóa đơn điện tử)</a>
+                <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:10px; margin-bottom:6px;">
+                    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <h2 style="font-family:'Bebas Neue','Oswald',sans-serif; font-size:36px; font-weight:900; letter-spacing:1.5px; color:#ffffff; text-shadow:0 0 16px rgba(255,85,0,0.5), 0 2px 4px rgba(0,0,0,0.8); margin:0; text-transform:uppercase;">
+                            <span style="color:#ff5500;">⚡ ĐƠN</span> <span style="color:${isAdminView ? '#ffffff' : '#111'};">${orderCode}</span>
+                        </h2>
+                        <a href="javascript:void(0)" onclick="moModalHoaDonDienTu(${realOrderIndex})" style="font-size:12px; color:#ff5500; font-weight:800; text-decoration:none; background:rgba(255,85,0,0.12); border:1px solid #ff5500; padding:4px 10px; border-radius:4px; letter-spacing:0.5px; text-transform:uppercase; font-family:'Montserrat',sans-serif;" title="Nhấn để xem hóa đơn điện tử kiểu bill siêu thị">🧾 HÓA ĐƠN ĐIỆN TỬ</a>
                     </div>
-                    <div style="color:#ff5500; font-weight:800; font-size:18px;">${(ord.finalTotal || ord.subtotal || 0).toLocaleString('vi-VN')}đ</div>
+                    <div style="color:#ff5500; font-family:'Bebas Neue',sans-serif; font-weight:900; font-size:32px; letter-spacing:1px; text-shadow:0 0 10px rgba(255,85,0,0.3);">${(ord.finalTotal || ord.subtotal || 0).toLocaleString('vi-VN')}đ</div>
                 </div>
-                <div style="font-size:12.5px; color:#666; margin-bottom:14px;">Đặt ${dateStr} · ${ord.itemsCount || 1} SP · ${customNote} · Dự kiến ${estStr}</div>
-                <div style="background:#f9fafb; border:1px solid #eee; padding:12px 14px; border-radius:8px; font-size:12.5px; line-height:1.6; margin-bottom:16px;">
-                    <div><b>Người nhận:</b> ${ord.name} (${ord.phone}) — ${ord.addr}</div>
-                    <div style="margin-top:4px;"><b>Sản phẩm:</b><br>${itemsHtml}</div>
+                <div style="font-size:13px; color:${isAdminView ? '#cbd5e1' : '#64748b'}; margin-bottom:16px; font-weight:500;">
+                    📅 <span style="color:${isAdminView ? '#f8fafc' : '#111'}; font-weight:700;">Đặt:</span> ${dateStr} · 
+                    <span style="color:${isAdminView ? '#f8fafc' : '#111'}; font-weight:700;">SL:</span> ${ord.itemsCount || 1} SP · 
+                    <span style="color:#38bdf8; font-weight:700;">${customNote}</span> · 
+                    <span style="color:${isAdminView ? '#f8fafc' : '#111'}; font-weight:700;">Dự kiến:</span> <span style="color:#fbbf24; font-weight:700;">${estStr}</span>
+                </div>
+                <div style="background:${receiverCardBg}; border:1px solid ${receiverCardBorder}; border-left:3px solid #ff5500; padding:14px 18px; border-radius:4px; font-size:13px; line-height:1.7; margin-bottom:18px; color:${receiverCardText};">
+                    <div><b style="color:${isAdminView ? '#94a3b8' : '#555'}; text-transform:uppercase; font-size:11px; letter-spacing:0.6px; font-family:'Montserrat',sans-serif;">👤 NGƯỜI NHẬN:</b> <span style="color:${isAdminView ? '#ffffff' : '#111'}; font-weight:700; font-size:13.5px;">${ord.name}</span> <span style="color:#ff5500; font-weight:800;">(${ord.phone})</span> — <span style="color:${isAdminView ? '#cbd5e1' : '#444'};">${ord.addr}</span></div>
+                    <div style="margin-top:8px; border-top:1px dashed ${isAdminView ? '#1e293b' : '#ddd'}; padding-top:8px;"><b style="color:${isAdminView ? '#94a3b8' : '#555'}; text-transform:uppercase; font-size:11px; letter-spacing:0.6px; font-family:'Montserrat',sans-serif;">📦 SẢN PHẨM:</b><br><span style="color:${isAdminView ? '#f8fafc' : '#222'}; font-weight:600;">${itemsHtml}</span></div>
                 </div>
                 ${adminControlHtml}
                 ${customerPendingNoticeHtml}
@@ -2875,17 +2895,17 @@
                     : '';
 
                 ordListTable.innerHTML += `<tr class="clickable-row" style="${ord.isRealCustomerOrder ? 'background:#132035;' : ''}" onclick="hienChiTietDonHang('${code}')">
-                    <td><b>${code}</b> ${info.isJerseyOrder ? '<span style="font-size:10px; background:#000; color:#fff; padding:2px 5px; border-radius:3px;">JERSEY</span>' : ''}${realCustBadge}</td>
-                    <td><b>${custName}</b></td>
-                    <td><b>${custPhone}</b>${ord.accountPhone && ord.accountPhone !== custPhone ? `<div style="font-size:11px;color:#60a5fa;">(Acc: ${ord.accountPhone})</div>` : ''}</td>
-                    <td>${ord.addr || '---'}</td>
+                    <td><span class="admin-order-code-cell">${code}</span> ${info.isJerseyOrder ? '<span style="font-size:10px; background:#ff5500; color:#fff; font-weight:800; padding:2px 6px; border-radius:3px; letter-spacing:0.5px;">JERSEY</span>' : ''}${realCustBadge}</td>
+                    <td><b style="color:#ffffff;">${custName}</b></td>
+                    <td><b style="color:#f8fafc;">${custPhone}</b>${ord.accountPhone && ord.accountPhone !== custPhone ? `<div style="font-size:11px;color:#38bdf8;">(Acc: ${ord.accountPhone})</div>` : ''}</td>
+                    <td style="color:#cbd5e1;">${ord.addr || '---'}</td>
                     <td style="font-size:12px; color:#94a3b8;">${timeStr}</td>
                     <td><span class="order-badge-pill ${info.badgeClass}">${info.currentLabel}</span></td>
                     <td style="display:flex; align-items:center; justify-content:flex-end; gap:8px;">
                         ${confirmBtnHtml}
                         ${nextStepBtnHtml}
-                        <span onclick="event.stopPropagation(); hienChiTietDonHang('${code}')" style="color: #ff5500; font-weight: 700; cursor: pointer; font-size:12px; white-space:nowrap;">🔍 Chi tiết</span>
-                        <button type="button" onclick="xoaDonHangAdmin(${realIndex}, event)" title="Xóa đơn" style="background:#dc2626; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">🗑️</button>
+                        <span onclick="event.stopPropagation(); hienChiTietDonHang('${code}')" style="color: #ff5500; font-weight: 700; cursor: pointer; font-size:12px; white-space:nowrap; background:rgba(255,85,0,0.1); padding:4px 8px; border-radius:4px; border:1px solid rgba(255,85,0,0.3);">🔍 Chi tiết</span>
+                        <button type="button" onclick="xoaDonHangAdmin(${realIndex}, event)" title="Xóa đơn" style="background:#dc2626; color:white; border:none; padding:5px 8px; border-radius:4px; font-size:11px; cursor:pointer;">🗑️</button>
                     </td>
                 </tr>`;
             });
@@ -3046,6 +3066,11 @@
                 if (btn) btn.classList.toggle('active', t === tabName);
                 if (content) content.style.display = (t === tabName) ? 'block' : 'none';
             });
+            if (tabName === 'reports') {
+                setTimeout(() => {
+                    if (typeof capNhatBaoCaoVaBieuDoAdmin === 'function') capNhatBaoCaoVaBieuDoAdmin();
+                }, 50);
+            }
         };
 
         function capNhatHeaderTaiKhoan() {
