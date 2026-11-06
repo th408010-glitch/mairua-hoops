@@ -1552,7 +1552,7 @@ app.get('*', (req, res) => {
 });
 
 // Khởi chạy Máy chủ
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`====================================================================`);
     console.log(`🏀 MAIRUA HOOPS FULL-STACK BACKEND SERVER ĐANG CHẠY!`);
     console.log(`🌐 Website       : http://localhost:${PORT}`);
