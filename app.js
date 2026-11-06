@@ -4286,6 +4286,9 @@
                 </div>`;
         }
 
+        // LỊCH SỬ HỘI THOẠI AI CHATBOT (GROQ API - LLAMA 3.3 70B VERSATILE)
+        let mairuaChatHistory = [];
+
         function guiCauHoiNhanhAI(text) {
             let input = document.getElementById('chatInput');
             if (input) input.value = text;
@@ -4294,50 +4297,67 @@
 
         async function guiTinNhanAI() {
             const input = document.getElementById('chatInput');
-            let rawQ = input.value.trim();
+            if (!input) return;
+            const rawQ = input.value.trim();
             if (!rawQ) return;
+
             const chatBox = document.getElementById('chatMessages');
+            if (!chatBox) return;
+
+            // Render tin nhắn của người dùng
             chatBox.innerHTML += `<div class="msg-user">${rawQ}</div>`;
             input.value = '';
+
+            // Hiệu ứng Loading (Đang phân tích & gõ câu trả lời...)
             const loadingId = "loading-" + Date.now();
-            chatBox.innerHTML += `<div class="msg-bot" id="${loadingId}">⏳ AI đang phân tích kho sản phẩm và tính toán combo...</div>`;
+            chatBox.innerHTML += `
+                <div class="msg-bot" id="${loadingId}">
+                    🏀 <i>Chuyên viên AI đang gõ phản hồi</i> <span class="dot-flashing">...</span>
+                </div>
+            `;
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            let promptContext = `Bạn là Chuyên gia tư vấn thiết bị bóng rổ chuyên nghiệp của Mairua.com.
-Cửa hàng Mairua.com có các sản phẩm sau:
-1. Áo Jersey NBA (Lakers 225k, Bulls 225k, Warriors 240k, NYC 250k, Đội Tuyển VN 230k). Size S, M, L, XL, 2XL.
-2. Phôi Áo Custom Teamwear (350k, 6 màu: Tím, Trắng, Đen, Đỏ, Xanh Navy, Xanh lá). In tên số theo font Bebas Neue, Teko, Anton.
-3. Quần bóng rổ NBA (USA 210k, Lakers 205k, Bulls 205k, Warriors 210k, Miami 215k, Celtics 205k).
-4. Quần Combat Pro (195k, ngắn/dài/lệch 1 bên, đen/trắng) & 6 mẫu quần combat họa tiết (Sói hoang, Chúa sơn lâm, Hoa hồng bốn mùa, Trái dưa, Cherry drip, Xiềng xích 185k-195k).
-5. Áo combat giữ nhiệt (ngắn tay 180k, ba lỗ 165k).
-6. Phụ kiện bảo hộ (Bó gối có đệm 220k, Bó gối giảm chấn 240k, Băng quấn cổ chân 175k). Size S, M, L.
-7. Vớ chống trượt (Nike Elite 150k trắng/đen, Trutech 220k).
-8. Bóng rổ (Molten GG7X 680k sàn gỗ, Molten B7G4500 620k indoor/outdoor, AK Pro 450k-520k bê tông, Stepback 490k-580k). Size 7 nam, Size 6 nữ, Size 5 trẻ em.
-9. Balo Nike Elite (V1 520k, V2 650k, V3 850k, Utility Speed 890k) có ngăn đựng giày riêng và ngăn chứa bóng.
-
-Khi khách hỏi Combo (đặc biệt combo 1 triệu): Hãy tư vấn 2-3 combo cụ thể gồm quần, áo, combat và phụ kiện, tính rõ giá từng món và tổng tiền sát ngân sách 1tr.
-Câu hỏi của khách: "${rawQ}"`;
-
             try {
-                const response = await fetch('/api/ai/chat', {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: promptContext })
+                // Gọi tới endpoint POST /api/chat của Backend Node.js kết nối Groq API
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: rawQ,
+                        history: mairuaChatHistory
+                    })
                 });
+
                 const resData = await response.json();
-                const replyText = resData.reply || (resData.candidates && resData.candidates[0].content.parts[0].text) || '';
-                if (replyText) {
+                let replyText = resData.reply || '';
+
+                if (resData.success && replyText) {
+                    // Lưu vào lịch sử đối thoại (giữ tối đa 8 tin nhắn gần nhất)
+                    mairuaChatHistory.push({ role: 'user', content: rawQ });
+                    mairuaChatHistory.push({ role: 'assistant', content: replyText });
+                    if (mairuaChatHistory.length > 8) mairuaChatHistory = mairuaChatHistory.slice(-8);
+
+                    // Format Markdown cơ bản sang HTML trực quan
                     let formatted = replyText
                         .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                        .replace(/^\s*[-*]\s+(.*)$/gm, '• $1')
                         .replace(/\n\n/g, '<br><br>')
                         .replace(/\n/g, '<br>');
-                    document.getElementById(loadingId).innerHTML = `🏀 <b>Gemini AI Stylist:</b><br>${formatted}`;
+
+                    const targetEl = document.getElementById(loadingId);
+                    if (targetEl) {
+                        targetEl.innerHTML = `🏀 <b>Mairua Hoops AI Stylist:</b><br><div style="margin-top:4px; line-height:1.6;">${formatted}</div>`;
+                    }
                 } else {
-                    document.getElementById(loadingId).innerHTML = sinhPhanHoiAITuVanThongMinh(rawQ);
+                    const targetEl = document.getElementById(loadingId);
+                    if (targetEl) targetEl.innerHTML = sinhPhanHoiAITuVanThongMinh(rawQ);
                 }
-            } catch (e) {
-                document.getElementById(loadingId).innerHTML = sinhPhanHoiAITuVanThongMinh(rawQ);
+            } catch (err) {
+                console.warn('Lỗi gọi Groq API chat, chuyển sang fallback:', err.message);
+                const targetEl = document.getElementById(loadingId);
+                if (targetEl) targetEl.innerHTML = sinhPhanHoiAITuVanThongMinh(rawQ);
             }
+
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
