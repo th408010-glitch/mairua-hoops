@@ -1707,6 +1707,10 @@
         }
 
         function moTabTaiKhoan(subTab) {
+            if (currentCustomer && currentCustomer.isAdmin) {
+                chuyenTab('remoteOrder');
+                return;
+            }
             if (!currentCustomer.loggedIn) { moModal('loginModal'); return; }
             if (!document.getElementById('view-account').classList.contains('active')) {
                 document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
@@ -3426,7 +3430,8 @@
             let avatarCircle = document.getElementById('userAvatarCircle');
             let udName = document.getElementById('userDropdownName');
             let udPhone = document.getElementById('userDropdownPhone');
-            let udiAdmin = document.getElementById('udi-admin');
+            let custSection = document.getElementById('userDropdownCustomerSection');
+            let adminSection = document.getElementById('userDropdownAdminSection');
             let udiLogout = document.getElementById('udi-logout');
 
             if (currentCustomer.isAdmin) {
@@ -3439,7 +3444,9 @@
                 if (avatarCircle) avatarCircle.innerText = "🛡️";
                 if (udName) udName.innerText = "Quản trị viên (Admin)";
                 if (udPhone) udPhone.innerText = currentCustomer.phone || "Admin System";
-                if (udiAdmin) udiAdmin.style.display = 'flex';
+                // ẨN TRIỆT ĐỂ TOÀN BỘ MENU KHÁCH HÀNG KHI LÀ ADMIN
+                if (custSection) custSection.style.display = 'none';
+                if (adminSection) adminSection.style.display = 'block';
                 if (udiLogout) udiLogout.style.display = 'flex';
             } else if (currentCustomer.loggedIn) {
                 if (badgeContainer) badgeContainer.innerHTML = ``;
@@ -3451,7 +3458,8 @@
                 if (avatarCircle) avatarCircle.innerText = initial;
                 if (udName) udName.innerText = displayName;
                 if (udPhone) udPhone.innerText = currentCustomer.phone ? ('SĐT: ' + currentCustomer.phone) : 'Thành viên';
-                if (udiAdmin) udiAdmin.style.display = 'none';
+                if (custSection) custSection.style.display = 'block';
+                if (adminSection) adminSection.style.display = 'none';
                 if (udiLogout) udiLogout.style.display = 'flex';
             } else {
                 if (badgeContainer) badgeContainer.innerHTML = ``;
@@ -3461,7 +3469,8 @@
                 if (avatarCircle) avatarCircle.innerText = "👤";
                 if (udName) udName.innerText = "Khách hàng";
                 if (udPhone) udPhone.innerText = "Chưa đăng nhập";
-                if (udiAdmin) udiAdmin.style.display = 'none';
+                if (custSection) custSection.style.display = 'block';
+                if (adminSection) adminSection.style.display = 'none';
                 if (udiLogout) udiLogout.style.display = 'none';
             }
             let tokenEl = document.getElementById('tokenHeaderCount');
@@ -5323,6 +5332,10 @@
                 document.getElementById('view-cart').classList.add('active');
                 capNhatGioHang();
             } else if (tabName === 'account') {
+                if (currentCustomer && currentCustomer.isAdmin) {
+                    chuyenTab('remoteOrder');
+                    return;
+                }
                 document.getElementById('view-account').classList.add('active');
                 moTabTaiKhoan('orders');
             } else if (tabName === 'remoteOrder') {

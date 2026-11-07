@@ -67,16 +67,28 @@
                         <div class="udh-name" id="userDropdownName">Khách hàng</div>
                         <div class="udh-phone" id="userDropdownPhone">Chưa đăng nhập</div>
                     </div>
-                    <div class="token-badge" id="userDropdownTokenBadge" style="margin: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
-                        <span>✨ Token AI:</span>
-                        <b id="tokenHeaderCount" style="color: #ff5500;">3</b>
+
+                    <!-- NHÓM DÀNH RIÊNG CHO KHÁCH HÀNG (TỰ ĐỘNG ẨN HOÀN TOÀN KHI LÀ ADMIN) -->
+                    <div id="userDropdownCustomerSection">
+                        <div class="token-badge" id="userDropdownTokenBadge" style="margin: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>✨ Token AI:</span>
+                            <b id="tokenHeaderCount" style="color: #ff5500;">3</b>
+                        </div>
+                        <div class="user-dropdown-divider"></div>
+                        <a class="user-dropdown-item" id="udi-orders" onclick="dongUserDropdown(); chuyenTab('account'); moTabTaiKhoan('orders');">📦 Đơn hàng của tôi</a>
+                        <a class="user-dropdown-item" id="udi-vouchers" onclick="dongUserDropdown(); chuyenTab('account'); moTabTaiKhoan('vouchers');">🎟️ Ví Voucher</a>
+                        <a class="user-dropdown-item" id="udi-mcoin" onclick="dongUserDropdown(); chuyenTab('account'); moTabTaiKhoan('mcoin');">🪙 Điểm M-Coin</a>
+                        <a class="user-dropdown-item" id="udi-addr" onclick="dongUserDropdown(); chuyenTab('account'); moTabTaiKhoan('addr');">📍 Sổ địa chỉ</a>
                     </div>
-                    <div class="user-dropdown-divider"></div>
-                    <a class="user-dropdown-item" id="udi-orders" onclick="dongUserDropdown(); chuyenTab('account'); moTabTaiKhoan('orders');">📦 Đơn hàng của tôi</a>
-                    <a class="user-dropdown-item" id="udi-vouchers" onclick="dongUserDropdown(); chuyenTab('account'); moTabTaiKhoan('vouchers');">🎁 Ví Voucher</a>
-                    <a class="user-dropdown-item" id="udi-mcoin" onclick="dongUserDropdown(); chuyenTab('account'); moTabTaiKhoan('mcoin');">🪙 Điểm M-Coin</a>
-                    <a class="user-dropdown-item" id="udi-addr" onclick="dongUserDropdown(); chuyenTab('account'); moTabTaiKhoan('addr');">📍 Sổ địa chỉ</a>
-                    <a class="user-dropdown-item" id="udi-admin" style="display:none;" onclick="dongUserDropdown(); chuyenTab('remoteOrder');">🛡️ Bảng Quản Trị Admin</a>
+
+                    <!-- NHÓM DÀNH RIÊNG CHO QUẢN TRỊ VIÊN ADMIN -->
+                    <div id="userDropdownAdminSection" style="display:none;">
+                        <div class="user-dropdown-divider"></div>
+                        <a class="user-dropdown-item" id="udi-admin-dashboard" onclick="dongUserDropdown(); chuyenTab('remoteOrder'); chuyenSubTabAdmin('orders');" style="color:#ff5500; font-weight:700;">🛡️ Bảng Quản Trị Đơn & Kho</a>
+                        <a class="user-dropdown-item" id="udi-admin-notifs" onclick="dongUserDropdown(); chuyenTab('adminNotif'); moTabChuongAdmin('realorders');">🔔 Trung Tâm Đơn Thật & Chuông</a>
+                        <a class="user-dropdown-item" id="udi-admin-reports" onclick="dongUserDropdown(); chuyenTab('remoteOrder'); chuyenSubTabAdmin('reports');">📊 Báo Cáo & Lợi Nhuận</a>
+                    </div>
+
                     <div class="user-dropdown-divider"></div>
                     <a class="user-dropdown-item item-danger" id="udi-logout" onclick="dongUserDropdown(); dangXuat();">🚪 Đăng xuất</a>
                 </div>
