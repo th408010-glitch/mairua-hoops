@@ -27,7 +27,7 @@
             <!-- Role Badge / Admin Quick Tag -->
             <div id="roleBadgeContainer"></div>
             <!-- Badge Thông Báo Khách Thật Đặt Đơn (Sport Glow) -->
-            <div id="adminRealOrderAlertBadge" class="header-real-order-alert" style="display:none;" onclick="chuyenTab('remoteOrder'); chuyenSubTabAdmin('orders');" title="Nhấp để xem đơn thật mới">
+            <div id="adminRealOrderAlertBadge" class="header-real-order-alert" style="display:none;" onclick="moTabChuongAdmin('realorders')" title="Nhấp để xem danh sách thông báo đơn hàng thật">
                 <span class="pulse-dot"></span>
                 <span id="adminRealOrderAlertText">🚨 1 ĐƠN THẬT MỚI</span>
             </div>
@@ -287,6 +287,8 @@
         </div>
     </div>
 
+    
+
     <!-- STUDIO THIẾT KẾ JERSEY -->
     <div id="view-customJersey" class="view-section">
         <div class="main-container">
@@ -507,6 +509,8 @@
         </div>
     </div>
 
+    
+
     <!-- TRANG ĐẶT CHO CẢ ĐỘI - ROSTER -->
     <div id="view-roster" class="view-section">
         <div class="main-container">
@@ -595,6 +599,8 @@
         </div>
     </div>
 
+    
+
     <!-- TRANG GIỎ HÀNG RIÊNG -->
     <div id="view-cart" class="view-section">
         <div class="main-container">
@@ -673,6 +679,8 @@
             </div>
         </div>
     </div>
+
+    
 
     <!-- TRANG TÀI KHOẢN CỦA KHÁCH HÀNG -->
     <div id="view-account" class="view-section">
@@ -856,6 +864,8 @@
         </div>
     </div>
 
+    
+
     <!-- ================= TRANG CHUÔNG THÔNG BÁO TOÀN MÀN HÌNH CỦA ADMIN (2 MỤC: VOUCHER & THÔNG BÁO HÀNG TỒN) ================= -->
     <div id="view-adminNotif" class="view-section">
         <div class="main-container">
@@ -867,7 +877,13 @@
                     </div>
                     <ul class="account-nav-list">
                         <li>
-                            <button type="button" class="account-nav-btn active" id="adminNotifNav-voucher" onclick="moTabChuongAdmin('voucher')">
+                            <button type="button" class="account-nav-btn active" id="adminNotifNav-realorders" onclick="moTabChuongAdmin('realorders')">
+                                <span>🔔 Đơn hàng thật</span>
+                                <span id="adminRealOrdersNavBadge" style="background:#ff5500; color:#fff; font-size:11px; font-weight:800; padding:2px 8px; border-radius:10px;">0</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="account-nav-btn" id="adminNotifNav-voucher" onclick="moTabChuongAdmin('voucher')">
                                 <span>🎟️ Voucher</span>
                             </button>
                         </li>
@@ -886,8 +902,23 @@
                 </div>
 
                 <div class="account-main-card">
+                    <!-- MỤC 0: TRUNG TÂM THÔNG BÁO ĐƠN HÀNG THẬT (ADMIN) -->
+                    <div id="adminNotifPanel-realorders">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px; border-bottom:1px solid #eee; padding-bottom:12px;">
+                            <div>
+                                <h2 class="account-tab-heading" style="margin-bottom:4px;">TRUNG TÂM THÔNG BÁO ĐƠN HÀNG THẬT</h2>
+                                <p style="font-size:13px; color:#666;">Danh sách toàn bộ các đơn hàng đặt mua từ khách thật (ưu tiên đơn mới cần duyệt):</p>
+                            </div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button type="button" onclick="adminDuyetTatCaDonCho()" style="background:#16a34a; color:#fff; border:none; padding:9px 16px; border-radius:6px; font-size:12.5px; font-weight:700; cursor:pointer;">⚡ DUYỆT TẤT CẢ ĐƠN CHỜ</button>
+                                <button type="button" onclick="chuyenTab('remoteOrder'); chuyenSubTabAdmin('orders');" style="background:#ff5500; color:#fff; border:none; padding:9px 16px; border-radius:6px; font-size:12.5px; font-weight:700; cursor:pointer;">📦 Quản lý đơn hàng</button>
+                            </div>
+                        </div>
+                        <div id="adminRealOrdersNotifContainer"></div>
+                    </div>
+
                     <!-- MỤC 1: VOUCHER (PHÁT HÀNH & XEM LỊCH SỬ MÃ ĐÃ GỬI) -->
-                    <div id="adminNotifPanel-voucher">
+                    <div id="adminNotifPanel-voucher" style="display:none;">
                         <h2 class="account-tab-heading">QUẢN LÝ & PHÁT HÀNH VOUCHER</h2>
                         <div style="background:#fff8f5; border:1px solid #fed7aa; border-radius:12px; padding:20px; margin-bottom:24px;">
                             <h4 style="color: #c2410c; margin-bottom: 8px; font-size: 15px;">📢 Phát Hành Mã Giảm Giá Mới</h4>
@@ -925,6 +956,8 @@
         </div>
     </div>
 
+    
+
     <!-- TAB QUẢN LÝ & THEO DÕI ĐƠN HÀNG (ADMIN & KHÁCH) -->
     <div id="view-remoteOrder" class="view-section">
         <div class="main-container">
@@ -956,10 +989,18 @@
                 <!-- SUB-TAB 1: QUẢN LÝ ĐƠN HÀNG -->
                 <div id="adminTabContentOrders" class="admin-tab-content">
                     <div class="admin-box industrial-card">
-                        <div class="admin-card-head">
+                        <div class="admin-card-head" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                             <div>
                                 <span class="industrial-pill">ORDER MANAGEMENT</span>
                                 <h3 class="industrial-title">QUẢN LÝ ĐƠN HÀNG (<span id="adminTotalOrdersCount">0</span>)</h3>
+                            </div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                                <button type="button" class="industrial-btn-dark btn-toggle-auto-fake" id="btnToggleAutoFakeOrder" onclick="batTatCheDoDonAo()" style="background:#16a34a; color:#fff; border:1px solid #22c55e; font-weight:800;">
+                                    🟢 ĐƠN TỰ ĐỘNG: ĐANG BẬT
+                                </button>
+                                <button type="button" class="industrial-btn-accent" onclick="taoMotDonHangAoTuDong(true)" style="background:#ff5500; color:#fff; border:none; font-weight:800;">
+                                    ⚡ TẠO 1 ĐƠN THẬT NGAY
+                                </button>
                             </div>
                         </div>
 
@@ -1167,7 +1208,7 @@
                                 <h3 class="industrial-title">KHÁCH HÀNG QUAY LẠI & MÁY PHÁT ĐƠN TỰ ĐỘNG</h3>
                             </div>
                             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                                <button type="button" class="industrial-btn-dark" id="btnToggleAutoFakeOrder" onclick="batTatCheDoDonAo()">
+                                <button type="button" class="industrial-btn-dark btn-toggle-auto-fake" id="btnToggleAutoFakeOrderReports" onclick="batTatCheDoDonAo()">
                                     🟢 ĐƠN TỰ ĐỘNG: ĐANG BẬT
                                 </button>
                                 <button type="button" class="industrial-btn-accent" onclick="taoMotDonHangAoTuDong(true)">
@@ -1182,6 +1223,8 @@
             </div>
         </div>
     </div>
+
+    
 
     <!-- AI STUDIO -->
     <div id="view-aiTryOn" class="view-section">
@@ -1264,6 +1307,8 @@
         </div>
     </div>
 
+    
+
     <!-- MODAL ĐẶT HÀNG THÀNH CÔNG (POPUP TRÊN MÀN HÌNH) -->
     <div class="modal" id="orderSuccessModal">
         <div class="modal-content" style="max-width: 480px; text-align: center; padding: 32px 24px; border-radius: 18px; box-shadow: 0 10px 40px rgba(0,0,0,0.18);">
@@ -1284,6 +1329,8 @@
             </div>
         </div>
     </div>
+
+    
 
     <!-- MODAL ĐĂNG NHẬP -->
     <div class="modal" id="loginModal">
@@ -1327,6 +1374,8 @@
         </div>
     </div>
 
+    
+
     <!-- MODAL PHÓNG TO ẢNH ĐÁNH GIÁ -->
     <div class="modal" id="reviewPhotoLightboxModal" onclick="dongModal('reviewPhotoLightboxModal')">
         <div class="modal-content" style="width: auto; max-width: 90vw; max-height: 90vh; padding: 12px; background: #111; text-align: center;" onclick="event.stopPropagation()">
@@ -1347,6 +1396,8 @@
             </div>
         </div>
     </div>
+
+    
 
     <!-- ========================================================
          MODAL XEM NHANH SẢN PHẨM (QUICK VIEW)
@@ -1399,6 +1450,8 @@
             </div>
         </div>
     </div>
+
+    
 
     <!-- ========================================================
          SLIDE-OUT CART DRAWER (GIỎ HÀNG TRƯỢT NGANG STREETWEAR)
@@ -1528,6 +1581,67 @@
         </div>
     </div>
 
+    
+
     <script src="app.js?v=7.0"></script>
+<!-- ================= MODAL HỦY ĐƠN & ĐỔI ĐỊA CHỈ THÔNG MINH CHO KHÁCH ================= -->
+    <div class="modal" id="cancelOrderModal" onclick="dongModal('cancelOrderModal')">
+        <div class="modal-content" style="max-width: 520px; padding: 26px; border-radius: 8px; background: #0f172a; color: #f8fafc; border: 1px solid #334155; box-shadow: 0 10px 40px rgba(0,0,0,0.5);" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; border-bottom: 1px solid #1e293b; padding-bottom: 12px;">
+                <h3 style="font-family:'Montserrat',sans-serif; font-size:16px; font-weight:800; color:#ff5500; text-transform:uppercase; margin:0; display:flex; align-items:center; gap:8px;">
+                    <span>⚠️</span> XÁC NHẬN HỦY ĐƠN HÀNG
+                </h3>
+                <span class="modal-close" style="position:static; font-size:22px; color:#94a3b8; cursor:pointer;" onclick="dongModal('cancelOrderModal')">&times;</span>
+            </div>
+
+            <p style="font-size:13px; color:#cbd5e1; margin-bottom:14px; line-height:1.5;">
+                Đơn hàng: <b id="cancelModalOrderCode" style="color:#ffffff; font-family:monospace; font-size:14px;">---</b><br>
+                Vui lòng cho Mairua Hoops biết lý do bạn muốn hủy đơn để chúng tôi hỗ trợ tốt nhất:
+            </p>
+
+            <!-- 4 LỰA CHỌN LÝ DO -->
+            <div class="cancel-reasons-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:18px;">
+                <label class="cancel-reason-item" style="display:flex; align-items:center; gap:10px; background:#1e293b; padding:12px 14px; border-radius:6px; border:1px solid #334155; cursor:pointer;">
+                    <input type="radio" name="cancelOrderReasonRadio" value="change_address" onchange="chonLyDoHuyDon('change_address')">
+                    <span style="font-size:13.5px; font-weight:600; color:#f8fafc;">🏠 Muốn thay đổi địa chỉ giao hàng</span>
+                </label>
+                <label class="cancel-reason-item" style="display:flex; align-items:center; gap:10px; background:#1e293b; padding:12px 14px; border-radius:6px; border:1px solid #334155; cursor:pointer;">
+                    <input type="radio" name="cancelOrderReasonRadio" value="change_product" onchange="chonLyDoHuyDon('change_product')">
+                    <span style="font-size:13.5px; font-weight:600; color:#f8fafc;">👕 Muốn thay đổi sản phẩm / size / màu sắc</span>
+                </label>
+                <label class="cancel-reason-item" style="display:flex; align-items:center; gap:10px; background:#1e293b; padding:12px 14px; border-radius:6px; border:1px solid #334155; cursor:pointer;">
+                    <input type="radio" name="cancelOrderReasonRadio" value="found_better_price" onchange="chonLyDoHuyDon('found_better_price')">
+                    <span style="font-size:13.5px; font-weight:600; color:#f8fafc;">🏷️ Tìm thấy giá tốt hơn ở nơi khác</span>
+                </label>
+                <label class="cancel-reason-item" style="display:flex; align-items:center; gap:10px; background:#1e293b; padding:12px 14px; border-radius:6px; border:1px solid #334155; cursor:pointer;">
+                    <input type="radio" name="cancelOrderReasonRadio" value="no_longer_needed" onchange="chonLyDoHuyDon('no_longer_needed')" checked>
+                    <span style="font-size:13.5px; font-weight:600; color:#f8fafc;">🚶 Đổi ý không còn nhu cầu mua nữa</span>
+                </label>
+            </div>
+
+            <!-- NHÁNH 1: KHI CHỌN "ĐỔI ĐỊA CHỈ GIAO HÀNG" -->
+            <div id="cancelAddressChangeSection" style="display:none; background:#111e33; border:1.5px solid #2563eb; border-radius:6px; padding:14px; margin-bottom:16px;">
+                <div style="font-size:13px; color:#60a5fa; font-weight:700; margin-bottom:8px;">
+                    💡 Bạn không cần phải hủy đơn! Bạn có thể đổi địa chỉ giao hàng ngay bên dưới:
+                </div>
+                <div style="font-size:12px; color:#94a3b8; margin-bottom:10px;">Địa chỉ hiện tại của đơn: <b id="cancelModalCurrentAddr" style="color:#ffffff;">---</b></div>
+                <div style="font-size:12px; color:#cbd5e1; margin-bottom:6px; font-weight:600;">Chọn từ sổ địa chỉ đã lưu hoặc nhập địa chỉ mới:</div>
+                <div id="cancelSavedAddressesList" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px; max-height:160px; overflow-y:auto;"></div>
+                <div style="margin-top:8px;">
+                    <input type="text" id="cancelNewAddressInput" placeholder="Hoặc nhập địa chỉ giao hàng mới tại đây..." style="width:100%; padding:9px 12px; border:1px solid #334155; border-radius:4px; background:#0f172a; color:#fff; font-size:12.5px;">
+                </div>
+                <div style="display:flex; gap:8px; margin-top:12px; justify-content:flex-end; flex-wrap:wrap;">
+                    <button type="button" onclick="xacNhanDoiDiaChiDonHang()" style="background:#2563eb; color:#fff; border:none; padding:8px 16px; border-radius:4px; font-weight:700; font-size:12.5px; cursor:pointer;">📍 Xác nhận đổi địa chỉ</button>
+                    <button type="button" onclick="thucHienHuyDonSauKhiChonLyDo(true)" style="background:#dc2626; color:#fff; border:none; padding:8px 14px; border-radius:4px; font-weight:700; font-size:12px; cursor:pointer;">✕ Vẫn muốn hủy đơn</button>
+                </div>
+            </div>
+
+            <!-- NÚT HÀNH ĐỘNG HỦY ĐƠN CHO CÁC LÝ DO CÒN LẠI -->
+            <div id="cancelDefaultActionSection" style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #1e293b; padding-top:14px;">
+                <button type="button" onclick="dongModal('cancelOrderModal')" style="background:#1e293b; color:#cbd5e1; border:1px solid #334155; padding:9px 18px; border-radius:4px; font-weight:700; font-size:12.5px; cursor:pointer;">Đóng</button>
+                <button type="button" id="btnConfirmCancelOrder" onclick="thucHienHuyDonSauKhiChonLyDo(false)" style="background:#dc2626; color:#fff; border:none; padding:9px 20px; border-radius:4px; font-weight:800; font-size:12.5px; cursor:pointer; text-transform:uppercase;">Xác nhận hủy đơn</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

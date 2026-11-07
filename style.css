@@ -3346,3 +3346,135 @@
     font-size: 12px;
     margin-top: 4px;
 }
+
+/* ====================================================================
+   NÂNG CẤP THẺ ĐƠN HÀNG CỦA KHÁCH: SPORT INDUSTRIAL DARK CONTRAST
+   Khắc phục hoàn toàn lỗi chữ trắng chìm trên nền trắng
+   ==================================================================== */
+.order-row-card {
+    border: 1px solid #334155 !important;
+    border-radius: 6px !important;
+    padding: 16px 20px !important;
+    margin-bottom: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    background: #090e17 !important;
+    color: #f8fafc !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2) !important;
+}
+
+.order-row-card:hover {
+    border-color: #ff5500 !important;
+    background: #111e33 !important;
+    box-shadow: 0 4px 18px rgba(255, 85, 0, 0.25) !important;
+}
+
+.order-row-card b, 
+.order-row-card strong {
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    font-family: 'Montserrat', monospace, sans-serif !important;
+    letter-spacing: 0.5px !important;
+}
+
+.order-row-card span {
+    color: #cbd5e1 !important;
+}
+
+.order-row-card .order-price-val,
+.order-row-card b.order-price {
+    color: #ff5500 !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    font-family: 'Montserrat', sans-serif !important;
+}
+
+/* MODAL HỦY ĐƠN & ĐỔI ĐỊA CHỈ CHO KHÁCH HÀNG */
+.cancel-reason-item {
+    transition: all 0.2s ease;
+}
+.cancel-reason-item:hover {
+    border-color: #ff5500 !important;
+    background: #152238 !important;
+}
+.cancel-reason-item input[type="radio"]:checked + span {
+    color: #ff5500 !important;
+}
+
+/* THẺ THÔNG BÁO ĐƠN HÀNG THẬT TRONG ADMIN NOTIFICATION */
+.real-order-notif-card {
+    border: 1px solid #334155;
+    border-left: 4px solid #ff5500;
+    background: #0f172a;
+    color: #f8fafc;
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+.real-order-notif-card.pending-approval {
+    border-left: 4px solid #ff5500;
+    background: linear-gradient(90deg, #182236 0%, #0f172a 100%);
+    box-shadow: 0 0 16px rgba(255, 85, 0, 0.2);
+}
+.real-order-notif-card:hover {
+    border-color: #ff5500;
+    box-shadow: 0 6px 20px rgba(255, 85, 0, 0.3);
+}
+.real-order-notif-card .notif-order-code {
+    font-size: 15px;
+    font-weight: 900;
+    color: #ff5500;
+    font-family: 'Montserrat', monospace, sans-serif;
+    letter-spacing: 0.5px;
+}
+.real-order-notif-card .notif-order-meta {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-top: 4px;
+}
+.real-order-notif-card .notif-order-items {
+    font-size: 13px;
+    color: #cbd5e1;
+    margin: 8px 0;
+    padding: 8px 12px;
+    background: #090e17;
+    border-radius: 4px;
+    border-left: 2px solid #38bdf8;
+    line-height: 1.5;
+}
+.real-order-notif-card .notif-order-total {
+    font-size: 15px;
+    font-weight: 800;
+    color: #22c55e;
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* TOAST THÔNG BÁO ĐƠN THẬT NỔI BẬT GÓC MÀN HÌNH */
+.admin-real-order-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 999999;
+    background: #0f172a;
+    border: 1.5px solid #ff5500;
+    border-left: 5px solid #ff5500;
+    color: #f8fafc;
+    padding: 16px 20px;
+    border-radius: 8px;
+    box-shadow: 0 10px 35px rgba(255, 85, 0, 0.35);
+    max-width: 420px;
+    cursor: pointer;
+    animation: toastSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: 'Poppins', sans-serif;
+}
+@keyframes toastSlideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}

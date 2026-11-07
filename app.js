@@ -724,7 +724,7 @@
             capNhatGiaoDienRoster();
         }
 
-        let autoFakeOrderEnabled = true;
+        let autoFakeOrderEnabled = localStorage.getItem('mairua_autoFakeOrderEnabled') !== 'false';
         let fomoPopupTimeout = null;
         let currentPopupPromoCode = '';
 
@@ -1296,11 +1296,182 @@
             }
         }
 
+        let currentCancellingOrderIndex = -1;
+
+        function moModalHuyDonKhachHang(realIndex) {
+            let ord = remoteOrdersList[realIndex];
+            if (!ord) return;
+            let info = layThongTinTienTrinhDon(ord);
+            if (info.isCancelled) {
+                alert("⚠️ Đơn hàng này đã bị hủy trước đó!");
+                return;
+            }
+            currentCancellingOrderIndex = realIndex;
+            let codeEl = document.getElementById('cancelModalOrderCode');
+            let addrEl = document.getElementById('cancelModalCurrentAddr');
+            if (codeEl) codeEl.innerText = ord.orderCode || `MVP${12200 + realIndex}`;
+            if (addrEl) addrEl.innerText = ord.addr || 'Chưa có địa chỉ';
+
+            let radios = document.querySelectorAll('input[name="cancelOrderReasonRadio"]');
+            radios.forEach(r => {
+                r.checked = (r.value === 'no_longer_needed');
+            });
+            chonLyDoHuyDon('no_longer_needed');
+
+            let addrListEl = document.getElementById('cancelSavedAddressesList');
+            if (addrListEl) {
+                let addrs = layDanhSachDiaChiCuaAccHienTai();
+                if (addrs.length === 0 && currentCustomer && currentCustomer.addresses) addrs = currentCustomer.addresses;
+                if (!Array.isArray(addrs) || addrs.length === 0) {
+                    addrListEl.innerHTML = `<div style="font-size:12px; color:#94a3b8; font-style:italic;">Chưa có địa chỉ lưu sẵn trong tài khoản. Hãy nhập địa chỉ mới bên dưới:</div>`;
+                } else {
+                    addrListEl.innerHTML = addrs.map((a, aIdx) => {
+                        let fullStr = typeof a === 'string' ? a : (a.fullAddress || `${a.name || ''} - ${a.phone || ''} - ${a.detail || a.street || ''}`);
+                        let isCur = fullStr.trim() === (ord.addr || '').trim();
+                        return `
+                            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; background:#0f172a; padding:8px 10px; border-radius:4px; border:1px solid ${isCur ? '#ff5500' : '#334155'}; cursor:pointer;">
+                                <input type="radio" name="cancelAddressSelectRadio" value="${aIdx}" ${isCur ? 'checked' : ''}>
+                                <span style="color:${isCur ? '#ff5500' : '#f8fafc'}; font-weight:${isCur ? '700' : '400'};">${fullStr} ${isCur ? '<b style="font-size:11px; color:#22c55e;">(Đang dùng)</b>' : ''}</span>
+                            </label>
+                        `;
+                    }).join('');
+                }
+            }
+            let newAddrInput = document.getElementById('cancelNewAddressInput');
+            if (newAddrInput) newAddrInput.value = '';
+
+            moModal('cancelOrderModal');
+        }
+
+        function chonLyDoHuyDon(reasonKey) {
+            let addrSec = document.getElementById('cancelAddressChangeSection');
+            let defaultActionSec = document.getElementById('cancelDefaultActionSection');
+            if (!addrSec || !defaultActionSec) return;
+
+            if (reasonKey === 'change_address') {
+                addrSec.style.display = 'block';
+                defaultActionSec.style.display = 'none';
+            } else {
+                addrSec.style.display = 'none';
+                defaultActionSec.style.display = 'flex';
+            }
+        }
+
+        function xacNhanDoiDiaChiDonHang() {
+            if (currentCancellingOrderIndex < 0 || !remoteOrdersList[currentCancellingOrderIndex]) return;
+            let ord = remoteOrdersList[currentCancellingOrderIndex];
+
+            let newAddr = '';
+            let newAddrInput = document.getElementById('cancelNewAddressInput');
+            if (newAddrInput && newAddrInput.value.trim()) {
+                newAddr = newAddrInput.value.trim();
+            } else {
+                let selectedRadio = document.querySelector('input[name="cancelAddressSelectRadio"]:checked');
+                if (selectedRadio) {
+                    let aIdx = parseInt(selectedRadio.value);
+                    let addrs = layDanhSachDiaChiCuaAccHienTai();
+                    if (addrs.length === 0 && currentCustomer && currentCustomer.addresses) addrs = currentCustomer.addresses;
+                    if (addrs[aIdx]) {
+                        let a = addrs[aIdx];
+                        newAddr = typeof a === 'string' ? a : (a.fullAddress || `${a.name || ''} - ${a.phone || ''} - ${a.detail || a.street || ''}`);
+                    }
+                }
+            }
+
+            if (!newAddr) {
+                alert("⚠️ Vui lòng chọn một địa chỉ từ danh sách hoặc nhập địa chỉ giao hàng mới!");
+                return;
+            }
+
+            ord.addr = newAddr;
+
+            // Cập nhật backup đơn khách thật
+            dongBoBackupDonKhachThat(ord);
+
+            // Đồng bộ cập nhật trường Địa chỉ vào sheet Donhang trên Google Sheets
+            let targetCode = ord.originalOrderCode || ord.orderCode;
+            guiDuLieuGoogleSheets('updateOrderAddress', { orderCode: targetCode, newAddress: newAddr, phone: ord.phone });
+
+            luuDuLieuLenDamMay();
+            dongModal('cancelOrderModal');
+            capNhatGiaoDienTheoDuLieuMoi();
+            renderCustomerOrderHistory();
+            if (selectedAdminOrderIndex === currentCancellingOrderIndex) {
+                hienChiTietDonHang(currentCancellingOrderIndex);
+            }
+
+            alert(`✅ Đã đổi địa chỉ giao hàng thành công cho đơn ${ord.orderCode}!\nĐịa chỉ mới: ${newAddr}\nĐơn hàng tiếp tục được xử lý bình thường mà không bị hủy.`);
+        }
+
+        function thucHienHuyDonSauKhiChonLyDo(isForceFromAddressBranch = false) {
+            if (currentCancellingOrderIndex < 0 || !remoteOrdersList[currentCancellingOrderIndex]) return;
+            let ord = remoteOrdersList[currentCancellingOrderIndex];
+            let info = layThongTinTienTrinhDon(ord);
+            if (info.isCancelled) return;
+
+            let reasonMap = {
+                'change_address': 'Muốn thay đổi địa chỉ giao hàng',
+                'change_product': 'Muốn thay đổi sản phẩm/size/màu sắc',
+                'found_better_price': 'Tìm thấy giá tốt hơn ở nơi khác',
+                'no_longer_needed': 'Đổi ý không còn nhu cầu mua nữa'
+            };
+
+            let selectedReason = 'Đổi ý không còn nhu cầu mua nữa';
+            if (isForceFromAddressBranch) {
+                selectedReason = 'Muốn thay đổi địa chỉ giao hàng';
+            } else {
+                let selectedRadio = document.querySelector('input[name="cancelOrderReasonRadio"]:checked');
+                if (selectedRadio && reasonMap[selectedRadio.value]) {
+                    selectedReason = reasonMap[selectedRadio.value];
+                }
+            }
+
+            ord.isCancelled = true;
+            ord.cancelledAtStep = info.currentIdx;
+            ord.cancelReason = selectedReason;
+            ord.status = 'Đã hủy';
+
+            let targetCode = ord.originalOrderCode || ord.orderCode;
+            daDongBoTrangThaiSheet[ord.orderCode] = 'Đã hủy';
+            daDongBoTrangThaiSheet[targetCode] = 'Đã hủy';
+
+            // Đồng bộ trạng thái Đã hủy lên Google Sheets
+            guiDuLieuGoogleSheets('updateOrderStatus', { orderCode: targetCode, status: 'Đã hủy', cancelReason: selectedReason, phone: ord.phone });
+
+            // Hoàn lại số lượng tồn kho tương ứng
+            hoanTraTonKhoKhiHuyDon(ord);
+            fetch('/api/products/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ products: products, productsList: products })
+            }).catch(() => {});
+
+            dongBoBackupDonKhachThat(ord);
+            luuDuLieuLenDamMay();
+            dongModal('cancelOrderModal');
+            capNhatGiaoDienTheoDuLieuMoi();
+            renderCustomerOrderHistory();
+            renderGiaoDienChuong();
+
+            if (selectedAdminOrderIndex === currentCancellingOrderIndex) {
+                hienChiTietDonHang(currentCancellingOrderIndex);
+            }
+
+            alert(`✅ Đã hủy đơn hàng ${ord.orderCode} thành công!\nLý do: "${selectedReason}".\nSố lượng sản phẩm trong đơn đã được hoàn trả lại vào tồn kho.`);
+        }
+
         function huyDonHangTheoIndex(realIndex, isAdminView = false) {
             let ord = remoteOrdersList[realIndex];
             if (!ord) return;
             let info = layThongTinTienTrinhDon(ord);
             if (info.isCancelled) return;
+
+            // Nếu là Khách hàng: Mở Modal/Popup 4 lựa chọn lý do thông minh
+            if (!isAdminView) {
+                moModalHuyDonKhachHang(realIndex);
+                return;
+            }
+
             if (!confirm(`Bạn có chắc chắn muốn hủy đơn hàng tại bước "${info.currentLabel}" không? Số lượng sản phẩm trong đơn sẽ được cộng trả lại vào tồn kho.`)) return;
 
             ord.isCancelled = true;
@@ -1314,8 +1485,7 @@
             luuDuLieuLenDamMay();
             capNhatGiaoDienTheoDuLieuMoi();
             renderGiaoDienChuong();
-            if (isAdminView) hienChiTietDonHang(realIndex);
-            else xemChiTietDonTaiKhoan(realIndex);
+            hienChiTietDonHang(realIndex);
         }
 
         function adminXacNhanDonHang(realIndex, event) {
@@ -1563,13 +1733,13 @@
             }
         }
 
-        function moTabChuongAdmin(subTab) {
+        function moTabChuongAdmin(subTab = 'realorders') {
             if (!document.getElementById('view-adminNotif').classList.contains('active')) {
                 document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
                 document.querySelectorAll('.sub-nav a').forEach(el => el.classList.remove('active'));
                 document.getElementById('view-adminNotif').classList.add('active');
             }
-            ['voucher', 'lowstock'].forEach(t => {
+            ['realorders', 'voucher', 'lowstock'].forEach(t => {
                 let btn = document.getElementById('adminNotifNav-' + t);
                 let panel = document.getElementById('adminNotifPanel-' + t);
                 if (btn) btn.classList.toggle('active', t === subTab);
@@ -1711,12 +1881,15 @@
                 let totalVal = (ord.finalTotal || ord.subtotal || 0).toLocaleString('vi-VN') + 'đ';
                 return `
                     <div class="order-row-card" onclick="xemChiTietDonTaiKhoan('${code}')">
-                        <div style="font-size:14px; color:#333;"><b>${code}</b> · <span style="color:#666;">${dateStr} · ${ord.itemsCount || 1} SP</span></div>
+                        <div>
+                            <b style="color:#ffffff !important; font-size:14.5px; font-family:'Montserrat',monospace;">${code}</b>
+                            <span style="color:#94a3b8 !important; font-size:13px; margin-left:6px;">· ${dateStr} · ${ord.itemsCount || 1} SP</span>
+                        </div>
                         <div style="display:flex; align-items:center; gap:14px;">
                             ${(!info.isCancelled && info.currentIdx === info.steps.length - 2) ? `<button type="button" onclick="event.stopPropagation(); khachXacNhanDaNhanHang('${code}');" style="background:#16a34a; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif;">✅ Đã nhận hàng</button>` : ''}
                             ${(!info.isCancelled && info.currentIdx === info.steps.length - 1) ? `<button type="button" onclick="event.stopPropagation(); xemChiTietDonTaiKhoan('${code}'); moModalDanhGiaDonHang(${realIdx});" style="background:#ff5500; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:'Poppins',sans-serif;">⭐ Đánh giá SP</button>` : ''}
                             <span class="order-badge-pill ${info.badgeClass}">${info.currentLabel}</span>
-                            <span style="font-weight:800; font-size:15px; color:#111; min-width:95px; text-align:right;">${totalVal}</span>
+                            <b class="order-price" style="font-weight:800; font-size:15.5px; color:#ff5500 !important; min-width:95px; text-align:right; font-family:'Montserrat',sans-serif;">${totalVal}</b>
                         </div>
                     </div>`;
             }).join('');
@@ -2089,13 +2262,27 @@
             if (popup) popup.classList.remove('show');
         }
 
+        function capNhatGiaoDienNutDonAo() {
+            let btns = document.querySelectorAll('.btn-toggle-auto-fake, #btnToggleAutoFakeOrder');
+            btns.forEach(btn => {
+                if (autoFakeOrderEnabled) {
+                    btn.style.background = '#16a34a';
+                    btn.style.color = '#ffffff';
+                    btn.style.borderColor = '#22c55e';
+                    btn.innerText = '🟢 ĐƠN TỰ ĐỘNG: ĐANG BẬT';
+                } else {
+                    btn.style.background = '#475569';
+                    btn.style.color = '#cbd5e1';
+                    btn.style.borderColor = '#64748b';
+                    btn.innerText = '🔴 ĐƠN TỰ ĐỘNG: ĐÃ TẮT';
+                }
+            });
+        }
+
         function batTatCheDoDonAo() {
             autoFakeOrderEnabled = !autoFakeOrderEnabled;
-            let btn = document.getElementById('btnToggleAutoFakeOrder');
-            if (btn) {
-                btn.style.background = autoFakeOrderEnabled ? '#27ae60' : '#7f8c8d';
-                btn.innerText = autoFakeOrderEnabled ? '🟢 Tự động đơn mới: ĐANG BẬT (~1.5 - 2 phút/đơn)' : '🔴 Tự động đơn mới: ĐANG TẮT';
-            }
+            localStorage.setItem('mairua_autoFakeOrderEnabled', autoFakeOrderEnabled ? 'true' : 'false');
+            capNhatGiaoDienNutDonAo();
         }
 
         function chonKhachHangTrongKho500() {
@@ -2403,14 +2590,18 @@
             let allValidCoupons = couponsList.filter(c => c && c.createdAt && (Date.now() - c.createdAt <= COUPON_VALID_DURATION_MS));
 
             if (currentCustomer.isAdmin) {
+                renderAdminRealOrderNotifications();
+
+                let realPendingOrders = remoteOrdersList.filter(o => o && o.isRealCustomerOrder && !kiemTraDonDaDuocDuyet(o) && !o.isCancelled);
                 let lowStockItems = layDanhSachHangTonThap();
                 let lowBadgeNav = document.getElementById('adminLowStockNavBadge');
                 if (lowBadgeNav) lowBadgeNav.innerText = lowStockItems.length;
 
-                // Trên nút chuông Admin hiện tổng số mặt hàng sắp hết (<= 5 cái)
-                if (lowStockItems.length > 0) {
+                // Nút chuông Admin hiện tổng thông báo (Đơn thật mới cần duyệt + Mặt hàng tồn thấp)
+                let totalAdminNotifCount = realPendingOrders.length + lowStockItems.length;
+                if (totalAdminNotifCount > 0) {
                     badgeCount.style.display = 'inline-block';
-                    badgeCount.innerText = lowStockItems.length;
+                    badgeCount.innerText = totalAdminNotifCount;
                 } else {
                     badgeCount.style.display = 'none';
                 }
@@ -2498,6 +2689,134 @@
                 }
                 renderTabVoucherCuaToi();
             }
+        }
+
+        function renderAdminRealOrderNotifications() {
+            let container = document.getElementById('adminRealOrdersNotifContainer');
+            let badgeNav = document.getElementById('adminRealOrdersNavBadge');
+            let headerBadge = document.getElementById('adminRealOrderAlertBadge');
+            let headerText = document.getElementById('adminRealOrderAlertText');
+
+            let realOrdersWithIdx = [];
+            remoteOrdersList.forEach((o, realIdx) => {
+                if (o && o.isRealCustomerOrder) {
+                    realOrdersWithIdx.push({ ord: o, realIdx });
+                }
+            });
+
+            realOrdersWithIdx.sort((a, b) => {
+                let aPending = !kiemTraDonDaDuocDuyet(a.ord) && !a.ord.isCancelled;
+                let bPending = !kiemTraDonDaDuocDuyet(b.ord) && !b.ord.isCancelled;
+                if (aPending && !bPending) return -1;
+                if (!aPending && bPending) return 1;
+                return (b.ord.startTime || 0) - (a.ord.startTime || 0);
+            });
+
+            let pendingCount = realOrdersWithIdx.filter(x => !kiemTraDonDaDuocDuyet(x.ord) && !x.ord.isCancelled).length;
+
+            if (badgeNav) badgeNav.innerText = pendingCount;
+            if (headerBadge) {
+                if (pendingCount > 0) {
+                    headerBadge.style.display = 'inline-flex';
+                    if (headerText) headerText.innerText = `🚨 ${pendingCount} ĐƠN THẬT MỚI`;
+                } else {
+                    headerBadge.style.display = 'none';
+                }
+            }
+
+            if (!container) return;
+
+            if (realOrdersWithIdx.length === 0) {
+                container.innerHTML = `
+                    <div style="padding:40px 20px; text-align:center; color:#94a3b8; background:#0f172a; border:1px dashed #334155; border-radius:8px;">
+                        <span style="font-size:32px; display:block; margin-bottom:8px;">📭</span>
+                        Chưa có đơn hàng nào từ khách thật được ghi nhận.
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = realOrdersWithIdx.map(({ ord, realIdx }) => {
+                let info = layThongTinTienTrinhDon(ord);
+                let isPending = !kiemTraDonDaDuocDuyet(ord) && !info.isCancelled;
+                let d = new Date(ord.startTime || Date.now());
+                let timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} - ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+                let itemsText = Array.isArray(ord.itemsList) ? ord.itemsList.join('<br>') : `${ord.itemsCount || 1} sản phẩm`;
+                let totalStr = (ord.finalTotal || ord.subtotal || 0).toLocaleString('vi-VN') + 'đ';
+
+                return `
+                    <div class="real-order-notif-card ${isPending ? 'pending-approval' : ''}">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span class="notif-order-code">${ord.orderCode}</span>
+                                ${isPending ? '<span style="background:#ea580c; color:#fff; font-size:11px; font-weight:800; padding:2px 8px; border-radius:4px; text-transform:uppercase;">🚨 Cần duyệt</span>' : ''}
+                                <span class="order-badge-pill ${info.badgeClass}">${info.currentLabel}</span>
+                            </div>
+                            <div class="notif-order-total">${totalStr}</div>
+                        </div>
+
+                        <div class="notif-order-meta">
+                            👤 Khách hàng: <b style="color:#ffffff;">${ord.name || 'Khách vãng lai'}</b> · 📞 SĐT: <b style="color:#ffffff;">${ord.phone || '---'}</b> · 🕒 ${timeStr}
+                        </div>
+                        <div class="notif-order-meta" style="color:#cbd5e1;">
+                            📍 Địa chỉ: <b style="color:#f8fafc;">${ord.addr || 'Tại cửa hàng'}</b>
+                        </div>
+
+                        <div class="notif-order-items">
+                            <b>📦 Danh sách món đã đặt:</b><br>
+                            ${itemsText}
+                        </div>
+
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                            ${isPending ? `<button type="button" onclick="adminXacNhanDonHang(${realIdx}); renderAdminRealOrderNotifications();" style="background:#16a34a; color:#fff; border:none; padding:8px 18px; border-radius:4px; font-size:12px; font-weight:800; cursor:pointer;">✅ DUYỆT ĐƠN NGAY</button>` : ''}
+                            <button type="button" onclick="chuyenTab('remoteOrder'); chuyenSubTabAdmin('orders'); hienChiTietDonHang(${realIdx});" style="background:#2563eb; color:#fff; border:none; padding:8px 16px; border-radius:4px; font-size:12px; font-weight:700; cursor:pointer;">🔍 Xem chi tiết đơn</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function hienThongBaoDonHangThatAdmin(ord) {
+            if (!ord) return;
+            phatChuongBaoDonHangThat();
+
+            let existingToast = document.getElementById('adminRealOrderToast');
+            if (existingToast) existingToast.remove();
+
+            let toast = document.createElement('div');
+            toast.id = 'adminRealOrderToast';
+            toast.className = 'admin-real-order-toast';
+            let totalStr = (ord.finalTotal || ord.subtotal || 0).toLocaleString('vi-VN') + 'đ';
+            let firstItem = Array.isArray(ord.itemsList) && ord.itemsList[0] ? ord.itemsList[0] : 'Sản phẩm mới';
+
+            toast.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <div style="font-weight:900; color:#ff5500; font-size:13.5px; display:flex; align-items:center; gap:6px;">
+                        <span>🔔</span> ĐƠN HÀNG THẬT MỚI VỪA ĐẶT!
+                    </div>
+                    <span style="color:#94a3b8; font-size:16px; font-weight:700; cursor:pointer;" onclick="event.stopPropagation(); this.parentElement.parentElement.remove();">&times;</span>
+                </div>
+                <div style="font-size:13px; color:#ffffff; font-weight:700;">Mã đơn: <span style="color:#ff5500;">${ord.orderCode}</span> · ${totalStr}</div>
+                <div style="font-size:12px; color:#cbd5e1; margin-top:3px;">Khách hàng: <b>${ord.name}</b> (📞 ${ord.phone})</div>
+                <div style="font-size:11.5px; color:#94a3b8; margin-top:2px;">📍 ${ord.addr}</div>
+                <div style="font-size:11.5px; color:#60a5fa; margin-top:4px; border-top:1px dashed #334155; padding-top:4px;">📦 ${firstItem}</div>
+                <div style="font-size:11px; color:#ff5500; font-weight:700; margin-top:6px; text-decoration:underline;">👉 Nhấp để mở duyệt đơn ngay</div>
+            `;
+
+            toast.onclick = () => {
+                toast.remove();
+                if (currentCustomer.isAdmin) {
+                    moTabChuongAdmin('realorders');
+                } else {
+                    chuyenTab('remoteOrder');
+                }
+            };
+
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                if (toast && toast.parentElement) toast.remove();
+            }, 10000);
+
+            renderAdminRealOrderNotifications();
         }
 
         function phatHanhMaGiamGia() {
@@ -2833,7 +3152,9 @@
                 }
             });
             if (hasNewUnseenRealOrder && Object.keys(daBietDonThatCode).length > realOrders.length - 1) {
-                phatChuongBaoDonHangThat();
+                let latestUnseen = realOrders.find(o => o && !kiemTraDonDaDuocDuyet(o) && !o.isCancelled);
+                if (latestUnseen) hienThongBaoDonHangThatAdmin(latestUnseen);
+                else phatChuongBaoDonHangThat();
             }
 
             // CẬP NHẬT BADGE ĐƠN THẬT NỔI BẬT TRÊN HEADER
@@ -3185,11 +3506,15 @@
                 let code = ord.orderCode || `MVP${12200 + realIdx}`;
                 let d = new Date(ord.startTime || Date.now());
                 let dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                return `<div class="order-row-card" onclick="moTabTaiKhoan('orders'); xemChiTietDonTaiKhoan('${code}');">
-                    <div><b>${code}</b> · ${dateStr} · ${ord.itemsCount || 1} SP</div>
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <span class="order-badge-pill ${info.badgeClass}">${info.currentLabel}</span>
-                        <b>${(ord.finalTotal || ord.subtotal || 0).toLocaleString('vi-VN')}đ</b>
+                let totalStr = (ord.finalTotal || ord.subtotal || 0).toLocaleString('vi-VN') + 'đ';
+                return `<div class="order-row-card" onclick="moTabTaiKhoan('orders'); xemChiTietDonTaiKhoan('${code}');" style="background:#090e17 !important; border:1px solid #334155 !important; border-radius:8px !important; padding:16px 20px !important; margin-bottom:12px !important; display:flex !important; align-items:center !important; justify-content:space-between !important; cursor:pointer !important; box-shadow:0 4px 14px rgba(0,0,0,0.3) !important;">
+                    <div>
+                        <b style="color:#ffffff !important; font-size:14.5px !important; font-family:'Montserrat',monospace,sans-serif !important; letter-spacing:0.5px;">${code}</b>
+                        <span style="color:#94a3b8 !important; font-size:13px !important; margin-left:6px;">· ${dateStr} · ${ord.itemsCount || 1} SP</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:14px;">
+                        <span class="order-badge-pill ${info.badgeClass}" style="letter-spacing:0.4px;">${info.currentLabel}</span>
+                        <b class="order-price" style="color:#ff5500 !important; font-size:15.5px !important; font-weight:800 !important; font-family:'Montserrat',sans-serif !important; min-width:95px; text-align:right;">${totalStr}</b>
                     </div>
                 </div>`;
             }).join('');
@@ -3855,7 +4180,7 @@
 
             remoteOrdersList.push(newOrder);
             daBietDonThatCode[newOrder.orderCode] = true;
-            phatChuongBaoDonHangThat();
+            hienThongBaoDonHangThatAdmin(newOrder);
             let stockLedger = JSON.parse(localStorage.getItem('mairua_stockLedgerV2')) || {};
             stockLedger[`${newOrder.orderCode}_${newOrder.startTime}`] = 'deducted';
             localStorage.setItem('mairua_stockLedgerV2', JSON.stringify(stockLedger));
