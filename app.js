@@ -2624,12 +2624,17 @@
                             return `
                                 <div class="my-voucher-card">
                                     <div class="my-voucher-stub">Giảm ${c.percent}%</div>
-                                    <div class="my-voucher-body">
-                                        <div>
+                                    <div class="my-voucher-body" style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:14px; flex-wrap:wrap;">
+                                        <div style="flex:1; min-width:200px;">
                                             <div style="font-weight:800; font-size:16px; color:#111;">Mã: ${c.code} (Giảm ${c.percent}%)</div>
                                             <div style="font-size:13px; color:#444; margin:4px 0;">${targetDesc} · Đã sử dụng: <b>${usedCount}</b> tài khoản</div>
                                         </div>
-                                        <div>${statusHtml}</div>
+                                        <div style="display:flex; align-items:center; gap:10px;">
+                                            ${statusHtml}
+                                            <button type="button" onclick="event.stopPropagation(); xoaVoucherAdmin('${c.code}');" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.15s;" title="Xóa mã voucher này" onmouseover="this.style.background='#dc2626'; this.style.color='#fff';" onmouseout="this.style.background='#fee2e2'; this.style.color='#dc2626';">
+                                                🗑️ Xóa
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>`;
                         }).join('');
@@ -2874,6 +2879,36 @@
                 totalIssued: 100
             });
             alert(`📢 Đã phát hành mã "${code}" (Giảm ${percent}%)! Mã đã được lưu lên Google Sheets và gửi thông báo tới khách hàng.`);
+        }
+
+        // HÀM XÓA VOUCHER DÀNH CHO ADMIN
+        function xoaVoucherAdmin(code) {
+            if (!code || !currentCustomer.isAdmin) return;
+            let target = couponsList.find(c => c && c.code && c.code.toUpperCase() === code.toUpperCase());
+            let codeName = target ? target.code : code;
+            if (!confirm(`⚠️ Bạn có chắc chắn muốn XÓA mã giảm giá "${codeName}" này không?\n\nSau khi xóa, mã này sẽ bị hủy vĩnh viễn và khách hàng không thể áp dụng được nữa.`)) {
+                return;
+            }
+
+            // 1. Xóa khỏi mảng couponsList cục bộ
+            couponsList = couponsList.filter(c => c && c.code && c.code.toUpperCase() !== code.toUpperCase());
+            localStorage.setItem('mairua_couponsList', JSON.stringify(couponsList));
+
+            // 2. Nếu khách hàng đang áp dụng mã này thì hủy áp dụng ngay
+            if (appliedCoupon && appliedCoupon.code && appliedCoupon.code.toUpperCase() === code.toUpperCase()) {
+                appliedCoupon = null;
+                capNhatGioHang();
+            }
+
+            // 3. Gửi lệnh xóa lên Google Sheets
+            guiDuLieuGoogleSheets('deleteVoucher', { code: codeName });
+
+            // 4. Đồng bộ lên Cloud & Render lại giao diện
+            luuDuLieuLenDamMay();
+            renderGiaoDienChuong();
+            renderTabVoucherCuaToi();
+
+            alert(`✅ Đã xóa mã voucher "${codeName}" thành công khỏi hệ thống!`);
         }
 
         function apDungCoupon() {

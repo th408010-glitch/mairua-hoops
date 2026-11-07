@@ -221,6 +221,25 @@ function doPost(e) {
       }
     }
 
+    // 7. XÓA VOUCHER KHỎI HỆ THỐNG
+    else if (action === 'deleteVoucher' || action === 'deleteCoupon') {
+      var codeToDelete = String(data.code || '').trim().toUpperCase();
+      if (sheetVoucher && codeToDelete) {
+        var lastVR3 = sheetVoucher.getLastRow();
+        if (lastVR3 >= 7) {
+          var vData = sheetVoucher.getRange(7, 2, lastVR3 - 6, 1).getValues();
+          for (var v3 = 0; v3 < vData.length; v3++) {
+            if (String(vData[v3][0]).trim().toUpperCase() === codeToDelete) {
+              sheetVoucher.deleteRow(7 + v3);
+              break;
+            }
+          }
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Đã xóa voucher khỏi Google Sheets thành công!' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Đã nhận yêu cầu' }))
       .setMimeType(ContentService.MimeType.JSON);
 
