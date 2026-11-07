@@ -131,30 +131,44 @@ app.post('/api/products/deduct', (req, res) => {
     res.json({ success: true, message: 'Đã trừ tồn kho máy chủ thành công', data: serverProducts });
 });
 
-// POST /api/products/restock: Nhập kho thêm số lượng thực tế
-app.post('/api/products/restock', (req, res) => {
-    const { prodId, vIdx, qty, costPrice } = req.body;
-    const prod = serverProducts.find(p => p.id === Number(prodId));
-    if (prod && Array.isArray(prod.variants)) {
-        const v = prod.variants[Number(vIdx) || 0];
-        if (v) {
-            v.stock = (v.stock || 0) + (parseInt(qty) || 0);
-            if (costPrice) v.costPrice = Number(costPrice);
-        }
-        prod.stock = prod.variants.reduce((s, v) => s + (v.stock || 0), 0);
-        saveServerInventory();
+// POST /api/products/restock & /api/admin/restock: Nhập kho thêm số lượng thực tế
+app.post(['/api/products/restock', '/api/admin/restock'], (req, res) => {
+    const { prodId, vIdx, qty, costPrice, restockList } = req.body;
+    let itemsToRestock = [];
+    if (Array.isArray(restockList)) {
+        itemsToRestock = restockList;
+    } else if (prodId !== undefined) {
+        itemsToRestock.push({ prodId, vIdx, qty, costPrice });
     }
+
+    if (serverProducts.length === 0) loadServerInventory();
+
+    itemsToRestock.forEach(item => {
+        const prod = serverProducts.find(p => p.id === Number(item.prodId || item.id));
+        if (prod && Array.isArray(prod.variants)) {
+            const v = prod.variants[Number(item.vIdx) || 0];
+            if (v) {
+                const add = parseInt(item.qty || item.addQty || item.added) || 0;
+                v.stock = (v.stock || 0) + add;
+                if (item.costPrice || item.unitCost) v.costPrice = Number(item.costPrice || item.unitCost);
+            }
+            prod.stock = prod.variants.reduce((s, va) => s + (va.stock || 0), 0);
+        }
+    });
+
+    saveServerInventory();
     res.json({ success: true, message: 'Đã cập nhật số lượng nhập kho vào máy chủ', data: serverProducts });
 });
 
-// POST /api/products/sync: Ghi đè cập nhật danh mục sản phẩm từ Admin
-app.post('/api/products/sync', (req, res) => {
-    const { products } = req.body;
-    if (Array.isArray(products) && products.length > 0) {
-        serverProducts = products;
+// POST /api/products/sync & /api/products/sync-stocks: Ghi đè cập nhật danh mục sản phẩm từ Admin
+app.post(['/api/products/sync', '/api/products/sync-stocks'], (req, res) => {
+    const list = req.body.products || req.body.productsList;
+    if (Array.isArray(list) && list.length > 0) {
+        serverProducts = list;
         saveServerInventory();
+        return res.json({ success: true, message: 'Đã đồng bộ kho hàng lên server thành công', data: serverProducts });
     }
-    res.json({ success: true, message: 'Đã đồng bộ kho hàng lên server thành công' });
+    res.json({ success: false, message: 'Danh sách sản phẩm không hợp lệ' });
 });
 
 // ====================================================================

@@ -1292,6 +1292,7 @@
                 if (typeof ord !== 'undefined' && ord) { let sl = JSON.parse(localStorage.getItem('mairua_stockLedgerV2')) || {}; sl[`${ord.orderCode || ''}_${ord.startTime || 0}`] = 'restored'; localStorage.setItem('mairua_stockLedgerV2', JSON.stringify(sl)); }
                 capNhatTongStockVaSoldSanPham();
                 localStorage.setItem('mairua_products', JSON.stringify(products));
+                localStorage.setItem('mairua_products_updatedAt', Date.now().toString());
             }
         }
 
@@ -2371,15 +2372,26 @@
             return `Còn ${hours}h ${mins}p`;
         }
 
-        function nhapNhanhTuThongBaoTon(prodId, vIdx) {
+        async function nhapNhanhTuThongBaoTon(prodId, vIdx) {
             let qtyInput = document.getElementById(`quick-restock-${prodId}-${vIdx}`);
-            let addQty = parseInt(qtyInput ? qtyInput.value : 10) || 10;
+            let addQty = parseInt(qtyInput ? qtyInput.value : 15) || 15;
             let prod = products.find(p => p.id === prodId);
             if (!prod || !prod.variants[vIdx] || addQty <= 0) return;
 
             prod.variants[vIdx].stock += addQty;
             capNhatTongStockVaSoldSanPham();
             localStorage.setItem('mairua_products', JSON.stringify(products));
+            localStorage.setItem('mairua_products_updatedAt', Date.now().toString());
+
+            // Đồng bộ trực tiếp lên Server ngay lập tức (không để bị ghi đè dữ liệu cũ)
+            try {
+                fetch('/api/products/restock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prodId: prod.id, vIdx: vIdx, qty: addQty })
+                }).catch(() => {});
+            } catch(e) {}
+
             luuDuLieuLenDamMay();
             renderGiaoDienChuong();
             renderAdminDashboard();
@@ -2679,19 +2691,23 @@
                         }
                     }
                     if (Array.isArray(data.variantStocks)) {
-                        data.variantStocks.forEach(vs => {
-                            let prod = products.find(p => p.id === vs.id);
-                            if (prod && Array.isArray(prod.variants) && Array.isArray(vs.v)) {
-                                vs.v.forEach((vItem, vIdx) => {
-                                    if (prod.variants[vIdx]) {
-                                        if (typeof vItem.s === 'number') prod.variants[vIdx].stock = vItem.s;
-                                        if (typeof vItem.d === 'number') prod.variants[vIdx].sold = vItem.d;
-                                    }
-                                });
-                            }
-                        });
-                        capNhatTongStockVaSoldSanPham();
-                        localStorage.setItem('mairua_products', JSON.stringify(products));
+                        let localLastUpdate = Number(localStorage.getItem('mairua_products_updatedAt') || 0);
+                        let cloudLastUpdate = Number(data.updatedAt || 0);
+                        if (!localLastUpdate || cloudLastUpdate >= localLastUpdate) {
+                            data.variantStocks.forEach(vs => {
+                                let prod = products.find(p => p.id === vs.id);
+                                if (prod && Array.isArray(prod.variants) && Array.isArray(vs.v)) {
+                                    vs.v.forEach((vItem, vIdx) => {
+                                        if (prod.variants[vIdx]) {
+                                            if (typeof vItem.s === 'number') prod.variants[vIdx].stock = vItem.s;
+                                            if (typeof vItem.d === 'number') prod.variants[vIdx].sold = vItem.d;
+                                        }
+                                    });
+                                }
+                            });
+                            capNhatTongStockVaSoldSanPham();
+                            localStorage.setItem('mairua_products', JSON.stringify(products));
+                        }
                     }
                 }
                 capNhatGiaoDienTheoDuLieuMoi();
@@ -2729,10 +2745,10 @@
             }).catch(() => {});
 
             // 2. Đồng bộ trực tiếp tồn kho lên Máy Chủ Cloud Backend
-            fetch('/api/products/sync-stocks', {
+            fetch('/api/products/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productsList: products })
+                body: JSON.stringify({ products: products, productsList: products })
             }).catch(() => {});
         }
 
@@ -3699,6 +3715,7 @@
             if (importedItems.length > 0) {
                 capNhatTongStockVaSoldSanPham();
                 localStorage.setItem('mairua_products', JSON.stringify(products));
+                localStorage.setItem('mairua_products_updatedAt', Date.now().toString());
                 // Đồng bộ số lượng nhập kho lên máy chủ trung tâm
                 fetch('/api/products/sync', {
                     method: 'POST',
@@ -4599,6 +4616,12 @@
             // Đồng bộ dữ liệu & XÓA CẢNH BÁO TỒN KHO <= 5 KHI ĐÃ NHẬP
             capNhatTongStockVaSoldSanPham();
             localStorage.setItem('mairua_products', JSON.stringify(products));
+            localStorage.setItem('mairua_products_updatedAt', Date.now().toString());
+            fetch('/api/products/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ products: products, productsList: products })
+            }).catch(() => {});
             luuDuLieuLenDamMay();
             renderGiaoDienChuong();
             renderAdminDashboard();
