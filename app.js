@@ -319,8 +319,13 @@
                     let hasCouponUpdate = false;
                     data.coupons.forEach(c => {
                         if (!c || !c.code) return;
-                        let codeKey = c.code.toUpperCase();
-                        let localIdx = couponsList.findIndex(lc => lc && lc.code && lc.code.toUpperCase() === codeKey);
+                        let codeKey = c.code.toUpperCase().trim();
+                        // CHẶN TUYỆT ĐỐI MÃ ĐÃ XÓA HOẶC MÃ MẪU 'MÃ VOUCHER'
+                        if (deletedCoupons.includes(codeKey) || codeKey === 'MÃ VOUCHER' || codeKey === 'MA VOUCHER') {
+                            guiDuLieuGoogleSheets('deleteVoucher', { code: c.code });
+                            return;
+                        }
+                        let localIdx = couponsList.findIndex(lc => lc && lc.code && lc.code.toUpperCase().trim() === codeKey);
                         if (localIdx === -1) {
                             couponsList.push(c);
                             hasCouponUpdate = true;
@@ -337,9 +342,11 @@
                         }
                         (c.usedByPhones || []).forEach(ph => {
                             if (!freshUsedMap[ph]) freshUsedMap[ph] = {};
-                            if (!freshUsedMap[ph][codeKey]) freshUsedMap[ph][codeKey] = c.createdAt || Date.now();
+                            if (!freshUsedMap[ph][codeKey]) freshUsedMap[ph][codeKey] = c.createdAt || 0;
                         });
                     });
+                    // Lọc dọn dẹp triệt để
+                    couponsList = couponsList.filter(c => c && c.code && !deletedCoupons.includes(c.code.toUpperCase().trim()) && !['MÃ VOUCHER', 'MA VOUCHER'].includes(c.code.toUpperCase().trim()));
                     if (hasCouponUpdate) {
                         usedCouponsMap = freshUsedMap;
                         localStorage.setItem('mairua_usedCouponsMap', JSON.stringify(usedCouponsMap));
@@ -589,7 +596,16 @@
         remoteOrdersList.sort((a, b) => (a.startTime || 0) - (b.startTime || 0));
         localStorage.setItem('mairua_remoteOrdersList', JSON.stringify(remoteOrdersList));
 
-        let couponsList = JSON.parse(localStorage.getItem('mairua_couponsList')) || [];
+        // DANH SÁCH VOUCHER ĐÃ XÓA (BLACKLIST CHỐNG TỰ PHỤC HỒI TỪ CLOUD / GOOGLE SHEETS)
+        let deletedCoupons = JSON.parse(localStorage.getItem('mairua_deletedCoupons')) || [];
+        if (!deletedCoupons.includes('MÃ VOUCHER')) deletedCoupons.push('MÃ VOUCHER');
+        if (!deletedCoupons.includes('MA VOUCHER')) deletedCoupons.push('MA VOUCHER');
+        localStorage.setItem('mairua_deletedCoupons', JSON.stringify(deletedCoupons));
+
+        let couponsList = (JSON.parse(localStorage.getItem('mairua_couponsList')) || []).filter(c => 
+            c && c.code && !deletedCoupons.includes(c.code.toUpperCase().trim()) && !['MÃ VOUCHER', 'MA VOUCHER'].includes(c.code.toUpperCase().trim())
+        );
+        localStorage.setItem('mairua_couponsList', JSON.stringify(couponsList));
         let usedCouponsMap = JSON.parse(localStorage.getItem('mairua_usedCouponsMap')) || {}; // Lưu { phone: { CODE: usedTimestamp } }
         let appliedCoupon = null;
         let selectedAdminOrderIndex = null;
@@ -2884,26 +2900,33 @@
         // HÀM XÓA VOUCHER DÀNH CHO ADMIN
         function xoaVoucherAdmin(code) {
             if (!code || !currentCustomer.isAdmin) return;
-            let target = couponsList.find(c => c && c.code && c.code.toUpperCase() === code.toUpperCase());
+            let upperCode = code.toUpperCase().trim();
+            let target = couponsList.find(c => c && c.code && c.code.toUpperCase().trim() === upperCode);
             let codeName = target ? target.code : code;
             if (!confirm(`⚠️ Bạn có chắc chắn muốn XÓA mã giảm giá "${codeName}" này không?\n\nSau khi xóa, mã này sẽ bị hủy vĩnh viễn và khách hàng không thể áp dụng được nữa.`)) {
                 return;
             }
 
-            // 1. Xóa khỏi mảng couponsList cục bộ
-            couponsList = couponsList.filter(c => c && c.code && c.code.toUpperCase() !== code.toUpperCase());
+            // 1. Thêm vào danh sách Blacklist mã đã xóa (chống việc Google Sheets kéo lại)
+            if (!deletedCoupons.includes(upperCode)) {
+                deletedCoupons.push(upperCode);
+                localStorage.setItem('mairua_deletedCoupons', JSON.stringify(deletedCoupons));
+            }
+
+            // 2. Xóa khỏi mảng couponsList cục bộ
+            couponsList = couponsList.filter(c => c && c.code && c.code.toUpperCase().trim() !== upperCode);
             localStorage.setItem('mairua_couponsList', JSON.stringify(couponsList));
 
-            // 2. Nếu khách hàng đang áp dụng mã này thì hủy áp dụng ngay
-            if (appliedCoupon && appliedCoupon.code && appliedCoupon.code.toUpperCase() === code.toUpperCase()) {
+            // 3. Nếu khách hàng đang áp dụng mã này thì hủy áp dụng ngay
+            if (appliedCoupon && appliedCoupon.code && appliedCoupon.code.toUpperCase().trim() === upperCode) {
                 appliedCoupon = null;
                 capNhatGioHang();
             }
 
-            // 3. Gửi lệnh xóa lên Google Sheets
+            // 4. Gửi lệnh xóa lên Google Sheets
             guiDuLieuGoogleSheets('deleteVoucher', { code: codeName });
 
-            // 4. Đồng bộ lên Cloud & Render lại giao diện
+            // 5. Đồng bộ lên Cloud & Render lại giao diện
             luuDuLieuLenDamMay();
             renderGiaoDienChuong();
             renderTabVoucherCuaToi();
@@ -2994,26 +3017,27 @@
                     }
                     if (Array.isArray(data.coupons)) {
                         let freshUsedMap = JSON.parse(localStorage.getItem('mairua_usedCouponsMap')) || usedCouponsMap || {};
-                        couponsList = data.coupons.map(c => {
-                            if (!c || !c.code) return c;
-                            let codeKey = c.code.toUpperCase();
-                            let localC = couponsList.find(lc => lc && lc.code && lc.code.toUpperCase() === codeKey);
-                            let mergedPhones = new Set([
-                                ...(Array.isArray(c.usedByPhones) ? c.usedByPhones : []),
-                                ...(localC && Array.isArray(localC.usedByPhones) ? localC.usedByPhones : [])
-                            ]);
-                            let mergedUsedAt = {
-                                ...(c.usedAtByPhone || {}),
-                                ...(localC && localC.usedAtByPhone ? localC.usedAtByPhone : {})
-                            };
-                            Object.keys(freshUsedMap).forEach(ph => {
-                                if (freshUsedMap[ph] && typeof freshUsedMap[ph][codeKey] === 'number') {
-                                    mergedPhones.add(ph);
-                                    mergedUsedAt[ph] = freshUsedMap[ph][codeKey];
-                                }
+                        couponsList = data.coupons
+                            .filter(c => c && c.code && !deletedCoupons.includes(c.code.toUpperCase().trim()) && !['MÃ VOUCHER', 'MA VOUCHER'].includes(c.code.toUpperCase().trim()))
+                            .map(c => {
+                                let codeKey = c.code.toUpperCase().trim();
+                                let localC = couponsList.find(lc => lc && lc.code && lc.code.toUpperCase().trim() === codeKey);
+                                let mergedPhones = new Set([
+                                    ...(Array.isArray(c.usedByPhones) ? c.usedByPhones : []),
+                                    ...(localC && Array.isArray(localC.usedByPhones) ? localC.usedByPhones : [])
+                                ]);
+                                let mergedUsedAt = {
+                                    ...(c.usedAtByPhone || {}),
+                                    ...(localC && localC.usedAtByPhone ? localC.usedAtByPhone : {})
+                                };
+                                Object.keys(freshUsedMap).forEach(ph => {
+                                    if (freshUsedMap[ph] && typeof freshUsedMap[ph][codeKey] === 'number') {
+                                        mergedPhones.add(ph);
+                                        mergedUsedAt[ph] = freshUsedMap[ph][codeKey];
+                                    }
+                                });
+                                return { ...c, usedByPhones: Array.from(mergedPhones), usedAtByPhone: mergedUsedAt };
                             });
-                            return { ...c, usedByPhones: Array.from(mergedPhones), usedAtByPhone: mergedUsedAt };
-                        });
                         localStorage.setItem('mairua_couponsList', JSON.stringify(couponsList));
                     }
                     if (Array.isArray(data.accounts)) {
