@@ -16,7 +16,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const GOOGLE_SHEETS_API_URL = process.env.GOOGLE_SHEETS_API_URL || "https://script.google.com/macros/s/AKfycbxdRAjWjJJHNcp0aH2c-mfkIexQ-UGFubr-69FaGv6FAbjzy_puitU_NSIT7eljXxid/exec";
+const GOOGLE_SHEETS_API_URL = process.env.GOOGLE_SHEETS_API_URL || "https://script.google.com/macros/s/AKfycbx6V2t4b_znLJ0UE4UOz28Eh2OzXI5cthhtjhnlBh_e0QpObOeOW7u58MjXQVgxztDk/exec";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AQ.Ab8RN6IFzsbFhUBYigZbgWtlFY8i6Udj_Ea5PT_GN49HPkXqZg";
 
 // Cấu hình Groq SDK (Llama 3.3 70B Versatile cho AI Chatbot Tư Vấn)
