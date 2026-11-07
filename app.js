@@ -462,6 +462,7 @@
                     let nowStr = new Date().toLocaleTimeString('vi-VN');
                     syncBtn.innerText = `🔄 Đã đồng bộ Google Sheets (${nowStr})`;
                 }
+                taiSanPhamTuBackendAPI();
                 if (hienThongBao) {
                     capNhatGiaoDienTheoDuLieuMoi();
                 }
@@ -2124,6 +2125,13 @@
             capNhatTongStockVaSoldSanPham();
             localStorage.setItem('mairua_products', JSON.stringify(products));
 
+            // Đồng bộ trừ tồn kho lên máy chủ để các thiết bị khác nhận được ngay lập tức
+            fetch('/api/products/deduct', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deductions: [{ prodId: pick.prod.id, vIdx: pick.vIdx, qty: buyQty }] })
+            }).catch(() => {});
+
             let sizeTag = pick.prod.hasSize && pick.prod.sizes ? ` [Size: ${pick.prod.sizes[Math.floor(Math.random() * pick.prod.sizes.length)]}]` : '';
             let calc = tinhGiaVaThanhTien(pick.prod.name, pick.prod.price, buyQty);
             let itemLine = `• ${pick.prod.name} (${pick.variant.colorName})${sizeTag} (x${buyQty}) - ${calc.totalPrice.toLocaleString('vi-VN')}đ`;
@@ -3305,6 +3313,21 @@
         let chartRevenueProfitLineInstance = null;
         let chartCategoryBreakdownInstance = null;
 
+        function phanLoaiDanhMucSanPham(str) {
+            if (!str) return 'Combat & Phụ kiện';
+            let s = str.toLowerCase();
+            if (s.includes('balo') || s.includes('backpack') || s.includes('utility') || s.includes('túi') || s.includes('elite v1') || s.includes('elite v2') || s.includes('elite v3')) {
+                return 'Balo';
+            }
+            if (s.includes('jersey') || s.includes('áo') || s.includes('roster') || s.includes('swingman') || s.includes('luka') || s.includes('curry') || s.includes('pro mesh') || s.includes('quần bóng rổ')) {
+                return 'Jersey';
+            }
+            if (s.includes('bóng') || s.includes('molten') || s.includes('spalding') || s.includes('ak pro') || s.includes('stepback') || s.includes('bg3800') || s.includes('tf-1000')) {
+                return 'Bóng rổ';
+            }
+            return 'Combat & Phụ kiện';
+        }
+
         function capNhatBaoCaoVaBieuDoAdmin() {
             let kpiRevEl = document.getElementById('kpiRevenue');
             let kpiCostEl = document.getElementById('kpiCost');
@@ -3322,53 +3345,76 @@
                 'Combat & Phụ kiện': { rev: 0, cost: 0, profit: 0 }
             };
 
-            remoteOrdersList.forEach(ord => {
+            // Quét trên toàn bộ đơn hàng (cả đơn khách thật lẫn đơn tự động hệ thống)
+            let allOrdersToScan = [...(remoteOrdersList || [])];
+            (customerRealOrdersBackup || []).forEach(backupOrd => {
+                if (backupOrd && backupOrd.orderCode && !allOrdersToScan.some(o => o && o.orderCode === backupOrd.orderCode)) {
+                    allOrdersToScan.push(backupOrd);
+                }
+            });
+
+            allOrdersToScan.forEach(ord => {
                 if (!ord || ord.isCancelled) return;
                 let rev = Number(ord.finalTotal || ord.subtotal || 0);
                 let orderCost = 0;
 
-                if (Array.isArray(ord.itemsList)) {
+                // Tự động khôi phục doanh thu thực tế từ itemsList nếu đơn từ sheet có finalTotal = 0
+                if (rev === 0 && Array.isArray(ord.itemsList) && ord.itemsList.length > 0) {
+                    ord.itemsList.forEach(itemStr => {
+                        let m = String(itemStr).match(/-\s*([\d.,]+)\s*[đd?]/i);
+                        if (m && m[1]) {
+                            rev += phanTichTienSo(m[1]);
+                        }
+                    });
+                }
+
+                if (Array.isArray(ord.itemsList) && ord.itemsList.length > 0) {
+                    let itemsCountInOrder = ord.itemsList.length;
                     ord.itemsList.forEach(line => {
                         let lower = line.toLowerCase();
                         let qtyMatch = line.match(/\(x(\d+)\)/i);
                         let qty = qtyMatch ? (parseInt(qtyMatch[1]) || 1) : 1;
 
-                        let cat = 'Combat & Phụ kiện';
+                        // Lấy giá trị tiền thực tế của từng dòng sản phẩm
+                        let lineRev = 0;
+                        let linePriceMatch = line.match(/-\s*([\d.,]+)\s*[đd?]/i);
+                        if (linePriceMatch && linePriceMatch[1]) {
+                            lineRev = phanTichTienSo(linePriceMatch[1]);
+                        } else {
+                            lineRev = itemsCountInOrder > 0 ? Math.round(rev / itemsCountInOrder) : rev;
+                        }
+
+                        let cat = phanLoaiDanhMucSanPham(line);
                         let estimatedItemCost = 50000;
 
-                        if (lower.includes('balo')) {
-                            cat = 'Balo';
-                            estimatedItemCost = 690000;
-                        } else if (lower.includes('jersey') || lower.includes('áo') || lower.includes('roster')) {
-                            cat = 'Jersey';
-                            estimatedItemCost = 125000;
-                        } else if (lower.includes('bóng')) {
-                            cat = 'Bóng rổ';
-                            estimatedItemCost = 350000;
+                        if (cat === 'Balo') {
+                            estimatedItemCost = 370000;
+                        } else if (cat === 'Jersey') {
+                            estimatedItemCost = lower.includes('roster') ? 140000 : 120000;
+                        } else if (cat === 'Bóng rổ') {
+                            estimatedItemCost = (lower.includes('spalding') || lower.includes('tf-1000')) ? 750000 : 350000;
                         } else {
                             if (lower.includes('vớ') || lower.includes('tất')) estimatedItemCost = 25000;
-                            else if (lower.includes('bó gối')) estimatedItemCost = 90000;
+                            else if (lower.includes('bó gối') || lower.includes('gối')) estimatedItemCost = 90000;
                             else if (lower.includes('quần combat')) estimatedItemCost = 95000;
+                            else if (lower.includes('cổ chân') || lower.includes('ankle')) estimatedItemCost = 80000;
+                            else estimatedItemCost = Math.round(lineRev * 0.55);
                         }
 
                         let lineCost = estimatedItemCost * qty;
-                        orderCost += lineCost;
+                        if (lineCost > lineRev && lineRev > 0) lineCost = Math.round(lineRev * 0.65);
 
-                        if (!catStats[cat]) catStats[cat] = { rev: 0, cost: 0, profit: 0 };
+                        orderCost += lineCost;
+                        catStats[cat].rev += lineRev;
                         catStats[cat].cost += lineCost;
                     });
                 } else {
-                    orderCost = Math.round(rev * 0.65);
+                    let orderCat = phanLoaiDanhMucSanPham(ord.name || '');
+                    if (ord.hasCustomJersey) orderCat = 'Jersey';
+                    orderCost = Math.round(rev * 0.58);
+                    catStats[orderCat].rev += rev;
+                    catStats[orderCat].cost += orderCost;
                 }
-
-                let orderCat = 'Combat & Phụ kiện';
-                let ordText = Array.isArray(ord.itemsList) ? ord.itemsList.join(' ').toLowerCase() : '';
-                if (ordText.includes('balo')) orderCat = 'Balo';
-                else if (ordText.includes('jersey') || ordText.includes('áo')) orderCat = 'Jersey';
-                else if (ordText.includes('bóng')) orderCat = 'Bóng rổ';
-
-                catStats[orderCat].rev += rev;
-                catStats[orderCat].profit = Math.max(0, catStats[orderCat].rev - catStats[orderCat].cost);
 
                 totalRevenue += rev;
                 totalCost += orderCost;
@@ -3379,6 +3425,11 @@
                 dailyStats[dayKey].rev += rev;
                 dailyStats[dayKey].cost += orderCost;
                 dailyStats[dayKey].profit += Math.max(0, rev - orderCost);
+            });
+
+            // Tính toán lợi nhuận gộp từng danh mục
+            Object.keys(catStats).forEach(cat => {
+                catStats[cat].profit = Math.max(0, catStats[cat].rev - catStats[cat].cost);
             });
 
             let grossProfit = Math.max(0, totalRevenue - totalCost);
@@ -3648,6 +3699,12 @@
             if (importedItems.length > 0) {
                 capNhatTongStockVaSoldSanPham();
                 localStorage.setItem('mairua_products', JSON.stringify(products));
+                // Đồng bộ số lượng nhập kho lên máy chủ trung tâm
+                fetch('/api/products/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ products: products })
+                }).catch(() => {});
                 renderAdminDashboard();
                 renderGiaoDienChuong();
                 luuDuLieuLenDamMay();
@@ -3803,6 +3860,15 @@
                     hasCustomJersey: newOrder.hasCustomJersey
                 }
             });
+
+            // Đồng bộ trừ tồn kho lên máy chủ trung tâm để tất cả thiết bị khác cùng cập nhật
+            if (Array.isArray(deductedVariants) && deductedVariants.length > 0) {
+                fetch('/api/products/deduct', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deductions: deductedVariants })
+                }).catch(() => {});
+            }
 
             // 1. Dọn sạch giỏ hàng lập tức trên mọi bộ nhớ & đám mây
             cart = [];

@@ -9,13 +9,14 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const dotenv = require('dotenv');
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const GOOGLE_SHEETS_API_URL = process.env.GOOGLE_SHEETS_API_URL || "https://script.google.com/macros/s/AKfycbyeC_1z0XsWUNqQRKrhjrjkZsMHFc7kAgADnFenEeHJ6Gt9guLG8nQpF5RvsgDac-2q/exec";
+const GOOGLE_SHEETS_API_URL = process.env.GOOGLE_SHEETS_API_URL || "https://script.google.com/macros/s/AKfycbxdRAjWjJJHNcp0aH2c-mfkIexQ-UGFubr-69FaGv6FAbjzy_puitU_NSIT7eljXxid/exec";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AQ.Ab8RN6IFzsbFhUBYigZbgWtlFY8i6Udj_Ea5PT_GN49HPkXqZg";
 
 // Cấu hình Groq SDK (Llama 3.3 70B Versatile cho AI Chatbot Tư Vấn)
@@ -60,6 +61,100 @@ app.post('/api/cart/:phone', (req, res) => {
     const { cart } = req.body;
     cloudCarts[phone] = Array.isArray(cart) ? cart : [];
     res.json({ success: true, message: 'Đã đồng bộ giỏ hàng lên server', cart: cloudCarts[phone] });
+});
+
+// ====================================================================
+// QUẢN LÝ TỒN KHO TRUNG TÂM (ĐỒNG BỘ ĐA THIẾT BỊ 100% LAPTOP & MOBILE)
+// ====================================================================
+const INVENTORY_FILE = path.join(__dirname, 'data', 'inventory_products.json');
+let serverProducts = [];
+
+function loadServerInventory() {
+    try {
+        if (!fs.existsSync(path.join(__dirname, 'data'))) {
+            fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
+        }
+        if (fs.existsSync(INVENTORY_FILE)) {
+            const raw = fs.readFileSync(INVENTORY_FILE, 'utf8');
+            serverProducts = JSON.parse(raw);
+            console.log(`📦 [Inventory] Đã nạp ${serverProducts.length} sản phẩm tồn kho từ ${INVENTORY_FILE}`);
+            return;
+        }
+        // Khởi tạo từ products_seed.json
+        const seedPath = path.join(__dirname, 'products_seed.json');
+        if (fs.existsSync(seedPath)) {
+            const raw = fs.readFileSync(seedPath, 'utf8');
+            serverProducts = JSON.parse(raw);
+            saveServerInventory();
+            console.log(`📦 [Inventory] Đã khởi tạo tồn kho từ products_seed.json (${serverProducts.length} sản phẩm)`);
+        }
+    } catch (e) {
+        console.warn('⚠️ Lỗi nạp tồn kho server:', e.message);
+    }
+}
+
+function saveServerInventory() {
+    try {
+        fs.writeFileSync(INVENTORY_FILE, JSON.stringify(serverProducts, null, 2), 'utf8');
+    } catch (e) {
+        console.warn('⚠️ Lỗi lưu tồn kho server:', e.message);
+    }
+}
+
+loadServerInventory();
+
+// GET /api/products: Trả về danh sách sản phẩm và số lượng tồn kho thực tế đồng bộ cho mọi máy
+app.get('/api/products', (req, res) => {
+    if (serverProducts.length === 0) loadServerInventory();
+    res.json({ success: true, data: serverProducts });
+});
+
+// POST /api/products/deduct: Trừ tồn kho đồng bộ khi có đơn hàng (cả đơn thật và đơn tự động)
+app.post('/api/products/deduct', (req, res) => {
+    const { deductions } = req.body;
+    if (Array.isArray(deductions)) {
+        deductions.forEach(d => {
+            const prod = serverProducts.find(p => p.id === Number(d.prodId));
+            if (prod && Array.isArray(prod.variants)) {
+                const vIdx = Number(d.vIdx) || 0;
+                const qty = parseInt(d.qty) || 1;
+                if (prod.variants[vIdx]) {
+                    prod.variants[vIdx].stock = Math.max(0, (prod.variants[vIdx].stock || 0) - qty);
+                    prod.variants[vIdx].sold = (prod.variants[vIdx].sold || 0) + qty;
+                }
+                prod.stock = prod.variants.reduce((s, v) => s + (v.stock || 0), 0);
+                prod.sold = prod.variants.reduce((s, v) => s + (v.sold || 0), 0);
+            }
+        });
+        saveServerInventory();
+    }
+    res.json({ success: true, message: 'Đã trừ tồn kho máy chủ thành công', data: serverProducts });
+});
+
+// POST /api/products/restock: Nhập kho thêm số lượng thực tế
+app.post('/api/products/restock', (req, res) => {
+    const { prodId, vIdx, qty, costPrice } = req.body;
+    const prod = serverProducts.find(p => p.id === Number(prodId));
+    if (prod && Array.isArray(prod.variants)) {
+        const v = prod.variants[Number(vIdx) || 0];
+        if (v) {
+            v.stock = (v.stock || 0) + (parseInt(qty) || 0);
+            if (costPrice) v.costPrice = Number(costPrice);
+        }
+        prod.stock = prod.variants.reduce((s, v) => s + (v.stock || 0), 0);
+        saveServerInventory();
+    }
+    res.json({ success: true, message: 'Đã cập nhật số lượng nhập kho vào máy chủ', data: serverProducts });
+});
+
+// POST /api/products/sync: Ghi đè cập nhật danh mục sản phẩm từ Admin
+app.post('/api/products/sync', (req, res) => {
+    const { products } = req.body;
+    if (Array.isArray(products) && products.length > 0) {
+        serverProducts = products;
+        saveServerInventory();
+    }
+    res.json({ success: true, message: 'Đã đồng bộ kho hàng lên server thành công' });
 });
 
 // ====================================================================
